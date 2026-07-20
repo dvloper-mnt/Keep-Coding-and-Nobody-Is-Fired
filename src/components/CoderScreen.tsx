@@ -1,6 +1,8 @@
 'use client';
 
 import type { CoderStepView } from '@/src/features/game/game-types';
+import { useClockTickSound } from '@/src/hooks/useClockTickSound';
+import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { BossOverlay } from './BossOverlay';
@@ -19,6 +21,8 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
   const [submitting, setSubmitting] = useState(false);
   const [shake, setShake] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  useClockTickSound(view.status === 'playing');
 
   const fetchState = useCallback(async () => {
     const res = await fetch(`/api/game/state?sessionId=${sessionId}`);
@@ -45,6 +49,7 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
 
   async function handleAnswer(answerIndex: number) {
     if (submitting || view.status !== 'playing') return;
+    void unlockAudio();
     setSubmitting(true);
     setFeedback(null);
 
@@ -58,9 +63,11 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
     setSubmitting(false);
 
     if (data.success) {
+      playCorrect();
       setFeedback('Fix applied');
       if (data.coderView) setView(data.coderView);
     } else {
+      playWrong();
       setShake(true);
       setFeedback(data.message ?? 'El sistema sigue fallando…');
       setTimeout(() => setShake(false), 500);

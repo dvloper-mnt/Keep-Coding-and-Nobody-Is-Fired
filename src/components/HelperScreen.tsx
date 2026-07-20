@@ -1,6 +1,8 @@
 'use client';
 
 import type { HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import { useClockTickSound } from '@/src/hooks/useClockTickSound';
+import { unlockAudio } from '@/src/lib/game-audio';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { BossOverlay } from './BossOverlay';
@@ -19,6 +21,22 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
     totalSteps: guide.totalExercises,
     status: 'playing',
   });
+
+  useClockTickSound(sync.status === 'playing');
+
+  useEffect(() => {
+    function handleInteraction() {
+      void unlockAudio();
+    }
+
+    document.addEventListener('click', handleInteraction, { once: true });
+    document.addEventListener('touchstart', handleInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+    };
+  }, []);
 
   const fetchSync = useCallback(async () => {
     const res = await fetch(`/api/game/sync?sessionId=${sessionId}`);
