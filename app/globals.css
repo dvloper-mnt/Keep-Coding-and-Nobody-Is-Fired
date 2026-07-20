@@ -32,3 +32,33 @@ body {
   60% { transform: translateX(-4px); }
   80% { transform: translateX(4px); }
 }
+
+@keyframes boss-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes boss-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(239, 68, 68, 0.55);
+  }
+}
+
+.animate-boss-pop {
+  animation: boss-pop 0.35s ease-out forwards;
+}
+
+.animate-boss-pop-center {
+  animation:
+    boss-pop 0.35s ease-out forwards,
+    boss-pulse 2s ease-in-out 0.35s infinite;
+}

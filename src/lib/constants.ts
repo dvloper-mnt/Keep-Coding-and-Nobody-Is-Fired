@@ -6,6 +6,26 @@ export const BOSS_MESSAGES = [
   'TENEMOS CLIENTES MIRANDO ESTO',
   'SI ESTO FALLA, HAY CONSECUENCIAS',
   'NO TENEMOS TIEMPO',
+  '¿POR QUÉ SIGUE TODO EN ROJO?',
+  'EL CLIENTE ESTÁ PREGUNTANDO DEMASIADO',
+  'NECESITO UNA ACTUALIZACIÓN YA',
+  '¿QUIÉN TOCÓ PRODUCCIÓN?',
+  '¿POR QUÉ HAY MÁS ERRORES AHORA?',
+  'NECESITO BUENAS NOTICIAS',
+  'ESTE ERA NUESTRO MOMENTO DE BRILLAR',
+  'CADA SEGUNDO CUENTA',
+  'NECESITO VER PROGRESO',
+  'FINGIR CONFIANZA YA NO ESTÁ FUNCIONANDO',
+  'NO SÉ QUÉ HACEN, PERO HÁGANLO MÁS RÁPIDO',
 ] as const;
+
+export const BOSS_PRESSURE_CONFIG = {
+  messages: BOSS_MESSAGES,
+  spawnIntervalMs: 15_000,
+  maxVisibleMessages: 10,
+  centerEmphasisChance: 0.35,
+  edgeMarginPercent: 8,
+  centerZoneRadiusPercent: 22,
+} as const;
 
 export const WRONG_ANSWER_MESSAGE = 'El sistema sigue fallando…';

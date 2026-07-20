@@ -1,30 +1,72 @@
 'use client';
 
-import { BOSS_MESSAGES } from '@/src/lib/constants';
-import { useEffect, useState } from 'react';
+import { BossMessageToast } from '@/src/components/BossMessageToast';
+import {
+  createBossToast,
+  generateBossPlacement,
+  type BossToast,
+} from '@/src/lib/boss-position';
+import { BOSS_PRESSURE_CONFIG } from '@/src/lib/constants';
+import { useCallback, useEffect, useState } from 'react';
 
 interface BossOverlayProps {
   active: boolean;
 }
 
 export function BossOverlay({ active }: BossOverlayProps) {
-  const [index, setIndex] = useState(0);
+  const [toasts, setToasts] = useState<BossToast[]>([]);
+
+  const handleDismiss = useCallback((id: string) => {
+    setToasts((prev) =>
+      prev.map((toast) => {
+        if (toast.id !== id) return toast;
+
+        const otherPlacements = prev
+          .filter((item) => item.id !== id)
+          .map((item) => item.placement);
+
+        return {
+          ...toast,
+          placement: generateBossPlacement(BOSS_PRESSURE_CONFIG, otherPlacements),
+        };
+      }),
+    );
+  }, []);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      setToasts([]);
+      return;
+    }
+
+    setToasts([createBossToast(BOSS_PRESSURE_CONFIG, [], [])]);
+
     const interval = setInterval(() => {
-      setIndex((i) => (i + 1) % BOSS_MESSAGES.length);
-    }, 15000);
+      setToasts((prev) => {
+        if (prev.length >= BOSS_PRESSURE_CONFIG.maxVisibleMessages) {
+          return prev;
+        }
+
+        const newToast = createBossToast(
+          BOSS_PRESSURE_CONFIG,
+          prev.map((toast) => toast.placement),
+          prev.map((toast) => toast.message),
+        );
+
+        return [...prev, newToast];
+      });
+    }, BOSS_PRESSURE_CONFIG.spawnIntervalMs);
+
     return () => clearInterval(interval);
   }, [active]);
 
-  if (!active) return null;
+  if (!active || toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed top-4 left-1/2 z-50 -translate-x-1/2">
-      <div className="rounded-md border border-red-500/50 bg-red-950/80 px-6 py-2 text-sm font-bold tracking-wider text-red-300 uppercase backdrop-blur-sm">
-        {BOSS_MESSAGES[index]}
-      </div>
+    <div className="pointer-events-none fixed inset-0 z-50">
+      {toasts.map((toast) => (
+        <BossMessageToast key={toast.id} toast={toast} onDismiss={handleDismiss} />
+      ))}
     </div>
   );
 }
