@@ -1,6 +1,7 @@
 'use client';
 
 import type { HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { BossOverlay } from './BossOverlay';
 import { GameTimer } from './GameTimer';
@@ -52,14 +53,26 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
         </div>
 
         {sync.status === 'victory' && (
-          <div className="mb-6 rounded-lg border border-green-500/30 bg-green-950/20 p-4 text-center text-green-400">
-            Crisis resuelta. Buen trabajo en equipo.
+          <div className="mb-6 rounded-lg border border-green-500/30 bg-green-950/20 p-4 text-center">
+            <p className="text-green-400">Crisis resuelta. Buen trabajo en equipo.</p>
+            <Link
+              href="/"
+              className="mt-4 inline-block rounded-lg bg-green-600 px-6 py-2 font-semibold text-white transition-colors hover:bg-green-500"
+            >
+              Volver al inicio
+            </Link>
           </div>
         )}
 
         {sync.status === 'defeat' && (
-          <div className="mb-6 rounded-lg border border-red-500/30 bg-red-950/20 p-4 text-center text-red-400">
-            Tiempo agotado. La guía sigue disponible para revisión.
+          <div className="mb-6 rounded-lg border border-red-500/30 bg-red-950/20 p-4 text-center">
+            <p className="text-red-400">Tiempo agotado. La guía sigue disponible para revisión.</p>
+            <Link
+              href="/"
+              className="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
+            >
+              Volver al inicio
+            </Link>
           </div>
         )}
 

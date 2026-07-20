@@ -1,6 +1,7 @@
 'use client';
 
 import type { CoderStepView } from '@/src/features/game/game-types';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { BossOverlay } from './BossOverlay';
 import { CodePanel } from './CodePanel';
@@ -95,6 +96,12 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
           <div className="mb-6 rounded-lg border border-green-500/50 bg-green-950/30 p-6 text-center">
             <p className="text-2xl font-bold text-green-400">Nivel completado</p>
             <p className="mt-2 text-green-300/70">Sistema funcionando. El cliente sigue viendo la demo.</p>
+            <Link
+              href="/"
+              className="mt-4 inline-block rounded-lg bg-green-600 px-6 py-2 font-semibold text-white transition-colors hover:bg-green-500"
+            >
+              Volver al inicio
+            </Link>
           </div>
         )}
 
@@ -102,6 +109,12 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
           <div className="mb-6 rounded-lg border border-red-500/50 bg-red-950/30 p-6 text-center">
             <p className="text-2xl font-bold text-red-400">Se acabó el tiempo</p>
             <p className="mt-2 text-red-300/70">El jefe no está contento…</p>
+            <Link
+              href="/"
+              className="mt-4 inline-block rounded-lg border border-zinc-600 px-6 py-2 font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
+            >
+              Volver al inicio
+            </Link>
           </div>
         )}
 
