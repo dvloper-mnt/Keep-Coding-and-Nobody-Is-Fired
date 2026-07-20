@@ -1,0 +1,9 @@
+{
+  "name": "mem_stats",
+  "description": "Show memory system statistics — total sessions, observations, and projects tracked.",
+  "inputSchema": {
+    "properties": {},
+    "required": [],
+    "type": "object"
+  }
+}

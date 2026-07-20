@@ -1,0 +1,22 @@
+{
+  "name": "mem_suggest_topic_key",
+  "description": "Suggest a stable topic_key for memory upserts. Use this before mem_save when you want evolving topics (like architecture decisions) to update a single observation over time.",
+  "inputSchema": {
+    "properties": {
+      "content": {
+        "description": "Observation content used as fallback if title is empty",
+        "type": "string"
+      },
+      "title": {
+        "description": "Observation title (preferred input for stable keys)",
+        "type": "string"
+      },
+      "type": {
+        "description": "Observation type/category, e.g. architecture, decision, bugfix",
+        "type": "string"
+      }
+    },
+    "required": [],
+    "type": "object"
+  }
+}

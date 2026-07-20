@@ -1,0 +1,20 @@
+{
+  "name": "mem_session_end",
+  "description": "Mark a coding session as completed with an optional summary.",
+  "inputSchema": {
+    "properties": {
+      "id": {
+        "description": "Session identifier to close",
+        "type": "string"
+      },
+      "summary": {
+        "description": "Summary of what was accomplished",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "type": "object"
+  }
+}

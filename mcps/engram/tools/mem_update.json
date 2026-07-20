@@ -1,0 +1,40 @@
+{
+  "name": "mem_update",
+  "description": "Update an existing observation by ID. Only provided fields are changed.",
+  "inputSchema": {
+    "properties": {
+      "content": {
+        "description": "New content",
+        "type": "string"
+      },
+      "id": {
+        "description": "Observation ID to update",
+        "type": "number"
+      },
+      "project": {
+        "description": "New project value",
+        "type": "string"
+      },
+      "scope": {
+        "description": "New scope: project or personal",
+        "type": "string"
+      },
+      "title": {
+        "description": "New title",
+        "type": "string"
+      },
+      "topic_key": {
+        "description": "New topic key (normalized internally)",
+        "type": "string"
+      },
+      "type": {
+        "description": "New type/category",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "type": "object"
+  }
+}

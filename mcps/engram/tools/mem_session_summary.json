@@ -1,0 +1,25 @@
+{
+  "name": "mem_session_summary",
+  "description": "Save a comprehensive end-of-session summary. Call this when a session is ending or when significant work is complete. This creates a structured summary that future sessions will use to understand what happened.\n\nFORMAT — use this exact structure in the content field:\n\n## Goal\n[One sentence: what were we building/working on in this session]\n\n## Instructions\n[User preferences, constraints, or context discovered during this session. Things a future agent needs to know about HOW the user wants things done. Skip if nothing notable.]\n\n## Discoveries\n- [Technical finding, gotcha, or learning 1]\n- [Technical finding 2]\n- [Important API behavior, config quirk, etc.]\n\n## Accomplished\n- ✅ [Completed task 1 — with key implementation details]\n- ✅ [Completed task 2 — mention files changed]\n- 🔲 [Identified but not yet done — for next session]\n\n## Relevant Files\n- path/to/file.ts — [what it does or what changed]\n- path/to/other.go — [role in the architecture]\n\nGUIDELINES:\n- Be CONCISE but don't lose important details (file paths, error messages, decisions)\n- Focus on WHAT and WHY, not HOW (the code itself is in the repo)\n- Include things that would save a future agent time\n- The Discoveries section is the most valuable — capture gotchas and non-obvious learnings\n- Relevant Files should only include files that were significantly changed or are important for context",
+  "inputSchema": {
+    "properties": {
+      "content": {
+        "description": "Full session summary using the Goal/Instructions/Discoveries/Accomplished/Files format",
+        "type": "string"
+      },
+      "project": {
+        "description": "Project name",
+        "type": "string"
+      },
+      "session_id": {
+        "description": "Session ID (default: manual-save-{project})",
+        "type": "string"
+      }
+    },
+    "required": [
+      "content",
+      "project"
+    ],
+    "type": "object"
+  }
+}

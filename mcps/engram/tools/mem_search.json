@@ -1,0 +1,32 @@
+{
+  "name": "mem_search",
+  "description": "Search your persistent memory across all sessions. Use this to find past decisions, bugs fixed, patterns used, files changed, or any context from previous coding sessions.",
+  "inputSchema": {
+    "properties": {
+      "limit": {
+        "description": "Max results (default: 10, max: 20)",
+        "type": "number"
+      },
+      "project": {
+        "description": "Filter by project name",
+        "type": "string"
+      },
+      "query": {
+        "description": "Search query — natural language or keywords",
+        "type": "string"
+      },
+      "scope": {
+        "description": "Filter by scope: project (default) or personal",
+        "type": "string"
+      },
+      "type": {
+        "description": "Filter by type: tool_use, file_change, command, file_read, search, manual, decision, architecture, bugfix, pattern",
+        "type": "string"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "type": "object"
+  }
+}
