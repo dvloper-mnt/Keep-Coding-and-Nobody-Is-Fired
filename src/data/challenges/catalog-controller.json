@@ -1,0 +1,103 @@
+{
+  "id": "lvl_controller_001",
+  "title": "Catálogo en vivo",
+  "difficulty": "medium",
+  "story_context": "La startup presenta su API de catálogo a inversores cuando el ProductController rompe la demo en producción.",
+  "time_limit": 180,
+  "steps": [
+    {
+      "step": 1,
+      "coder_view": {
+        "code": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Services\\Inventory\\InventoryService;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected InventoryService $inventory,\n    ) {}\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->inventory->findProduct($id);\n        return response()->json($product);\n    }\n}",
+        "error": "500 Internal Server Error"
+      },
+      "helper_view": {
+        "rules": [
+          "ProductController debe recibir ProductRepository para lectura de catálogo",
+          "InventoryService es solo para movimientos de stock, no para consultar productos",
+          "Una dependencia incorrecta en el constructor puede causar error 500 en runtime",
+          "La demo en vivo está probando GET /api/products/{id}"
+        ],
+        "knowledge": [
+          "ProductRepository vive en App\\Repositories\\Catalog",
+          "InventoryService vive en App\\Services\\Inventory",
+          "El método de lectura del repositorio es find(string $id)"
+        ]
+      },
+      "options": [
+        "El controlador inyecta el servicio incorrecto en el constructor",
+        "Falta importar JsonResponse",
+        "Error en base de datos",
+        "La ruta show no está definida"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Repositories\\Catalog\\ProductRepository;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected ProductRepository $products,\n    ) {}\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->products->find($id);\n        return response()->json($product);\n    }\n}"
+      },
+      "hint": "Revisá qué clase debe inyectarse en el constructor según la capa de lectura del catálogo"
+    },
+    {
+      "step": 2,
+      "coder_view": {
+        "code": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Http\\Requests\\Catalog\\CreateProductRequest;\nuse App\\Repositories\\Catalog\\ProductRepository;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected ProductRepository $products,\n    ) {}\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->products->find($id);\n        return response()->json($product);\n    }\n\n    public function store(CreateProductRequest $request): JsonResponse\n    {\n        $product = $this->products->create($request->validated());\n        return response()->json($product, 201);\n    }\n}",
+        "error": "500 Internal Server Error"
+      },
+      "helper_view": {
+        "rules": [
+          "Los endpoints de escritura del catálogo usan Form Requests del módulo Catalog",
+          "Para crear productos se usa StoreProductRequest, no CreateProductRequest",
+          "Type-hintear un Form Request inexistente produce error 500 al resolver la dependencia",
+          "La demo en vivo está probando POST /api/products"
+        ],
+        "knowledge": [
+          "StoreProductRequest → crear producto (store)",
+          "UpdateProductRequest → editar producto (update)",
+          "CreateProductRequest no existe en este proyecto"
+        ]
+      },
+      "options": [
+        "El método store type-hintea un Form Request que no existe en el proyecto",
+        "ProductRepository no tiene método create",
+        "Error de validación en base de datos",
+        "El middleware bloquea la petición"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Http\\Requests\\Catalog\\StoreProductRequest;\nuse App\\Repositories\\Catalog\\ProductRepository;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected ProductRepository $products,\n    ) {}\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->products->find($id);\n        return response()->json($product);\n    }\n\n    public function store(StoreProductRequest $request): JsonResponse\n    {\n        $product = $this->products->create($request->validated());\n        return response()->json($product, 201);\n    }\n}"
+      },
+      "hint": "Consultá qué Form Request corresponde al método store en el módulo Catalog"
+    },
+    {
+      "step": 3,
+      "coder_view": {
+        "code": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Http\\Requests\\Catalog\\StoreProductRequest;\nuse App\\Repositories\\Catalog\\ProductRepository;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected ProductRepository $products,\n    ) {\n        $this->middleware('auth:sanctum');\n    }\n\n    public function index(): JsonResponse\n    {\n        return response()->json($this->products->all());\n    }\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->products->find($id);\n        return response()->json($product);\n    }\n\n    public function store(StoreProductRequest $request): JsonResponse\n    {\n        $product = $this->products->create($request->validated());\n        return response()->json($product, 201);\n    }\n}",
+        "error": "401 Unauthorized"
+      },
+      "helper_view": {
+        "rules": [
+          "401 Unauthorized → la petición no pasó la autenticación del middleware",
+          "index y show son públicos en la spec de la API del catálogo",
+          "Solo store, update y destroy requieren auth:sanctum",
+          "Middleware en el constructor sin only() se aplica a todas las acciones",
+          "La demo en vivo está probando GET /api/products"
+        ],
+        "knowledge": [
+          "El listado de productos debe ser accesible sin token",
+          "Usar $this->middleware('auth:sanctum')->only([...]) para limitar el alcance",
+          "No confundir con falta de token cuando la ruta es pública por diseño"
+        ]
+      },
+      "options": [
+        "El middleware del constructor se aplica a acciones que deberían ser públicas",
+        "Falta enviar el token Bearer en la petición",
+        "ProductRepository no está bindeado en el container",
+        "El método index no existe en el controlador"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Http\\Requests\\Catalog\\StoreProductRequest;\nuse App\\Repositories\\Catalog\\ProductRepository;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected ProductRepository $products,\n    ) {\n        $this->middleware('auth:sanctum')->only(['store', 'update', 'destroy']);\n    }\n\n    public function index(): JsonResponse\n    {\n        return response()->json($this->products->all());\n    }\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->products->find($id);\n        return response()->json($product);\n    }\n\n    public function store(StoreProductRequest $request): JsonResponse\n    {\n        $product = $this->products->create($request->validated());\n        return response()->json($product, 201);\n    }\n}"
+      },
+      "hint": "Revisá qué acciones deben ser públicas y cómo limitar el middleware en el constructor"
+    }
+  ]
+}

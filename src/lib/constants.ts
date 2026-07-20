@@ -35,7 +35,7 @@ export const BOSS_MESSAGES = [
 export const BOSS_PRESSURE_CONFIG = {
   messages: BOSS_MESSAGES,
   spawnIntervalMs: 15_000,
-  maxVisibleMessages: 10,
+  maxVisibleMessages: 7,
   centerEmphasisChance: 0.35,
   edgeMarginPercent: 8,
   centerZoneRadiusPercent: 22,
