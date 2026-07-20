@@ -8,17 +8,19 @@
     {
       "step": 1,
       "coder_view": {
-        "code": "Route::post('/login', [LoginController::class, 'index']);",
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\n\nRoute::post('/login', [LoginController::class, 'index']);\nRoute::post('/register', [RegisterController::class, 'store']);\nRoute::post('/logout', [LogoutController::class, 'logout']);",
         "error": "500 Internal Server Error"
       },
       "helper_view": {
         "rules": [
-          "Si el método no existe en el controlador → puede causar error en runtime",
-          "LoginController solo tiene métodos: login, logout"
+          "Si el método no existe en el controlador → puede causar error 500 en runtime",
+          "LoginController solo tiene métodos: login, logout",
+          "La demo en vivo está probando POST /login"
         ],
         "knowledge": [
-          "LoginController es responsable de autenticación",
-          "Métodos válidos: login, logout"
+          "LoginController vive en App\\Http\\Controllers\\Auth",
+          "RegisterController y LogoutController también están en Auth",
+          "Métodos válidos de LoginController: login, logout"
         ]
       },
       "options": [
@@ -29,63 +31,70 @@
       ],
       "correct_answer": 0,
       "success_state": {
-        "code_patch": "Route::post('/login', [LoginController::class, 'login']);"
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\n\nRoute::post('/login', [LoginController::class, 'login']);\nRoute::post('/register', [RegisterController::class, 'store']);\nRoute::post('/logout', [LogoutController::class, 'logout']);"
       },
       "hint": "Revisa si el método llamado realmente existe en el controlador"
     },
     {
       "step": 2,
       "coder_view": {
-        "code": "use Illuminate\\Support\\Facades\\Route;\n\nRoute::post('/login', [LoginController::class, 'login']);",
-        "error": "Class 'LoginController' not found"
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});",
+        "error": "500 Internal Server Error"
       },
       "helper_view": {
         "rules": [
-          "Class not found → falta import del controlador",
-          "En Laravel los controladores deben importarse con namespace completo"
+          "Los controladores de autenticación viven en App\\Http\\Controllers\\Auth",
+          "Los controladores de perfil viven en App\\Http\\Controllers\\User",
+          "Un use con namespace incorrecto produce error en runtime aunque el import exista",
+          "La demo en vivo está probando POST /login"
         ],
         "knowledge": [
-          "Controladores están en App\\Http\\Controllers"
+          "LoginController, RegisterController, LogoutController → carpeta Auth",
+          "ProfileController → carpeta User",
+          "use App\\Http\\Controllers\\LoginController es incorrecto; debe ser App\\Http\\Controllers\\Auth\\LoginController"
         ]
       },
       "options": [
+        "LoginController está importado desde el namespace incorrecto",
         "Falta importar LoginController",
-        "El método login no existe",
-        "Error de sintaxis",
-        "La ruta está mal definida"
+        "RegisterController tiene el método store incorrecto",
+        "El middleware api bloquea la autenticación"
       ],
       "correct_answer": 0,
       "success_state": {
-        "code_patch": "use App\\Http\\Controllers\\LoginController;\n\nRoute::post('/login', [LoginController::class, 'login']);"
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});"
       },
-      "hint": "El problema no está en la ruta ni en el método"
+      "hint": "Revisá si cada controlador está importado desde la carpeta que le corresponde"
     },
     {
       "step": 3,
       "coder_view": {
-        "code": "use App\\Http\\Controllers\\LoginController;\n\nRoute::post('/login', [LoginController::class, 'login']);;",
-        "error": "Parse error: syntax error, unexpected ';'"
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n    Route::patch('/profile', [ProfileController::class, 'update']);;\n});",
+        "error": "Parse error: syntax error, unexpected ';' on line 12"
       },
       "helper_view": {
         "rules": [
-          "Errores de sintaxis en PHP suelen ser por caracteres extra o faltantes",
-          "Revisar puntos y comas duplicados"
+          "Parse error bloquea la ejecución de todo el archivo de rutas",
+          "Revisar la línea indicada en el mensaje y las adyacentes",
+          "Causas frecuentes: ;; duplicados, paréntesis sin cerrar, comas trailing",
+          "No confundir con errores de namespace — esos suelen ser 500 en runtime"
         ],
         "knowledge": [
-          "PHP es sensible a errores de sintaxis mínimos"
+          "PHP reporta el número de línea exacto en parse errors",
+          "Un solo carácter inválido tumba todas las rutas del archivo"
         ]
       },
       "options": [
-        "Falta importar el controlador",
-        "Hay un error de sintaxis en el código",
-        "El método login no existe",
-        "Error en base de datos"
+        "Falta importar ProfileController",
+        "Parse error: syntax error",
+        "El método update no existe en ProfileController",
+        "LoginController está en el namespace incorrecto"
       ],
       "correct_answer": 1,
       "success_state": {
-        "code_patch": "use App\\Http\\Controllers\\LoginController;\n\nRoute::post('/login', [LoginController::class, 'login']);"
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n    Route::patch('/profile', [ProfileController::class, 'update']);\n});"
       },
-      "hint": "Revisa cuidadosamente el final de la línea"
+      "hint": "Revisá la línea 12 y buscá caracteres de más en las rutas cercanas"
     }
   ]
 }
