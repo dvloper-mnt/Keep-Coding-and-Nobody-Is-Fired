@@ -1,0 +1,91 @@
+{
+  "id": "lvl_login_001",
+  "title": "Login en caos",
+  "difficulty": "medium",
+  "story_context": "Están presentando el sistema de autenticación a un cliente en vivo cuando ocurre un error en producción.",
+  "time_limit": 180,
+  "steps": [
+    {
+      "step": 1,
+      "coder_view": {
+        "code": "Route::post('/login', [LoginController::class, 'index']);",
+        "error": "500 Internal Server Error"
+      },
+      "helper_view": {
+        "rules": [
+          "Si el método no existe en el controlador → puede causar error en runtime",
+          "LoginController solo tiene métodos: login, logout"
+        ],
+        "knowledge": [
+          "LoginController es responsable de autenticación",
+          "Métodos válidos: login, logout"
+        ]
+      },
+      "options": [
+        "El método index no existe en LoginController",
+        "El controlador no está importado",
+        "Error en base de datos",
+        "La ruta está mal definida"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "Route::post('/login', [LoginController::class, 'login']);"
+      },
+      "hint": "Revisa si el método llamado realmente existe en el controlador"
+    },
+    {
+      "step": 2,
+      "coder_view": {
+        "code": "use Illuminate\\Support\\Facades\\Route;\n\nRoute::post('/login', [LoginController::class, 'login']);",
+        "error": "Class 'LoginController' not found"
+      },
+      "helper_view": {
+        "rules": [
+          "Class not found → falta import del controlador",
+          "En Laravel los controladores deben importarse con namespace completo"
+        ],
+        "knowledge": [
+          "Controladores están en App\\Http\\Controllers"
+        ]
+      },
+      "options": [
+        "Falta importar LoginController",
+        "El método login no existe",
+        "Error de sintaxis",
+        "La ruta está mal definida"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "use App\\Http\\Controllers\\LoginController;\n\nRoute::post('/login', [LoginController::class, 'login']);"
+      },
+      "hint": "El problema no está en la ruta ni en el método"
+    },
+    {
+      "step": 3,
+      "coder_view": {
+        "code": "use App\\Http\\Controllers\\LoginController;\n\nRoute::post('/login', [LoginController::class, 'login']);;",
+        "error": "Parse error: syntax error, unexpected ';'"
+      },
+      "helper_view": {
+        "rules": [
+          "Errores de sintaxis en PHP suelen ser por caracteres extra o faltantes",
+          "Revisar puntos y comas duplicados"
+        ],
+        "knowledge": [
+          "PHP es sensible a errores de sintaxis mínimos"
+        ]
+      },
+      "options": [
+        "Falta importar el controlador",
+        "Hay un error de sintaxis en el código",
+        "El método login no existe",
+        "Error en base de datos"
+      ],
+      "correct_answer": 1,
+      "success_state": {
+        "code_patch": "use App\\Http\\Controllers\\LoginController;\n\nRoute::post('/login', [LoginController::class, 'login']);"
+      },
+      "hint": "Revisa cuidadosamente el final de la línea"
+    }
+  ]
+}

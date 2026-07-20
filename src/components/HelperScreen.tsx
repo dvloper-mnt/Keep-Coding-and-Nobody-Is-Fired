@@ -1,0 +1,74 @@
+'use client';
+
+import type { HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import { useCallback, useEffect, useState } from 'react';
+import { BossOverlay } from './BossOverlay';
+import { GameTimer } from './GameTimer';
+import { ManualPanel } from './ManualPanel';
+
+interface HelperScreenProps {
+  sessionId: string;
+  guide: HelperStaticGuide;
+}
+
+export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
+  const [sync, setSync] = useState<HelperSyncView>({
+    remainingTime: 180,
+    currentStep: 1,
+    totalSteps: guide.totalExercises,
+    status: 'playing',
+  });
+
+  const fetchSync = useCallback(async () => {
+    const res = await fetch(`/api/game/sync?sessionId=${sessionId}`);
+    if (res.ok) {
+      const data: HelperSyncView = await res.json();
+      setSync(data);
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (sync.status !== 'playing') return;
+
+    const interval = setInterval(fetchSync, 2000);
+    return () => clearInterval(interval);
+  }, [sessionId, sync.status, fetchSync]);
+
+  return (
+    <div className="min-h-screen bg-amber-950 text-amber-100">
+      <BossOverlay active={sync.status === 'playing'} />
+
+      <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold tracking-widest text-amber-500 uppercase">
+              Helper — Soporte
+            </p>
+            <p className="text-sm text-amber-400/60">
+              Progreso Coder: ejercicio {sync.currentStep}/{sync.totalSteps} · Sala {sessionId}
+            </p>
+          </div>
+          <GameTimer remainingTime={sync.remainingTime} />
+        </div>
+
+        {sync.status === 'victory' && (
+          <div className="mb-6 rounded-lg border border-green-500/30 bg-green-950/20 p-4 text-center text-green-400">
+            Crisis resuelta. Buen trabajo en equipo.
+          </div>
+        )}
+
+        {sync.status === 'defeat' && (
+          <div className="mb-6 rounded-lg border border-red-500/30 bg-red-950/20 p-4 text-center text-red-400">
+            Tiempo agotado. La guía sigue disponible para revisión.
+          </div>
+        )}
+
+        <ManualPanel
+          title={guide.title}
+          storyContext={guide.storyContext}
+          sections={guide.sections}
+        />
+      </div>
+    </div>
+  );
+}
