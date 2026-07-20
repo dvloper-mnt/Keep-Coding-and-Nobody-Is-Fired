@@ -1,0 +1,146 @@
+[
+  {
+    "id": "cq_sql_inner_left",
+    "category": "sql",
+    "client_prompt": "El cliente interrumpe la demo y pregunta: «¿Cuál es la diferencia entre INNER JOIN y LEFT JOIN?»",
+    "options": [
+      "INNER JOIN devuelve solo filas coincidentes; LEFT JOIN incluye todas las filas de la tabla izquierda aunque no haya coincidencia",
+      "LEFT JOIN es más rápido porque no valida coincidencias",
+      "INNER JOIN permite NULL en ambas tablas; LEFT JOIN no",
+      "No hay diferencia, son alias del mismo tipo de join"
+    ],
+    "correct_answer": 0
+  },
+  {
+    "id": "cq_sql_index",
+    "category": "sql",
+    "client_prompt": "El cliente mira el dashboard lento y pregunta: «¿Para qué sirve un índice en la base de datos?»",
+    "options": [
+      "Para encriptar los datos sensibles de una tabla",
+      "Para acelerar las consultas de búsqueda y filtrado sobre columnas indexadas",
+      "Para duplicar automáticamente los registros en otra tabla",
+      "Para reemplazar las claves primarias en tablas grandes"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_sql_pk_unique",
+    "category": "sql",
+    "client_prompt": "El cliente revisa el modelo de datos y pregunta: «¿En qué se diferencia una PRIMARY KEY de un UNIQUE?»",
+    "options": [
+      "PRIMARY KEY permite NULL; UNIQUE no",
+      "UNIQUE identifica la fila; PRIMARY KEY solo evita duplicados",
+      "PRIMARY KEY identifica unívocamente cada fila y no admite NULL; UNIQUE solo garantiza valores distintos",
+      "Son exactamente lo mismo en cualquier motor SQL"
+    ],
+    "correct_answer": 2
+  },
+  {
+    "id": "cq_pattern_singleton",
+    "category": "design-patterns",
+    "client_prompt": "El cliente pregunta por la arquitectura del servicio de configuración: «¿Qué problema resuelve el patrón Singleton?»",
+    "options": [
+      "Crear múltiples instancias de una clase para paralelizar tareas",
+      "Garantizar una única instancia de una clase con un punto de acceso global controlado",
+      "Separar la lógica de negocio de la capa de presentación",
+      "Convertir objetos complejos en estructuras JSON serializables"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_pattern_observer",
+    "category": "design-patterns",
+    "client_prompt": "El cliente ve las notificaciones en tiempo real y pregunta: «¿Qué patrón usamos cuando varios componentes reaccionan a un cambio de estado?»",
+    "options": [
+      "Factory Method",
+      "Observer",
+      "Decorator",
+      "Adapter"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_pattern_factory",
+    "category": "design-patterns",
+    "client_prompt": "El cliente pregunta sobre el módulo de pagos: «¿Para qué sirve el patrón Factory?»",
+    "options": [
+      "Encapsular la creación de objetos sin exponer la lógica concreta al cliente del código",
+      "Garantizar que una clase tenga una sola instancia en toda la aplicación",
+      "Agregar comportamiento dinámico a objetos sin modificar su clase base",
+      "Traducir interfaces incompatibles entre dos sistemas legacy"
+    ],
+    "correct_answer": 0
+  },
+  {
+    "id": "cq_arch_rest",
+    "category": "architecture",
+    "client_prompt": "El cliente pregunta sobre la API: «¿Qué principio define REST en una arquitectura web?»",
+    "options": [
+      "Todas las operaciones deben usar únicamente el método POST",
+      "Los recursos se identifican por URLs y se manipulan con verbos HTTP estándar de forma stateless",
+      "Cada endpoint debe devolver XML obligatoriamente",
+      "El servidor mantiene sesión persistente por cada cliente conectado"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_arch_layers",
+    "category": "architecture",
+    "client_prompt": "El cliente pregunta por la estructura del proyecto: «¿Qué ventaja tiene separar la app en capas (presentación, dominio, datos)?»",
+    "options": [
+      "Elimina la necesidad de escribir tests automatizados",
+      "Reduce el acoplamiento y facilita mantener, testear y escalar cada responsabilidad por separado",
+      "Obliga a usar microservicios desde el primer día",
+      "Impide reutilizar código entre módulos"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_arch_micro_mono",
+    "category": "architecture",
+    "client_prompt": "El cliente pregunta sobre el roadmap: «¿Cuál es la diferencia clave entre monolito y microservicios?»",
+    "options": [
+      "Un monolito no puede desplegarse en la nube",
+      "Microservicios dividen la aplicación en servicios independientes desplegables; un monolito concentra todo en un solo despliegue",
+      "Los microservicios no usan bases de datos",
+      "Un monolito siempre es más lento que cualquier arquitectura distribuida"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_prog_di",
+    "category": "programming",
+    "client_prompt": "El cliente pregunta por el framework: «¿Qué es la inyección de dependencias (DI)?»",
+    "options": [
+      "Un patrón donde las dependencias se proveen desde afuera en lugar de que la clase las instancie internamente",
+      "Una técnica para inyectar SQL directamente en el navegador del usuario",
+      "Un método para comprimir archivos PHP antes del deploy",
+      "Una forma de evitar usar interfaces en el código"
+    ],
+    "correct_answer": 0
+  },
+  {
+    "id": "cq_prog_solid_s",
+    "category": "programming",
+    "client_prompt": "El cliente pregunta por la calidad del código: «¿Qué significa el principio Single Responsibility (la S de SOLID)?»",
+    "options": [
+      "Cada clase debe tener una única razón para cambiar, es decir, una sola responsabilidad",
+      "Solo puede existir una clase por archivo en todo el proyecto",
+      "Todas las funciones deben tener exactamente un parámetro",
+      "Un módulo no puede importar código de otro módulo"
+    ],
+    "correct_answer": 0
+  },
+  {
+    "id": "cq_prog_async",
+    "category": "programming",
+    "client_prompt": "El cliente pregunta por la carga de datos: «¿Por qué usamos operaciones asíncronas en una API?»",
+    "options": [
+      "Para que el servidor bloquee todos los hilos hasta terminar cada consulta",
+      "Para no bloquear el hilo principal mientras se esperan operaciones de I/O como base de datos o red",
+      "Para eliminar la necesidad de manejar errores",
+      "Porque el código síncrono no funciona en JavaScript ni en PHP"
+    ],
+    "correct_answer": 1
+  }
+]

@@ -1,145 +1,241 @@
 [
   {
-    "id": "cq_sql_inner_left",
-    "category": "sql",
-    "client_prompt": "El cliente interrumpe la demo y pregunta: «¿Cuál es la diferencia entre INNER JOIN y LEFT JOIN?»",
+    "id": "cq_design-patterns_singleton_thread_safety",
+    "category": "design-patterns",
+    "client_prompt": "El cliente revisa el código y pregunta: «¿Cuál es la mejor forma de garantizar que un Singleton sea thread-safe en Java?»",
     "options": [
-      "INNER JOIN devuelve solo filas coincidentes; LEFT JOIN incluye todas las filas de la tabla izquierda aunque no haya coincidencia",
-      "LEFT JOIN es más rápido porque no valida coincidencias",
-      "INNER JOIN permite NULL en ambas tablas; LEFT JOIN no",
-      "No hay diferencia, son alias del mismo tipo de join"
-    ],
-    "correct_answer": 0
-  },
-  {
-    "id": "cq_sql_index",
-    "category": "sql",
-    "client_prompt": "El cliente mira el dashboard lento y pregunta: «¿Para qué sirve un índice en la base de datos?»",
-    "options": [
-      "Para encriptar los datos sensibles de una tabla",
-      "Para acelerar las consultas de búsqueda y filtrado sobre columnas indexadas",
-      "Para duplicar automáticamente los registros en otra tabla",
-      "Para reemplazar las claves primarias en tablas grandes"
+      "Usar una variable estática volatile y sincronización en el método getInstance()",
+      "Declarar la instancia como final y crear una clase interna estática",
+      "Implementar Serializable y sobrescribir readResolve()",
+      "Usar un constructor privado sin sincronización"
     ],
     "correct_answer": 1
   },
   {
-    "id": "cq_sql_pk_unique",
-    "category": "sql",
-    "client_prompt": "El cliente revisa el modelo de datos y pregunta: «¿En qué se diferencia una PRIMARY KEY de un UNIQUE?»",
+    "id": "cq_design-patterns_observer_decoupling",
+    "category": "design-patterns",
+    "client_prompt": "El cliente implementa un sistema de notificaciones y pregunta: «¿Qué patrón de diseño permite que los objetos se desacoplen mientras mantienen comunicación?»",
     "options": [
-      "PRIMARY KEY permite NULL; UNIQUE no",
-      "UNIQUE identifica la fila; PRIMARY KEY solo evita duplicados",
-      "PRIMARY KEY identifica unívocamente cada fila y no admite NULL; UNIQUE solo garantiza valores distintos",
-      "Son exactamente lo mismo en cualquier motor SQL"
+      "Factory Pattern",
+      "Observer Pattern",
+      "Decorator Pattern",
+      "Adapter Pattern"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_design-patterns_strategy_runtime",
+    "category": "design-patterns",
+    "client_prompt": "El cliente necesita cambiar algoritmos en tiempo de ejecución y pregunta: «¿Cuál patrón permite seleccionar diferentes estrategias dinámicamente?»",
+    "options": [
+      "Template Method Pattern",
+      "State Pattern",
+      "Strategy Pattern",
+      "Command Pattern"
     ],
     "correct_answer": 2
   },
   {
-    "id": "cq_pattern_singleton",
+    "id": "cq_design-patterns_facade_complexity",
     "category": "design-patterns",
-    "client_prompt": "El cliente pregunta por la arquitectura del servicio de configuración: «¿Qué problema resuelve el patrón Singleton?»",
+    "client_prompt": "El cliente tiene un subsistema complejo y pregunta: «¿Qué patrón proporciona una interfaz simplificada para un conjunto de clases complicadas?»",
     "options": [
-      "Crear múltiples instancias de una clase para paralelizar tareas",
-      "Garantizar una única instancia de una clase con un punto de acceso global controlado",
-      "Separar la lógica de negocio de la capa de presentación",
-      "Convertir objetos complejos en estructuras JSON serializables"
+      "Proxy Pattern",
+      "Facade Pattern",
+      "Bridge Pattern",
+      "Composite Pattern"
     ],
     "correct_answer": 1
   },
   {
-    "id": "cq_pattern_observer",
+    "id": "cq_design-patterns_builder_immutability",
     "category": "design-patterns",
-    "client_prompt": "El cliente ve las notificaciones en tiempo real y pregunta: «¿Qué patrón usamos cuando varios componentes reaccionan a un cambio de estado?»",
+    "client_prompt": "El cliente crea objetos con muchos parámetros opcionales y pregunta: «¿Qué patrón es ideal para construir objetos inmutables con múltiples atributos?»",
     "options": [
-      "Factory Method",
-      "Observer",
-      "Decorator",
-      "Adapter"
+      "Abstract Factory Pattern",
+      "Builder Pattern",
+      "Prototype Pattern",
+      "Factory Method Pattern"
     ],
     "correct_answer": 1
   },
   {
-    "id": "cq_pattern_factory",
-    "category": "design-patterns",
-    "client_prompt": "El cliente pregunta sobre el módulo de pagos: «¿Para qué sirve el patrón Factory?»",
+    "id": "cq_programming_variable_scope",
+    "category": "programming",
+    "client_prompt": "El cliente necesita debuggear un error y pregunta: «¿Cuál es la diferencia principal entre una variable local y una variable global?»",
     "options": [
-      "Encapsular la creación de objetos sin exponer la lógica concreta al cliente del código",
-      "Garantizar que una clase tenga una sola instancia en toda la aplicación",
-      "Agregar comportamiento dinámico a objetos sin modificar su clase base",
-      "Traducir interfaces incompatibles entre dos sistemas legacy"
+      "Una variable local solo existe dentro de una función o bloque, mientras que una global es accesible desde cualquier parte del código",
+      "Una variable global es más rápida que una local",
+      "Las variables locales no pueden contener números",
+      "No hay diferencia, son sinónimos"
     ],
     "correct_answer": 0
   },
   {
-    "id": "cq_arch_rest",
-    "category": "architecture",
-    "client_prompt": "El cliente pregunta sobre la API: «¿Qué principio define REST en una arquitectura web?»",
-    "options": [
-      "Todas las operaciones deben usar únicamente el método POST",
-      "Los recursos se identifican por URLs y se manipulan con verbos HTTP estándar de forma stateless",
-      "Cada endpoint debe devolver XML obligatoriamente",
-      "El servidor mantiene sesión persistente por cada cliente conectado"
-    ],
-    "correct_answer": 1
-  },
-  {
-    "id": "cq_arch_layers",
-    "category": "architecture",
-    "client_prompt": "El cliente pregunta por la estructura del proyecto: «¿Qué ventaja tiene separar la app en capas (presentación, dominio, datos)?»",
-    "options": [
-      "Elimina la necesidad de escribir tests automatizados",
-      "Reduce el acoplamiento y facilita mantener, testear y escalar cada responsabilidad por separado",
-      "Obliga a usar microservicios desde el primer día",
-      "Impide reutilizar código entre módulos"
-    ],
-    "correct_answer": 1
-  },
-  {
-    "id": "cq_arch_micro_mono",
-    "category": "architecture",
-    "client_prompt": "El cliente pregunta sobre el roadmap: «¿Cuál es la diferencia clave entre monolito y microservicios?»",
-    "options": [
-      "Un monolito no puede desplegarse en la nube",
-      "Microservicios dividen la aplicación en servicios independientes desplegables; un monolito concentra todo en un solo despliegue",
-      "Los microservicios no usan bases de datos",
-      "Un monolito siempre es más lento que cualquier arquitectura distribuida"
-    ],
-    "correct_answer": 1
-  },
-  {
-    "id": "cq_prog_di",
+    "id": "cq_programming_loop_iteration",
     "category": "programming",
-    "client_prompt": "El cliente pregunta por el framework: «¿Qué es la inyección de dependencias (DI)?»",
+    "client_prompt": "El cliente observa un comportamiento extraño y pregunta: «¿Cuántas veces se ejecutará el cuerpo de este bucle: for(let i = 0; i < 5; i++)?»",
     "options": [
-      "Un patrón donde las dependencias se proveen desde afuera en lugar de que la clase las instancie internamente",
-      "Una técnica para inyectar SQL directamente en el navegador del usuario",
-      "Un método para comprimir archivos PHP antes del deploy",
-      "Una forma de evitar usar interfaces en el código"
+      "4 veces",
+      "5 veces",
+      "6 veces",
+      "Infinitamente"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_programming_null_vs_undefined",
+    "category": "programming",
+    "client_prompt": "El cliente encuentra un bug inesperado y pregunta: «¿Cuál es la diferencia entre null y undefined en JavaScript?»",
+    "options": [
+      "Son exactamente lo mismo",
+      "null es un valor asignado explícitamente, mientras que undefined significa que una variable no ha sido inicializada",
+      "undefined es un valor asignado explícitamente, mientras que null significa que una variable no ha sido inicializada",
+      "null solo se usa en funciones, undefined solo en variables"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_programming_array_method",
+    "category": "programming",
+    "client_prompt": "El cliente revisa el código y pregunta: «¿Cuál es el propósito del método map() en un array?»",
+    "options": [
+      "Eliminar elementos del array",
+      "Crear un nuevo array transformando cada elemento según una función",
+      "Ordenar los elementos del array",
+      "Buscar la posición de un elemento"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_programming_function_return",
+    "category": "programming",
+    "client_prompt": "El cliente analiza una función problemática y pregunta: «¿Qué sucede si una función no tiene una instrucción return explícita?»",
+    "options": [
+      "La función genera un error",
+      "La función devuelve undefined",
+      "La función devuelve null",
+      "La función devuelve el último valor calculado"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_architecture_microservices_definition",
+    "category": "architecture",
+    "client_prompt": "El cliente consulta sobre diseño de sistemas y pregunta: «¿Cuál es la característica principal de una arquitectura de microservicios?»",
+    "options": [
+      "Un único monolito con múltiples capas",
+      "Servicios independientes y desacoplados que se comunican entre sí",
+      "Una base de datos centralizada compartida por todos los módulos",
+      "Un framework que ejecuta todo el código en un solo proceso"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_architecture_layered_pattern",
+    "category": "architecture",
+    "client_prompt": "El cliente solicita información sobre patrones arquitectónicos y pregunta: «¿Qué ventaja principal ofrece la arquitectura en capas?»",
+    "options": [
+      "Facilita la separación de responsabilidades y el mantenimiento",
+      "Garantiza que la aplicación nunca tenga errores",
+      "Elimina la necesidad de pruebas unitarias",
+      "Reduce el tamaño del código a la mitad automáticamente"
     ],
     "correct_answer": 0
   },
   {
-    "id": "cq_prog_solid_s",
-    "category": "programming",
-    "client_prompt": "El cliente pregunta por la calidad del código: «¿Qué significa el principio Single Responsibility (la S de SOLID)?»",
+    "id": "cq_architecture_scalability_vertical",
+    "category": "architecture",
+    "client_prompt": "El cliente pregunta sobre escalabilidad: «¿Cuál es la diferencia entre escalado vertical y horizontal?»",
     "options": [
-      "Cada clase debe tener una única razón para cambiar, es decir, una sola responsabilidad",
-      "Solo puede existir una clase por archivo en todo el proyecto",
-      "Todas las funciones deben tener exactamente un parámetro",
-      "Un módulo no puede importar código de otro módulo"
+      "El vertical mejora el código, el horizontal añade servidores",
+      "El vertical añade más poder al servidor existente, el horizontal añade más servidores",
+      "Son términos sinónimos que significan lo mismo",
+      "El vertical es obsoleto y no se usa en sistemas modernos"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_architecture_api_rest_principles",
+    "category": "architecture",
+    "client_prompt": "El cliente revisa un diseño de API y pregunta: «¿Cuál es un principio fundamental de REST?»",
+    "options": [
+      "Usar verbos HTTP para representar acciones sobre recursos identificados por URIs",
+      "Evitar el uso de HTTP y preferir protocolos propios",
+      "Almacenar todo el estado del cliente en el servidor",
+      "Usar solo la operación POST para todas las transacciones"
     ],
     "correct_answer": 0
   },
   {
-    "id": "cq_prog_async",
-    "category": "programming",
-    "client_prompt": "El cliente pregunta por la carga de datos: «¿Por qué usamos operaciones asíncronas en una API?»",
+    "id": "cq_architecture_event_driven",
+    "category": "architecture",
+    "client_prompt": "El cliente investiga sobre arquitecturas reactivas y pregunta: «¿Qué caracteriza a una arquitectura orientada a eventos?»",
     "options": [
-      "Para que el servidor bloquee todos los hilos hasta terminar cada consulta",
-      "Para no bloquear el hilo principal mientras se esperan operaciones de I/O como base de datos o red",
-      "Para eliminar la necesidad de manejar errores",
-      "Porque el código síncrono no funciona en JavaScript ni en PHP"
+      "Los componentes se comunican mediante eventos asíncronos desacoplados",
+      "Todos los eventos deben procesarse de forma síncrona y secuencial",
+      "Los eventos solo se usan para logging y auditoría",
+      "Es incompatible con bases de datos relacionales"
+    ],
+    "correct_answer": 0
+  },
+  {
+    "id": "cq_sql_join_types",
+    "category": "sql",
+    "client_prompt": "El cliente consulta sobre operaciones de datos y pregunta: «¿Cuál es la diferencia principal entre un INNER JOIN y un LEFT JOIN?»",
+    "options": [
+      "INNER JOIN retorna todas las filas de ambas tablas, LEFT JOIN solo de la izquierda",
+      "INNER JOIN retorna solo filas coincidentes, LEFT JOIN retorna filas coincidentes más todas de la tabla izquierda",
+      "LEFT JOIN es más rápido que INNER JOIN",
+      "No hay diferencia, son sinónimos"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_sql_group_by_aggregate",
+    "category": "sql",
+    "client_prompt": "El cliente reporta un error en su consulta y pregunta: «¿Por qué falla una consulta que usa GROUP BY sin incluir columnas no agregadas en la cláusula SELECT?»",
+    "options": [
+      "Porque SQL requiere que todas las columnas del SELECT estén en GROUP BY o sean funciones de agregación",
+      "Porque GROUP BY solo funciona con números",
+      "Porque falta la cláusula HAVING",
+      "Porque no se especificó ORDER BY"
+    ],
+    "correct_answer": 0
+  },
+  {
+    "id": "cq_sql_index_performance",
+    "category": "sql",
+    "client_prompt": "El cliente optimiza una base de datos lenta y pregunta: «¿Cuál es el propósito principal de crear un índice en una columna frecuentemente consultada?»",
+    "options": [
+      "Reducir el tamaño total de la base de datos",
+      "Acelerar las búsquedas y consultas evitando escaneos completos de tabla",
+      "Aumentar automáticamente la seguridad de los datos",
+      "Permitir más conexiones simultáneas"
+    ],
+    "correct_answer": 1
+  },
+  {
+    "id": "cq_sql_null_comparison",
+    "category": "sql",
+    "client_prompt": "El cliente encuentra resultados inesperados en su filtrado y pregunta: «¿Por qué la condición WHERE columna = NULL no retorna las filas nulas?»",
+    "options": [
+      "Porque NULL es un valor especial y debe compararse con IS NULL, no con =",
+      "Porque falta la cláusula DISTINCT",
+      "Porque la columna está protegida por una restricción",
+      "Porque = solo funciona con números"
+    ],
+    "correct_answer": 0
+  },
+  {
+    "id": "cq_sql_subquery_exists",
+    "category": "sql",
+    "client_prompt": "El cliente optimiza una consulta compleja y pregunta: «¿Cuál es la ventaja de usar EXISTS en lugar de IN cuando se verifica la existencia de registros relacionados?»",
+    "options": [
+      "EXISTS retorna más columnas que IN",
+      "EXISTS es más eficiente porque detiene la búsqueda al encontrar la primera coincidencia",
+      "IN no funciona con subconsultas",
+      "EXISTS permite usar múltiples tablas sin JOIN"
     ],
     "correct_answer": 1
   }
