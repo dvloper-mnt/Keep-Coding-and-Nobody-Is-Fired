@@ -8,7 +8,7 @@
     {
       "step": 1,
       "coder_view": {
-        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\n\nRoute::post('/login', [LoginController::class, 'index']);\nRoute::post('/register', [RegisterController::class, 'store']);\nRoute::post('/logout', [LogoutController::class, 'logout']);",
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\n\nRoute::post('/login', [LoginController::class, 'index']);\nRoute::post('/register', [RegisterController::class, 'store']);\nRoute::get('/logout', [LogoutController::class, 'logout']);",
         "error": "500 Internal Server Error"
       },
       "helper_view": {
@@ -31,14 +31,14 @@
       ],
       "correct_answer": 0,
       "success_state": {
-        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\n\nRoute::post('/login', [LoginController::class, 'login']);\nRoute::post('/register', [RegisterController::class, 'store']);\nRoute::post('/logout', [LogoutController::class, 'logout']);"
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\n\nRoute::post('/login', [LoginController::class, 'login']);\nRoute::post('/register', [RegisterController::class, 'store']);\nRoute::get('/logout', [LogoutController::class, 'logout']);"
       },
       "hint": "Revisa si el método llamado realmente existe en el controlador"
     },
     {
       "step": 2,
       "coder_view": {
-        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});",
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::get('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});",
         "error": "500 Internal Server Error"
       },
       "helper_view": {
@@ -62,39 +62,40 @@
       ],
       "correct_answer": 0,
       "success_state": {
-        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});"
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::get('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});"
       },
       "hint": "Revisá si cada controlador está importado desde la carpeta que le corresponde"
     },
     {
       "step": 3,
       "coder_view": {
-        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n    Route::patch('/profile', [ProfileController::class, 'update']);;\n});",
-        "error": "Parse error: syntax error, unexpected ';' on line 12"
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::get('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n    Route::patch('/profile', [ProfileController::class, 'update']);\n});",
+        "error": "405 Method Not Allowed"
       },
       "helper_view": {
         "rules": [
-          "Parse error bloquea la ejecución de todo el archivo de rutas",
-          "Revisar la línea indicada en el mensaje y las adyacentes",
-          "Causas frecuentes: ;; duplicados, paréntesis sin cerrar, comas trailing",
-          "No confundir con errores de namespace — esos suelen ser 500 en runtime"
+          "405 Method Not Allowed → el verbo HTTP no coincide con el registrado en la ruta",
+          "Los metodos login, register y logout deben registrarse como POST; GET no acepta la petición del cliente",
+          "No confundir con errores de namespace — esos suelen ser 500 en runtime",
+          "La demo en vivo está probando POST /logout"
         ],
         "knowledge": [
-          "PHP reporta el número de línea exacto en parse errors",
-          "Un solo carácter inválido tumba todas las rutas del archivo"
+          "El front de la demo siempre envía POST a /logout",
+          "Route::get('/logout') solo responde a GET, no a POST",
+          "En este proyecto, logout invalida sesión y requiere POST por convención"
         ]
       },
       "options": [
-        "Falta importar ProfileController",
-        "Parse error: syntax error",
+        "Ruta con verbo HTTP incorrecto",
+        "Falta importar LogoutController",
         "El método update no existe en ProfileController",
         "LoginController está en el namespace incorrecto"
       ],
-      "correct_answer": 1,
+      "correct_answer": 0,
       "success_state": {
         "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n    Route::patch('/profile', [ProfileController::class, 'update']);\n});"
       },
-      "hint": "Revisá la línea 12 y buscá caracteres de más en las rutas cercanas"
+      "hint": "Revisá qué verbo HTTP usa la ruta de logout y qué verbo envía la demo"
     }
   ]
 }
