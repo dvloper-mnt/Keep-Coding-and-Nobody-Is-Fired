@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "generate:questions": "tsx scripts/generate-questions.ts",
+    "prebuild": "npm run generate:questions"
   },
   "dependencies": {
     "@vercel/kv": "^3.0.0",
