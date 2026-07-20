@@ -1,4 +1,10 @@
 import { getChallengeById, loadChallenges } from '@/src/data/challenges';
+import { getClientQuestionById } from '@/src/data/client-questions';
+import {
+  getActiveClientQuestionView,
+  processClientQuestionSpawnTick,
+  submitClientQuestionAnswer,
+} from './client-question-engine';
 import {
   clearLastResult,
   createSession,
@@ -10,6 +16,7 @@ import {
 import type {
   AnswerResponse,
   Challenge,
+  ClientQuestionAnswerResponse,
   GameSession,
   HelperStaticGuide,
   StartGameResponse,
@@ -96,7 +103,33 @@ export function getHelperSync(sessionId: string) {
   if (!session) return null;
   const challenge = getChallengeById(session.challengeId);
   if (!challenge) return null;
-  return getHelperSyncView(session, challenge);
+  return getHelperSyncView(
+    session,
+    challenge,
+    getActiveClientQuestionView(session.clientQuestions),
+  );
+}
+
+export function processClientQuestionAnswer(
+  sessionId: string,
+  answerIndex: number,
+): ClientQuestionAnswerResponse | null {
+  const session = sessions.get(sessionId);
+  if (!session) return null;
+
+  const activeQuestionId = session.clientQuestions.activeQuestionId;
+  if (!activeQuestionId) return null;
+
+  const question = getClientQuestionById(activeQuestionId);
+  if (!question) return null;
+
+  const { session: updated, response } = submitClientQuestionAnswer(
+    session,
+    question,
+    answerIndex,
+  );
+  sessions.set(sessionId, updated);
+  return response;
 }
 
 export function processAnswer(sessionId: string, answerIndex: number): AnswerResponse | null {
@@ -129,7 +162,8 @@ export function processTimerTick(sessionId: string): GameSession | null {
   const session = sessions.get(sessionId);
   if (!session) return null;
 
-  const updated = tickTimer(session);
+  const ticked = tickTimer(session);
+  const updated = processClientQuestionSpawnTick(ticked);
   sessions.set(sessionId, updated);
   return updated;
 }

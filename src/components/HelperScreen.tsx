@@ -2,10 +2,11 @@
 
 import type { HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
-import { unlockAudio } from '@/src/lib/game-audio';
+import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { BossOverlay } from './BossOverlay';
+import { ClientQuestionModal } from './ClientQuestionModal';
 import { GameTimer } from './GameTimer';
 import { ManualPanel } from './ManualPanel';
 
@@ -20,7 +21,11 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
     currentStep: 1,
     totalSteps: guide.totalExercises,
     status: 'playing',
+    activeClientQuestion: null,
   });
+  const [submittingQuestion, setSubmittingQuestion] = useState(false);
+  const [questionFeedback, setQuestionFeedback] = useState<string | null>(null);
+  const [questionResult, setQuestionResult] = useState<'correct' | 'incorrect' | null>(null);
 
   useClockTickSound(sync.status === 'playing');
 
@@ -47,15 +52,71 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
   }, [sessionId]);
 
   useEffect(() => {
+    setQuestionFeedback(null);
+    setQuestionResult(null);
+  }, [sync.activeClientQuestion?.id]);
+
+  useEffect(() => {
     if (sync.status !== 'playing') return;
 
-    const interval = setInterval(fetchSync, 2000);
+    const interval = setInterval(fetchSync, 1000);
     return () => clearInterval(interval);
   }, [sessionId, sync.status, fetchSync]);
+
+  async function handleClientQuestionAnswer(answerIndex: number) {
+    if (submittingQuestion || !sync.activeClientQuestion) return;
+
+    void unlockAudio();
+    setSubmittingQuestion(true);
+    setQuestionFeedback(null);
+    setQuestionResult(null);
+
+    const res = await fetch('/api/game/client-question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, answerIndex }),
+    });
+
+    const data = await res.json();
+    setSubmittingQuestion(false);
+
+    if (data.success) {
+      playCorrect();
+      setQuestionResult('correct');
+      setQuestionFeedback(data.message ?? 'Buena respuesta.');
+      setSync((prev) => ({
+        ...prev,
+        remainingTime: data.remainingTime,
+        status: data.status,
+        activeClientQuestion: null,
+      }));
+      return;
+    }
+
+    playWrong();
+    setQuestionResult('incorrect');
+    setQuestionFeedback(data.message ?? 'Respuesta incorrecta.');
+    setSync((prev) => ({
+      ...prev,
+      remainingTime: data.remainingTime,
+      status: data.status,
+      activeClientQuestion: data.activeClientQuestion ?? prev.activeClientQuestion,
+    }));
+  }
 
   return (
     <div className="min-h-screen bg-amber-950 text-amber-100">
       <BossOverlay active={sync.status === 'playing'} />
+
+      {sync.activeClientQuestion && (
+        <ClientQuestionModal
+          question={sync.activeClientQuestion}
+          submitting={submittingQuestion}
+          feedback={questionFeedback}
+          lastResult={questionResult}
+          onAnswer={handleClientQuestionAnswer}
+        />
+      )}
 
       <div className="mx-auto max-w-2xl px-4 py-8">
         <div className="mb-6 flex items-center justify-between">

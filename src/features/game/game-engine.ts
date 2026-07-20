@@ -1,4 +1,4 @@
-import { PENALTY_SECONDS, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
+import { CLIENT_QUESTION_CONFIG, PENALTY_SECONDS, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
 import type {
   Challenge,
   ChallengeStep,
@@ -9,18 +9,45 @@ import type {
   StepResult,
 } from './game-types';
 
+export function resolveMultipleChoice(
+  correctIndex: number,
+  answerIndex: number,
+  wrongPenalty: number = PENALTY_SECONDS,
+  wrongMessage: string = WRONG_ANSWER_MESSAGE,
+): StepResult {
+  if (answerIndex === correctIndex) {
+    return { success: true };
+  }
+
+  return {
+    success: false,
+    penalty: wrongPenalty,
+    message: wrongMessage,
+  };
+}
+
 export function resolveStep(step: ChallengeStep, answerIndex: number): StepResult {
-  if (answerIndex === step.correct_answer) {
+  const result = resolveMultipleChoice(step.correct_answer, answerIndex);
+
+  if (result.success) {
     return {
       success: true,
       patch: step.success_state.code_patch,
     };
   }
 
+  return result;
+}
+
+export function applyTimeDelta(session: GameSession, deltaSeconds: number): GameSession {
+  const newTime = Math.max(0, session.remainingTime + deltaSeconds);
+  const status =
+    newTime <= 0 && session.status === 'playing' ? 'defeat' : session.status;
+
   return {
-    success: false,
-    penalty: PENALTY_SECONDS,
-    message: WRONG_ANSWER_MESSAGE,
+    ...session,
+    remainingTime: newTime,
+    status,
   };
 }
 
@@ -33,6 +60,12 @@ export function createSession(challenge: Challenge, sessionId: string): GameSess
     remainingTime: challenge.time_limit,
     currentCode: firstStep.coder_view.code,
     status: 'playing',
+    clientQuestions: {
+      activeQuestionId: null,
+      answeredQuestionIds: [],
+      cooldownRemaining: CLIENT_QUESTION_CONFIG.spawnIntervalSeconds,
+      totalSpawned: 0,
+    },
   };
 }
 
@@ -64,12 +97,17 @@ export function getCoderStepView(session: GameSession, challenge: Challenge): Co
   };
 }
 
-export function getHelperSyncView(session: GameSession, challenge: Challenge): HelperSyncView {
+export function getHelperSyncView(
+  session: GameSession,
+  challenge: Challenge,
+  activeClientQuestion: HelperSyncView['activeClientQuestion'],
+): HelperSyncView {
   return {
     remainingTime: session.remainingTime,
     currentStep: session.currentStep,
     totalSteps: challenge.steps.length,
     status: session.status,
+    activeClientQuestion,
   };
 }
 
@@ -96,11 +134,8 @@ export function submitAnswer(
     };
   }
 
-  const newTime = Math.max(0, session.remainingTime - (result.penalty ?? PENALTY_SECONDS));
   return {
-    ...session,
-    remainingTime: newTime,
-    status: newTime <= 0 ? 'defeat' : 'playing',
+    ...applyTimeDelta(session, -(result.penalty ?? PENALTY_SECONDS)),
     lastResult: 'incorrect',
   };
 }

@@ -1,6 +1,19 @@
 export const PENALTY_SECONDS = 10;
 export const DEFAULT_TIME_LIMIT = 180;
 
+export const CLIENT_QUESTION_CONFIG = {
+  spawnIntervalSeconds: 40,
+  spawnChance: 0.45,
+  wrongPenaltySeconds: 8,
+  correctBonusSeconds: 5,
+  maxQuestionsPerSession: 6,
+} as const;
+
+export const CLIENT_QUESTION_WRONG_MESSAGE =
+  'El cliente no quedó conforme con la respuesta…';
+export const CLIENT_QUESTION_CORRECT_MESSAGE =
+  'Buena respuesta. El cliente queda tranquilo por ahora.';
+
 export const BOSS_MESSAGES = [
   '¿QUÉ ESTÁ PASANDO EN PRODUCCIÓN?',
   'TENEMOS CLIENTES MIRANDO ESTO',
