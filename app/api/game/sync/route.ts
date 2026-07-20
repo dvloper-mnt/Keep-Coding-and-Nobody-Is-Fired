@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
   }
 
-  const sync = getHelperSync(sessionId);
+  const sync = await getHelperSync(sessionId);
   if (!sync) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }

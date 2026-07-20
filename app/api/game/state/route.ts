@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
   }
 
-  const state = getCoderState(sessionId);
+  const state = await getCoderState(sessionId);
   if (!state) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }

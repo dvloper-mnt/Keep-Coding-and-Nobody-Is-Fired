@@ -11,7 +11,10 @@ function CoderPageContent() {
   const existingSession = searchParams.get('session');
   const [sessionId, setSessionId] = useState<string | null>(existingSession);
   const [coderView, setCoderView] = useState<CoderStepView | null>(null);
-  const [loading, setLoading] = useState(!existingSession);
+  // Always start in loading state when we have a session id from URL (we must validate via /state).
+  // This prevents flashing the error UI ("Error desconocido" / "Sesión no encontrada")
+  // while the async lookup is in flight.
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,7 +36,10 @@ function CoderPageContent() {
     }
 
     fetch('/api/game/start', { method: 'POST' })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to start');
+        return res.json();
+      })
       .then((data: StartGameResponse) => {
         setSessionId(data.sessionId);
         setCoderView(data.coderView);
