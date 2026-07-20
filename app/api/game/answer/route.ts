@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = processAnswer(sessionId, answerIndex);
+  const result = await processAnswer(sessionId, answerIndex);
   if (!result) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }

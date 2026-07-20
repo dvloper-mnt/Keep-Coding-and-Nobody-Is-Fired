@@ -8,7 +8,7 @@
     {
       "step": 1,
       "coder_view": {
-        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\n\nRoute::post('/login', [LoginController::class, 'index']);\nRoute::post('/register', [RegisterController::class, 'store']);\nRoute::post('/logout', [LogoutController::class, 'logout']);",
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\n\nRoute::post('/login', [LoginController::class, 'index']);\nRoute::post('/register', [RegisterController::class, 'store']);\nRoute::post('/logout', [LogoutController::class, 'logout']);",
         "error": "500 Internal Server Error"
       },
       "helper_view": {

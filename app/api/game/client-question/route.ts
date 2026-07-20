@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = processClientQuestionAnswer(sessionId, answerIndex);
+  const result = await processClientQuestionAnswer(sessionId, answerIndex);
   if (!result) {
     return NextResponse.json({ error: 'Session or active question not found' }, { status: 404 });
   }

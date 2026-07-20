@@ -10,7 +10,10 @@ function HelperPageContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session');
   const [guide, setGuide] = useState<HelperStaticGuide | null>(null);
-  const [loading, setLoading] = useState(true);
+  // When a sessionId is present in the URL we must validate it via /guide before
+  // we can trust the data or show an error. This avoids flashing "Sesión no encontrada"
+  // (or "Error desconocido") while the fetch is in flight.
+  const [loading, setLoading] = useState(!!sessionId);
   const [error, setError] = useState<string | null>(null);
   const [inputCode, setInputCode] = useState('');
 

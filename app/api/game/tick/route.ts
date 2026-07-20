@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
   }
 
-  const session = processTimerTick(sessionId);
+  const session = await processTimerTick(sessionId);
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
   }
 
-  const guide = getHelperGuide(sessionId);
+  const guide = await getHelperGuide(sessionId);
   if (!guide) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }

@@ -1,5 +1,6 @@
 import { getChallengeById, loadChallenges } from '@/src/data/challenges';
 import { getClientQuestionById } from '@/src/data/client-questions';
+import { kv } from '@vercel/kv';
 import {
   getActiveClientQuestionView,
   processClientQuestionSpawnTick,
@@ -22,7 +23,36 @@ import type {
   StartGameResponse,
 } from './game-types';
 
-const sessions = new Map<string, GameSession>();
+// ---------------------------------------------------------------------------
+// Session persistence abstraction
+// Sessions are stored using Upstash Redis (via @vercel/kv) when the
+// corresponding environment variables are configured. Falls back to an
+// in-memory Map for local development when no KV store is configured.
+// ---------------------------------------------------------------------------
+
+const USE_KV =
+  !!process.env.KV_REST_API_URL || !!process.env.UPSTASH_REDIS_REST_URL;
+
+// Simple in-memory fallback (dev only, or when no KV)
+const memorySessions = new Map<string, GameSession>();
+
+async function getSessionFromStore(id: string): Promise<GameSession | undefined> {
+  if (USE_KV) {
+    const data = await kv.get<GameSession>(`session:${id}`);
+    return data ?? undefined;
+  }
+  return memorySessions.get(id);
+}
+
+async function setSessionToStore(id: string, session: GameSession): Promise<void> {
+  if (USE_KV) {
+    await kv.set(`session:${id}`, session, { ex: 60 * 60 });
+    return;
+  }
+  memorySessions.set(id, session);
+}
+
+
 
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -53,38 +83,37 @@ export function buildHelperGuide(challenge: Challenge): HelperStaticGuide {
   };
 }
 
-export function startGame(): StartGameResponse {
+export async function startGame(): Promise<StartGameResponse> {
   const challenge = pickRandomChallenge();
   const sessionId = generateRoomCode();
   const session = createSession(challenge, sessionId);
-  sessions.set(sessionId, session);
-
+  await setSessionToStore(sessionId, session);
   return {
     sessionId,
     coderView: getCoderStepView(session, challenge),
   };
 }
 
-export function getSession(sessionId: string): GameSession | undefined {
-  return sessions.get(sessionId);
+export async function getSession(sessionId: string): Promise<GameSession | undefined> {
+  return getSessionFromStore(sessionId);
 }
 
-export function getSessionChallenge(sessionId: string): Challenge | undefined {
-  const session = sessions.get(sessionId);
+export async function getSessionChallenge(sessionId: string): Promise<Challenge | undefined> {
+  const session = await getSessionFromStore(sessionId);
   if (!session) return undefined;
   return getChallengeById(session.challengeId);
 }
 
-export function getHelperGuide(sessionId: string): HelperStaticGuide | null {
-  const session = sessions.get(sessionId);
+export async function getHelperGuide(sessionId: string): Promise<HelperStaticGuide | null> {
+  const session = await getSessionFromStore(sessionId);
   if (!session) return null;
   const challenge = getChallengeById(session.challengeId);
   if (!challenge) return null;
   return buildHelperGuide(challenge);
 }
 
-export function getCoderState(sessionId: string) {
-  const session = sessions.get(sessionId);
+export async function getCoderState(sessionId: string) {
+  const session = await getSessionFromStore(sessionId);
   if (!session) return null;
   const challenge = getChallengeById(session.challengeId);
   if (!challenge) return null;
@@ -92,14 +121,14 @@ export function getCoderState(sessionId: string) {
   let current = session;
   if (session.lastResult === 'correct' && session.status === 'playing') {
     current = clearLastResult(session);
-    sessions.set(sessionId, current);
+    await setSessionToStore(sessionId, current);
   }
 
   return getCoderStepView(current, challenge);
 }
 
-export function getHelperSync(sessionId: string) {
-  const session = sessions.get(sessionId);
+export async function getHelperSync(sessionId: string) {
+  const session = await getSessionFromStore(sessionId);
   if (!session) return null;
   const challenge = getChallengeById(session.challengeId);
   if (!challenge) return null;
@@ -110,11 +139,11 @@ export function getHelperSync(sessionId: string) {
   );
 }
 
-export function processClientQuestionAnswer(
+export async function processClientQuestionAnswer(
   sessionId: string,
   answerIndex: number,
-): ClientQuestionAnswerResponse | null {
-  const session = sessions.get(sessionId);
+): Promise<ClientQuestionAnswerResponse | null> {
+  const session = await getSessionFromStore(sessionId);
   if (!session) return null;
 
   const activeQuestionId = session.clientQuestions.activeQuestionId;
@@ -128,18 +157,18 @@ export function processClientQuestionAnswer(
     question,
     answerIndex,
   );
-  sessions.set(sessionId, updated);
+  await setSessionToStore(sessionId, updated);
   return response;
 }
 
-export function processAnswer(sessionId: string, answerIndex: number): AnswerResponse | null {
-  const session = sessions.get(sessionId);
+export async function processAnswer(sessionId: string, answerIndex: number): Promise<AnswerResponse | null> {
+  const session = await getSessionFromStore(sessionId);
   if (!session) return null;
   const challenge = getChallengeById(session.challengeId);
   if (!challenge) return null;
 
   const updated = submitAnswer(session, challenge, answerIndex);
-  sessions.set(sessionId, updated);
+  await setSessionToStore(sessionId, updated);
 
   const result = updated.lastResult === 'correct';
   const response: AnswerResponse = {
@@ -158,12 +187,12 @@ export function processAnswer(sessionId: string, answerIndex: number): AnswerRes
   return response;
 }
 
-export function processTimerTick(sessionId: string): GameSession | null {
-  const session = sessions.get(sessionId);
+export async function processTimerTick(sessionId: string): Promise<GameSession | null> {
+  const session = await getSessionFromStore(sessionId);
   if (!session) return null;
 
   const ticked = tickTimer(session);
   const updated = processClientQuestionSpawnTick(ticked);
-  sessions.set(sessionId, updated);
+  await setSessionToStore(sessionId, updated);
   return updated;
 }

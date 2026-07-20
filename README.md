@@ -51,7 +51,16 @@ The Helper receives **all hints for all exercises at once** when joining a sessi
 
 ### Session sync
 
-- Sessions live in **server memory** (no database in MVP).
+- Sessions are persisted with **Upstash Redis** (via `@vercel/kv`).
+  - When `KV_REST_API_URL` (or `UPSTASH_REDIS_REST_URL`) is configured, sessions are stored in Redis with a 1-hour TTL.
+  - Falls back to an in-memory Map when no KV credentials are present (typical for local dev).
+- **History of the bug (fixed)**: Before the Upstash migration, sessions lived only in a module-level `Map`. This produced intermittent **"Sesión no encontrada"** (404) on:
+  - `/state`, `/guide`, `/sync`, `/tick`, answer submission, client-question answers, and Helper joins.
+  - Root causes:
+    - Vercel serverless: different invocations have separate memory (the Coder's initial `/start` succeeded because it returned data directly; follow-up requests usually hit another container).
+    - Local dev: Turbopack module re-evaluation (multiple tabs, time passing) recreated the Map while the same `STORE_ID` was visible in logs.
+  - Workaround that only worked sometimes: warm container reuse + very fast Helper join.
+- **Solution**: switched to durable storage with **Upstash Redis** (chosen from the Vercel Marketplace "Upstash" / Redis options). The existing `@vercel/kv` client continues to work; the integration provides the expected `KV_REST_API_*` (or `UPSTASH_*`) environment variables. Local testing is possible by setting the same variables in `.env.local`.
 - Coder polls the timer every second via `POST /api/game/tick`.
 - Helper syncs status every 2 seconds via `GET /api/game/sync`.
 - Both share the same `sessionId` and `challengeId`.
@@ -142,7 +151,7 @@ Coder selects option
 | [Tailwind CSS](https://tailwindcss.com/) | 4.x | Styling |
 | [ESLint](https://eslint.org/) | 9.x | Linting (eslint-config-next) |
 
-No database, ORM, or external services required for the MVP.
+Sessions use Upstash Redis (via `@vercel/kv`) when configured. Challenges remain static JSON for the MVP.
 
 ---
 
@@ -298,11 +307,13 @@ Development conventions and game rules are documented in `.grok/skills/`:
 
 ## Roadmap (post-MVP)
 
-- Database-backed challenges and session persistence
+- Database-backed challenges
 - WebSocket sync between devices
 - Additional levels (SQL, Eloquent, middleware)
 - Hint token system for Helper
 - Leaderboard / scoring
+
+Session persistence was added using Upstash Redis (see "Session sync" section).
 
 ---
 
