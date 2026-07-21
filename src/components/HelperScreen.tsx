@@ -27,6 +27,14 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
   const [questionFeedback, setQuestionFeedback] = useState<string | null>(null);
   const [questionResult, setQuestionResult] = useState<'correct' | 'incorrect' | null>(null);
 
+  const [lastQuestionId, setLastQuestionId] = useState<string | null>(null);
+  const activeQuestionId = sync.activeClientQuestion?.id ?? null;
+  if (activeQuestionId !== lastQuestionId) {
+    setLastQuestionId(activeQuestionId);
+    setQuestionFeedback(null);
+    setQuestionResult(null);
+  }
+
   useClockTickSound(sync.status === 'playing');
 
   useEffect(() => {
@@ -50,11 +58,6 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
       setSync(data);
     }
   }, [sessionId]);
-
-  useEffect(() => {
-    setQuestionFeedback(null);
-    setQuestionResult(null);
-  }, [sync.activeClientQuestion?.id]);
 
   useEffect(() => {
     if (sync.status !== 'playing') return;
