@@ -1,6 +1,6 @@
 'use client';
 
-import { HelperScreen } from '@/src/components/HelperScreen';
+import { HelperScreen } from '@/src/components/containers/HelperScreen';
 import type { HelperStaticGuide } from '@/src/features/game/game-types';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';

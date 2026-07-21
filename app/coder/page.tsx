@@ -1,6 +1,6 @@
 'use client';
 
-import { CoderScreen } from '@/src/components/CoderScreen';
+import { CoderScreen } from '@/src/components/containers/CoderScreen';
 import type { CoderStepView, StartGameResponse } from '@/src/features/game/game-types';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';

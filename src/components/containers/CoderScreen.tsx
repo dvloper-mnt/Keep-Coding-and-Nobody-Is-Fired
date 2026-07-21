@@ -5,10 +5,10 @@ import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { BossOverlay } from './BossOverlay';
-import { CodePanel } from './CodePanel';
-import { ErrorBanner } from './ErrorBanner';
-import { GameTimer } from './GameTimer';
+import { BossOverlay } from '@/src/components/organisms/BossOverlay';
+import { CodePanel } from '@/src/components/atoms/CodePanel';
+import { ErrorBanner } from '@/src/components/atoms/ErrorBanner';
+import { GameTimer } from '@/src/components/atoms/GameTimer';
 
 interface CoderScreenProps {
   initialSessionId: string;

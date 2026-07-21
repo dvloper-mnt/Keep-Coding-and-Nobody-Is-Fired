@@ -1,6 +1,6 @@
 'use client';
 
-import { BossMessageToast } from '@/src/components/BossMessageToast';
+import { BossMessageToast } from '@/src/components/molecules/BossMessageToast';
 import {
   createBossToast,
   generateBossPlacement,

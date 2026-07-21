@@ -5,10 +5,10 @@ import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { BossOverlay } from './BossOverlay';
-import { ClientQuestionModal } from './ClientQuestionModal';
-import { GameTimer } from './GameTimer';
-import { ManualPanel } from './ManualPanel';
+import { BossOverlay } from '@/src/components/organisms/BossOverlay';
+import { ClientQuestionModal } from '@/src/components/organisms/ClientQuestionModal';
+import { GameTimer } from '@/src/components/atoms/GameTimer';
+import { ManualPanel } from '@/src/components/molecules/ManualPanel';
 
 interface HelperScreenProps {
   sessionId: string;
