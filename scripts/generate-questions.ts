@@ -1,14 +1,19 @@
 /**
  * generate-questions.ts
  *
- * Build-time script: calls AWS Bedrock (Claude Haiku via Converse API) to generate
- * a fresh pool of client-questions, validates them, and writes questions.json.
+ * Manual generation script: calls AWS Bedrock (Claude Haiku via Converse API) to
+ * propose a fresh pool of client-questions as CANDIDATES, validates them, and writes
+ * them to questions.generated.json for human review.
  *
- * Falls back to questions.fallback.json on any error — the build NEVER breaks.
- * Always exits with code 0.
+ * IMPORTANT (architecture decision — see code review):
+ * - This is NOT a build hook. It does NOT run on `next build`.
+ * - questions.json is the curated SOURCE OF TRUTH (committed, human-reviewed).
+ * - This script writes CANDIDATES to questions.generated.json. A human reviews them
+ *   (especially that each correct_answer is semantically right) before promoting any
+ *   into questions.json. The LLM never publishes game content unreviewed.
+ * - On any failure it leaves the curated questions.json untouched. Always exits 0.
  *
- * Run: tsx scripts/generate-questions.ts
- * Or via: npm run generate:questions
+ * Run: npm run generate:questions   (then review the diff and promote manually)
  */
 
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
@@ -33,7 +38,9 @@ const BEDROCK_TIMEOUT_MS = Number(process.env['BEDROCK_TIMEOUT_MS'] ?? '30000');
 // ---------------------------------------------------------------------------
 
 const DATA_DIR = resolve(import.meta.dirname, '../src/data/client-questions');
-const OUTPUT_PATH = resolve(DATA_DIR, 'questions.json');
+// Candidates output — reviewed by a human before promoting to questions.json.
+// We never overwrite the curated source of truth (questions.json) from this script.
+const OUTPUT_PATH = resolve(DATA_DIR, 'questions.generated.json');
 const FALLBACK_PATH = resolve(DATA_DIR, 'questions.fallback.json');
 
 // ---------------------------------------------------------------------------
@@ -42,7 +49,18 @@ const FALLBACK_PATH = resolve(DATA_DIR, 'questions.fallback.json');
 
 function loadFallback(): ClientQuestion[] {
   const raw = readFileSync(FALLBACK_PATH, 'utf-8');
-  return JSON.parse(raw) as ClientQuestion[];
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error('Fallback file is not a JSON array');
+  }
+  // Validate the safety net with the SAME guard as the LLM output — no blind cast.
+  const valid = parsed.filter(isValidQuestion);
+  if (valid.length < MIN_QUESTIONS) {
+    console.error(
+      `  [CRITICAL] Fallback has only ${valid.length} valid questions (< ${MIN_QUESTIONS}) — the safety net is broken`,
+    );
+  }
+  return valid;
 }
 
 function writeFinal(questions: ClientQuestion[]): void {
