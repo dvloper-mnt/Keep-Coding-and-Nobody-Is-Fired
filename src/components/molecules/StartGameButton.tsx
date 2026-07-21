@@ -1,16 +1,30 @@
 'use client';
 
+import type { ChallengeLanguage } from '@/src/features/game/game-types';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+
+const LANGUAGE_OPTIONS: ReadonlyArray<{ value: ChallengeLanguage; label: string }> = [
+  { value: 'random', label: 'Aleatorio (sorpresa)' },
+  { value: 'php', label: 'PHP / Laravel' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'go', label: 'Go' },
+  { value: 'java', label: 'Java' },
+  { value: 'ruby', label: 'Ruby' },
+];
 
 export function StartGameButton() {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [language, setLanguage] = useState<ChallengeLanguage>('random');
 
   function confirmStart() {
     setStarting(true);
-    router.push('/coder');
+    router.push(`/coder?lang=${language}`);
   }
 
   return (
@@ -41,6 +55,28 @@ export function StartGameButton() {
               Vamos a generar un incidente único con IA para esta partida. Al iniciar recibís un
               código de sala para compartir con el Helper. El reloj arranca en 180 segundos.
             </p>
+
+            <div className="mt-5">
+              <label
+                htmlFor="language-select"
+                className="font-mono text-xs tracking-wider text-zinc-500 uppercase"
+              >
+                Lenguaje del incidente
+              </label>
+              <select
+                id="language-select"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as ChallengeLanguage)}
+                disabled={starting}
+                className="mt-2 block w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none transition-colors focus:border-red-500 disabled:opacity-50"
+              >
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="mt-6 flex justify-end gap-3">
               <button

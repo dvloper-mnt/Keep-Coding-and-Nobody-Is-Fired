@@ -1,6 +1,7 @@
 import { CLIENT_QUESTION_CONFIG, PENALTY_SECONDS, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
 import type {
   Challenge,
+  ChallengeLanguage,
   ChallengeStep,
   CoderStepView,
   GameSession,
@@ -52,6 +53,15 @@ export function applyTimeDelta(session: GameSession, deltaSeconds: number): Game
   };
 }
 
+function freshClientQuestions(): GameSession['clientQuestions'] {
+  return {
+    activeQuestionId: null,
+    answeredQuestionIds: [],
+    cooldownRemaining: CLIENT_QUESTION_CONFIG.spawnIntervalSeconds,
+    totalSpawned: 0,
+  };
+}
+
 export function createSession(
   challenge: Challenge,
   sessionId: string,
@@ -66,12 +76,29 @@ export function createSession(
     currentCode: firstStep.coder_view.code,
     status: 'playing',
     startedAt,
-    clientQuestions: {
-      activeQuestionId: null,
-      answeredQuestionIds: [],
-      cooldownRemaining: CLIENT_QUESTION_CONFIG.spawnIntervalSeconds,
-      totalSpawned: 0,
-    },
+    clientQuestions: freshClientQuestions(),
+  };
+}
+
+// A room created before its challenge exists: status 'idle', no challenge yet.
+// The Coder shares the code while Bedrock generates for `language` in the
+// background; the first state poll promotes it to 'playing'.
+export function createPendingSession(
+  sessionId: string,
+  language: ChallengeLanguage | undefined,
+  startedAt: number,
+): GameSession {
+  return {
+    id: sessionId,
+    challengeId: '',
+    currentStep: 1,
+    remainingTime: 0,
+    currentCode: '',
+    status: 'idle',
+    startedAt,
+    language: language ?? 'random',
+    generating: false,
+    clientQuestions: freshClientQuestions(),
   };
 }
 

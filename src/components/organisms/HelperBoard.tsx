@@ -4,7 +4,7 @@ import { formatDuration, GameResultBanner } from '@/src/components/molecules/Gam
 import { ManualPanel } from '@/src/components/molecules/ManualPanel';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { ClientQuestionModal } from '@/src/components/organisms/ClientQuestionModal';
-import type { HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import type { GameStatus, HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
 
 interface HelperBoardProps {
   sessionId: string;
@@ -14,7 +14,7 @@ interface HelperBoardProps {
   questionFeedback: string | null;
   questionResult: 'correct' | 'incorrect' | null;
   onClientQuestionAnswer: (answerIndex: number) => void;
-  onAbandoned: () => void;
+  onAbandoned: (status: GameStatus) => void;
 }
 
 export function HelperBoard({

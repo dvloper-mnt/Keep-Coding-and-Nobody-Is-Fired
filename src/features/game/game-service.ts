@@ -10,6 +10,7 @@ import {
 import {
   abandonGame,
   clearLastResult,
+  createPendingSession,
   createSession,
   gameDurationSeconds,
   getCoderStepView,
@@ -20,8 +21,11 @@ import {
 import type {
   AnswerResponse,
   Challenge,
+  ChallengeLanguage,
   ClientQuestionAnswerResponse,
+  CoderStepView,
   GameSession,
+  HelperGuideResult,
   HelperStaticGuide,
   PlayerRole,
   StartGameResponse,
@@ -113,6 +117,20 @@ function resolveChallenge(session: GameSession): Challenge | undefined {
   return session.generatedChallenge ?? getChallengeById(session.challengeId);
 }
 
+// Shown to the Coder while the room is still 'idle' (Bedrock generating). No
+// challenge data yet — the client renders a "generating" screen on this status.
+function pendingCoderView(): CoderStepView {
+  return {
+    code: '',
+    error: '',
+    options: [],
+    currentStep: 0,
+    totalSteps: 0,
+    remainingTime: 0,
+    status: 'idle',
+  };
+}
+
 export function buildHelperGuide(challenge: Challenge): HelperStaticGuide {
   return {
     title: challenge.title,
@@ -127,22 +145,35 @@ export function buildHelperGuide(challenge: Challenge): HelperStaticGuide {
   };
 }
 
-export async function startGame(): Promise<StartGameResponse> {
-  // Try a fresh AI-generated challenge; fall back to a curated one if Bedrock is
-  // slow, unavailable, or returns something invalid. The game never fails to start.
-  const generated = await generateChallenge();
+export async function startGame(language: ChallengeLanguage = 'random'): Promise<StartGameResponse> {
+  // Create the room in 'idle' and return its code immediately so the Coder can
+  // share it with the Helper. Bedrock generates in the background (kicked off by
+  // the first state poll), so nobody waits on a 14s call before getting a code.
+  const sessionId = generateRoomCode();
+  const session = createPendingSession(sessionId, language, Date.now());
+  await setSessionToStore(sessionId, session);
+  return { sessionId };
+}
+
+// Idempotently turn an 'idle' room into a 'playing' one: generate the challenge
+// for the requested language (fall back to a curated one) and promote the
+// session. The `generating` flag stops two concurrent polls from doing it twice.
+async function ensureChallengeGenerated(session: GameSession): Promise<GameSession> {
+  if (session.status !== 'idle') return session;
+  if (session.generating) return session;
+
+  const claimed: GameSession = { ...session, generating: true };
+  await setSessionToStore(claimed.id, claimed);
+
+  const generated = await generateChallenge(session.language ?? 'random');
   const challenge = generated ?? pickRandomChallenge();
 
-  const sessionId = generateRoomCode();
-  const session = createSession(challenge, sessionId, Date.now());
+  const playing = createSession(challenge, session.id, session.startedAt);
   if (generated) {
-    session.generatedChallenge = generated;
+    playing.generatedChallenge = generated;
   }
-  await setSessionToStore(sessionId, session);
-  return {
-    sessionId,
-    coderView: getCoderStepView(session, challenge),
-  };
+  await setSessionToStore(session.id, playing);
+  return playing;
 }
 
 function withEndMeta<T extends { status: string }>(view: T, session: GameSession): T {
@@ -178,17 +209,28 @@ export async function getSessionChallenge(sessionId: string): Promise<Challenge 
   return resolveChallenge(session);
 }
 
-export async function getHelperGuide(sessionId: string): Promise<HelperStaticGuide | null> {
+export async function getHelperGuide(sessionId: string): Promise<HelperGuideResult | null> {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
+  // Room exists but the Coder's challenge isn't ready yet → tell the Helper to
+  // wait instead of erroring out (which would read as "room not found").
+  if (session.status === 'idle') return { pending: true };
   const challenge = resolveChallenge(session);
   if (!challenge) return null;
   return buildHelperGuide(challenge);
 }
 
 export async function getCoderState(sessionId: string) {
-  const session = await getSessionFromStore(sessionId);
+  let session = await getSessionFromStore(sessionId);
   if (!session) return null;
+
+  // First poll on an idle room kicks off Bedrock generation; while it runs the
+  // Coder sees the 'idle' (generating) view instead of an error.
+  if (session.status === 'idle') {
+    session = await ensureChallengeGenerated(session);
+    if (session.status === 'idle') return pendingCoderView();
+  }
+
   const challenge = resolveChallenge(session);
   if (!challenge) return null;
 

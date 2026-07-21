@@ -1,7 +1,7 @@
 'use client';
 
 import { getCoderState, submitAnswer, tick } from '@/src/features/game/api/game-client';
-import type { CoderStepView } from '@/src/features/game/game-types';
+import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
 import { useCallback, useState } from 'react';
@@ -14,7 +14,7 @@ interface UseCoderGameResult {
   shake: boolean;
   feedback: string | null;
   handleAnswer: (answerIndex: number) => Promise<void>;
-  handleAbandoned: () => void;
+  handleAbandoned: (status: GameStatus) => void;
 }
 
 export function useCoderGame(
@@ -83,9 +83,16 @@ export function useCoderGame(
     [submitting, view.status, sessionId, fetchState],
   );
 
-  const handleAbandoned = useCallback(() => {
-    void fetchState();
-  }, [fetchState]);
+  const handleAbandoned = useCallback(
+    (status: GameStatus) => {
+      // Apply the terminal status right away so the polling (which stops once
+      // status leaves 'playing') can't race and leave the screen stuck. Then
+      // refresh to pull abandonedBy/durationSeconds for the end banner.
+      setView((prev) => ({ ...prev, status }));
+      void fetchState();
+    },
+    [fetchState],
+  );
 
   return { view, sessionId, submitting, shake, feedback, handleAnswer, handleAbandoned };
 }

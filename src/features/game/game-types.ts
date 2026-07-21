@@ -2,6 +2,19 @@ export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameStatus = 'idle' | 'playing' | 'victory' | 'defeat' | 'abandoned';
 export type PlayerRole = 'coder' | 'helper';
 
+// The Coder may request a language for the generated challenge; 'random' (the
+// default) lets the generator pick one.
+export type ChallengeLanguage =
+  | 'random'
+  | 'php'
+  | 'sql'
+  | 'typescript'
+  | 'javascript'
+  | 'python'
+  | 'go'
+  | 'java'
+  | 'ruby';
+
 export type ClientQuestionCategory =
   | 'architecture'
   | 'programming'
@@ -79,6 +92,11 @@ export interface GameSession {
   // When the challenge was generated at runtime (Bedrock) it is not in the static
   // catalog, so it travels with the session. Absent → resolve from the catalog by id.
   generatedChallenge?: Challenge;
+  // A room is created in 'idle' before its challenge exists: the Coder shares the
+  // code while Bedrock generates in the background for this language. `generating`
+  // guards against two concurrent polls kicking off generation twice.
+  language?: ChallengeLanguage;
+  generating?: boolean;
 }
 
 export interface StepResult {
@@ -115,6 +133,14 @@ export interface HelperStaticGuide {
   sections: HelperGuideSection[];
 }
 
+// Returned to a Helper who joins while the room is still 'idle' (Bedrock
+// generating). The client shows a "waiting for the Coder" screen and retries.
+export interface HelperGuidePending {
+  pending: true;
+}
+
+export type HelperGuideResult = HelperStaticGuide | HelperGuidePending;
+
 export interface HelperSyncView {
   remainingTime: number;
   currentStep: number;
@@ -137,7 +163,6 @@ export interface ClientQuestionAnswerResponse {
 
 export interface StartGameResponse {
   sessionId: string;
-  coderView: CoderStepView;
 }
 
 export interface AnswerResponse {

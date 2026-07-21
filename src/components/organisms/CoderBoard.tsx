@@ -4,7 +4,7 @@ import { GameTimer } from '@/src/components/atoms/GameTimer';
 import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
-import type { CoderStepView } from '@/src/features/game/game-types';
+import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
 
 interface CoderBoardProps {
   view: CoderStepView;
@@ -13,7 +13,7 @@ interface CoderBoardProps {
   shake: boolean;
   feedback: string | null;
   onAnswer: (answerIndex: number) => void;
-  onAbandoned: () => void;
+  onAbandoned: (status: GameStatus) => void;
 }
 
 export function CoderBoard({
@@ -86,10 +86,24 @@ export function CoderBoard({
           />
         )}
 
-        <CodePanel code={view.code} />
-        <div className="mt-4">
-          <ErrorBanner error={view.error} />
-        </div>
+        {view.status === 'idle' ? (
+          <div className="mt-6 rounded-lg border border-red-500/30 bg-red-950/10 p-10 text-center">
+            <p className="font-mono text-sm tracking-wider text-red-400">
+              Estamos preparando tu incidente
+              <span className="animate-pulse">…</span>
+            </p>
+            <p className="mt-2 text-xs text-zinc-500">
+              Compartí el código de sala con el Helper mientras tanto.
+            </p>
+          </div>
+        ) : (
+          <>
+            <CodePanel code={view.code} />
+            <div className="mt-4">
+              <ErrorBanner error={view.error} />
+            </div>
+          </>
+        )}
 
         {feedback && (
           <p
