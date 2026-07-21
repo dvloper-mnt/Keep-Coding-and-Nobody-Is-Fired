@@ -47,7 +47,11 @@ resource "aws_iam_role" "task" {
 
 data "aws_iam_policy_document" "bedrock" {
   statement {
-    actions = ["bedrock:InvokeModel"]
+    actions = [
+      "bedrock:InvokeModel",
+      "bedrock:Converse",
+      "bedrock:ConverseStream",
+    ]
     resources = [
       "arn:aws:bedrock:*::foundation-model/anthropic.*",
       "arn:aws:bedrock:*:*:inference-profile/*anthropic.*",
