@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createBossToast } from './boss-position';
+import { createBossToast, generateBossPlacement } from './boss-position';
 import { BOSS_PRESSURE_CONFIG } from './constants';
 
 afterEach(() => {
@@ -33,5 +33,23 @@ describe('createBossToast id generation', () => {
     expect(typeof toast.message).toBe('string');
     expect(toast.placement).toHaveProperty('topPercent');
     expect(toast.placement).toHaveProperty('leftPercent');
+  });
+});
+
+describe('generateBossPlacement keeps toasts out of the central panel', () => {
+  const { sideZoneMaxPercent, edgeMarginPercent } = BOSS_PRESSURE_CONFIG;
+  const rightZoneMin = 100 - sideZoneMaxPercent;
+
+  it('always lands in a side column, never over the center', () => {
+    for (let i = 0; i < 200; i++) {
+      const { leftPercent, topPercent } = generateBossPlacement(BOSS_PRESSURE_CONFIG);
+
+      const inLeftColumn = leftPercent >= edgeMarginPercent && leftPercent <= sideZoneMaxPercent;
+      const inRightColumn = leftPercent >= rightZoneMin && leftPercent <= 100 - edgeMarginPercent;
+
+      expect(inLeftColumn || inRightColumn).toBe(true);
+      expect(topPercent).toBeGreaterThanOrEqual(edgeMarginPercent);
+      expect(topPercent).toBeLessThanOrEqual(100 - edgeMarginPercent);
+    }
   });
 });
