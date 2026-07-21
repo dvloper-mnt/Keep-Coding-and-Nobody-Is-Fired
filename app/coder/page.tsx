@@ -1,6 +1,7 @@
 'use client';
 
 import { CoderScreen } from '@/src/components/containers/CoderScreen';
+import { GameLoadingScreen } from '@/src/components/molecules/GameLoadingScreen';
 import { getCoderState, startGame } from '@/src/features/game/api/game-client';
 import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
 import type { CoderStepView } from '@/src/features/game/game-types';
@@ -36,9 +37,10 @@ function CoderPageContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
-        Iniciando crisis en producción…
-      </div>
+      <GameLoadingScreen
+        title="Estamos creando tus preguntas con IA…"
+        subtitle="Generando un incidente único para esta partida. Esperá un momento."
+      />
     );
   }
 

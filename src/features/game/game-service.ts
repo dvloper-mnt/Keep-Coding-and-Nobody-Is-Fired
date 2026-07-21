@@ -1,5 +1,6 @@
 import { getChallengeById, loadChallenges } from '@/src/data/challenges';
 import { getClientQuestionById } from '@/src/data/client-questions';
+import { generateChallenge } from './runtime-generator';
 import { kv } from '@vercel/kv';
 import {
   getActiveClientQuestionView,
@@ -72,6 +73,12 @@ export function pickRandomChallenge(): Challenge {
   return challenges[index];
 }
 
+// A runtime-generated challenge is not in the static catalog, so it is stored on
+// the session. Prefer it; otherwise resolve the curated challenge by id.
+function resolveChallenge(session: GameSession): Challenge | undefined {
+  return session.generatedChallenge ?? getChallengeById(session.challengeId);
+}
+
 export function buildHelperGuide(challenge: Challenge): HelperStaticGuide {
   return {
     title: challenge.title,
@@ -87,9 +94,16 @@ export function buildHelperGuide(challenge: Challenge): HelperStaticGuide {
 }
 
 export async function startGame(): Promise<StartGameResponse> {
-  const challenge = pickRandomChallenge();
+  // Try a fresh AI-generated challenge; fall back to a curated one if Bedrock is
+  // slow, unavailable, or returns something invalid. The game never fails to start.
+  const generated = await generateChallenge();
+  const challenge = generated ?? pickRandomChallenge();
+
   const sessionId = generateRoomCode();
   const session = createSession(challenge, sessionId, Date.now());
+  if (generated) {
+    session.generatedChallenge = generated;
+  }
   await setSessionToStore(sessionId, session);
   return {
     sessionId,
@@ -127,13 +141,13 @@ export async function getSession(sessionId: string): Promise<GameSession | undef
 export async function getSessionChallenge(sessionId: string): Promise<Challenge | undefined> {
   const session = await getSessionFromStore(sessionId);
   if (!session) return undefined;
-  return getChallengeById(session.challengeId);
+  return resolveChallenge(session);
 }
 
 export async function getHelperGuide(sessionId: string): Promise<HelperStaticGuide | null> {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
-  const challenge = getChallengeById(session.challengeId);
+  const challenge = resolveChallenge(session);
   if (!challenge) return null;
   return buildHelperGuide(challenge);
 }
@@ -141,7 +155,7 @@ export async function getHelperGuide(sessionId: string): Promise<HelperStaticGui
 export async function getCoderState(sessionId: string) {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
-  const challenge = getChallengeById(session.challengeId);
+  const challenge = resolveChallenge(session);
   if (!challenge) return null;
 
   let current = session;
@@ -156,7 +170,7 @@ export async function getCoderState(sessionId: string) {
 export async function getHelperSync(sessionId: string) {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
-  const challenge = getChallengeById(session.challengeId);
+  const challenge = resolveChallenge(session);
   if (!challenge) return null;
   return withEndMeta(
     getHelperSyncView(
@@ -193,7 +207,7 @@ export async function processClientQuestionAnswer(
 export async function processAnswer(sessionId: string, answerIndex: number): Promise<AnswerResponse | null> {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
-  const challenge = getChallengeById(session.challengeId);
+  const challenge = resolveChallenge(session);
   if (!challenge) return null;
 
   const updated = submitAnswer(session, challenge, answerIndex);
