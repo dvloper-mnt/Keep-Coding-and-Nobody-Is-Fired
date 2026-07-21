@@ -1,6 +1,7 @@
 'use client';
 
 import { HelperScreen } from '@/src/components/containers/HelperScreen';
+import { GameLoadingScreen } from '@/src/components/molecules/GameLoadingScreen';
 import { getHelperGuide } from '@/src/features/game/api/game-client';
 import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
 import Link from 'next/link';
@@ -15,7 +16,7 @@ function HelperPageContent() {
   const loader = useCallback(() => getHelperGuide(sessionId ?? ''), [sessionId]);
   const { data: guide, loading, error } = useGameSessionBootstrap(
     loader,
-    'Sesión no encontrada. Pedile el código al Coder.',
+    'No se encontró la sala. Verificá el código e intentá de nuevo.',
     sessionId,
     !!sessionId,
   );
@@ -29,48 +30,79 @@ function HelperPageContent() {
 
   if (!sessionId) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-amber-950 px-4">
-        <h1 className="text-2xl font-bold text-amber-100">Unirse como Helper</h1>
-        <p className="mt-2 text-sm text-amber-400/70">Ingresá el código de sala que te dio el Coder</p>
-        <form onSubmit={handleJoin} className="mt-6 flex gap-2">
-          <input
-            type="text"
-            value={inputCode}
-            onChange={(e) => setInputCode(e.target.value)}
-            placeholder="Ej: X7K2"
-            maxLength={4}
-            className="w-32 rounded-lg border border-amber-500/30 bg-amber-950 px-4 py-2 text-center font-mono text-lg uppercase text-amber-100 outline-none focus:border-amber-500"
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-amber-600 px-6 py-2 font-semibold text-amber-950 hover:bg-amber-500"
+      <main className="flex min-h-screen items-center justify-center bg-[#0a0a0b] px-4">
+        <div className="w-full max-w-md">
+          <p className="font-mono text-xs tracking-widest text-amber-400 uppercase">
+            <span className="text-zinc-600">[</span>Rol B<span className="text-zinc-600">]</span> · soporte
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-amber-100">
+            Unirse como Helper
+          </h1>
+          <p className="mt-3 text-sm text-zinc-400">
+            Tenés el manual de debugging. El Coder ya inició la partida y te pasó un
+            código de sala — ingresalo para entrar.
+          </p>
+
+          <form onSubmit={handleJoin} className="mt-8">
+            <label
+              htmlFor="room-code"
+              className="font-mono text-xs tracking-wider text-zinc-500 uppercase"
+            >
+              Código de sala
+            </label>
+            <input
+              id="room-code"
+              type="text"
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+              placeholder="X7K2"
+              maxLength={4}
+              autoFocus
+              autoComplete="off"
+              className="mt-2 block w-full rounded-lg border border-amber-500/30 bg-amber-950/20 px-4 py-4 text-center font-mono text-3xl tracking-[0.4em] text-amber-100 uppercase outline-none transition-colors placeholder:text-amber-500/25 focus:border-amber-500 focus:bg-amber-950/40"
+            />
+            <button
+              type="submit"
+              disabled={inputCode.trim().length < 4}
+              className="mt-4 w-full rounded-lg bg-amber-600 px-6 py-3 font-semibold text-amber-950 transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Entrar a la partida
+            </button>
+          </form>
+
+          <Link
+            href="/"
+            className="mt-8 inline-block font-mono text-xs text-zinc-600 transition-colors hover:text-zinc-400"
           >
-            Entrar
-          </button>
-        </form>
-        <Link href="/" className="mt-8 text-sm text-amber-400/50 underline">
-          Volver al inicio
-        </Link>
-      </div>
+            ← Volver al inicio
+          </Link>
+        </div>
+      </main>
     );
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-amber-950 text-amber-400">
-        Cargando guía de debugging…
-      </div>
-    );
+    return <GameLoadingScreen title="Cargando la guía de debugging…" />;
   }
 
   if (error || !guide) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-amber-950 text-red-400">
-        <p>{error ?? 'Error desconocido'}</p>
-        <Link href="/helper" className="text-amber-400 underline">
-          Intentar de nuevo
-        </Link>
-      </div>
+      <main className="flex min-h-screen items-center justify-center bg-[#0a0a0b] px-4">
+        <div className="w-full max-w-md text-center">
+          <p className="font-mono text-xs tracking-widest text-amber-400 uppercase">
+            <span className="text-zinc-600">[</span>Rol B<span className="text-zinc-600">]</span> · soporte
+          </p>
+          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-950/20 p-6">
+            <p className="text-sm text-red-300">{error ?? 'No se pudo cargar la sala.'}</p>
+          </div>
+          <Link
+            href="/helper"
+            className="mt-6 inline-block rounded-lg bg-amber-600 px-6 py-2 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-500"
+          >
+            Intentar de nuevo
+          </Link>
+        </div>
+      </main>
     );
   }
 
@@ -79,13 +111,7 @@ function HelperPageContent() {
 
 export default function HelperPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-amber-950 text-amber-400">
-          Cargando…
-        </div>
-      }
-    >
+    <Suspense fallback={<GameLoadingScreen title="Cargando…" />}>
       <HelperPageContent />
     </Suspense>
   );

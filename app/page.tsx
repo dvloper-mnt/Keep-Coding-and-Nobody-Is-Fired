@@ -5,7 +5,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0a0b] px-4 py-12 text-zinc-100 sm:py-16">
       <div className="mx-auto flex max-w-3xl flex-col">
-        {/* System log eyebrow — the incident is already happening */}
         <p className="animate-incident-rise font-mono text-xs tracking-widest text-red-500 uppercase">
           <span className="text-zinc-600">[</span>
           INCIDENT-001
@@ -32,7 +31,6 @@ export default function Home() {
           sola crisis: <span className="text-zinc-200">ninguno puede resolverla solo.</span>
         </p>
 
-        {/* The two roles, asymmetric on purpose — that asymmetry IS the rule */}
         <div
           className="animate-incident-rise mt-10 grid gap-4 sm:grid-cols-2"
           style={{ animationDelay: '180ms' }}
@@ -61,7 +59,6 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Hard rules as a terminal HUD */}
         <dl
           className="animate-incident-rise mt-8 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800 font-mono text-center"
           style={{ animationDelay: '240ms' }}
