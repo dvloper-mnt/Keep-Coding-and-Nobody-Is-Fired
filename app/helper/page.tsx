@@ -1,39 +1,24 @@
 'use client';
 
 import { HelperScreen } from '@/src/components/containers/HelperScreen';
-import type { HelperStaticGuide } from '@/src/features/game/game-types';
+import { getHelperGuide } from '@/src/features/game/api/game-client';
+import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useState } from 'react';
 
 function HelperPageContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session');
-  const [guide, setGuide] = useState<HelperStaticGuide | null>(null);
-  // When a sessionId is present in the URL we must validate it via /guide before
-  // we can trust the data or show an error. This avoids flashing "Sesión no encontrada"
-  // (or "Error desconocido") while the fetch is in flight.
-  const [loading, setLoading] = useState(!!sessionId);
-  const [error, setError] = useState<string | null>(null);
   const [inputCode, setInputCode] = useState('');
 
-  useEffect(() => {
-    if (!sessionId) return;
-
-    fetch(`/api/game/guide?sessionId=${sessionId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Sesión no encontrada');
-        return res.json();
-      })
-      .then((data: HelperStaticGuide) => {
-        setGuide(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Sesión no encontrada. Pedile el código al Coder.');
-        setLoading(false);
-      });
-  }, [sessionId]);
+  const loader = useCallback(() => getHelperGuide(sessionId ?? ''), [sessionId]);
+  const { data: guide, loading, error } = useGameSessionBootstrap(
+    loader,
+    'Sesión no encontrada. Pedile el código al Coder.',
+    sessionId,
+    !!sessionId,
+  );
 
   function handleJoin(e: React.FormEvent) {
     e.preventDefault();
