@@ -8,6 +8,7 @@ import type {
   PlayerRole,
   StartGameResponse,
 } from '@/src/features/game/game-types';
+import { readToken } from './session-token-store';
 
 class GameApiError extends Error {
   constructor(
@@ -54,11 +55,14 @@ export function tick(sessionId: string): Promise<void> {
 }
 
 export function submitAnswer(sessionId: string, answerIndex: number): Promise<AnswerResponse> {
-  return postJson<AnswerResponse>('/api/game/answer', { sessionId, answerIndex });
+  const token = readToken(sessionId, 'coder');
+  return postJson<AnswerResponse>('/api/game/answer', { sessionId, answerIndex, token });
 }
 
 export function getHelperGuide(sessionId: string): Promise<HelperGuideResult> {
-  return getJson<HelperGuideResult>(`/api/game/guide?sessionId=${sessionId}`);
+  const token = readToken(sessionId, 'helper');
+  const query = token ? `&token=${encodeURIComponent(token)}` : '';
+  return getJson<HelperGuideResult>(`/api/game/guide?sessionId=${sessionId}${query}`);
 }
 
 export function getHelperSync(sessionId: string): Promise<HelperSyncView> {
@@ -69,9 +73,11 @@ export function submitClientQuestionAnswer(
   sessionId: string,
   answerIndex: number,
 ): Promise<ClientQuestionAnswerResponse> {
+  const token = readToken(sessionId, 'helper');
   return postJson<ClientQuestionAnswerResponse>('/api/game/client-question', {
     sessionId,
     answerIndex,
+    token,
   });
 }
 
@@ -79,5 +85,6 @@ export function abandonGame(
   sessionId: string,
   role: PlayerRole,
 ): Promise<{ status: GameStatus }> {
-  return postJson<{ status: GameStatus }>('/api/game/abandon', { sessionId, role });
+  const token = readToken(sessionId, role);
+  return postJson<{ status: GameStatus }>('/api/game/abandon', { sessionId, role, token });
 }

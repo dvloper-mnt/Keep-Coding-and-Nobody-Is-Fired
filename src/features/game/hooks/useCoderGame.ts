@@ -37,19 +37,23 @@ export function useCoderGame(
     }
   }, [sessionId]);
 
+  // Poll while playing (tick the clock + refresh) and also while idle (no clock
+  // yet — just refresh so the room gets promoted once Bedrock finishes).
   usePolling(
     () => {
       void (async () => {
-        try {
-          await tick(sessionId);
-        } catch {
-          // Ignore a transient tick failure; the next poll recovers.
+        if (view.status === 'playing') {
+          try {
+            await tick(sessionId);
+          } catch {
+            // Ignore a transient tick failure; the next poll recovers.
+          }
         }
         await fetchState();
       })();
     },
     1000,
-    view.status === 'playing',
+    view.status === 'playing' || view.status === 'idle',
   );
 
   const handleAnswer = useCallback(

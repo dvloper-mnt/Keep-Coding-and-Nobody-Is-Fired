@@ -97,6 +97,15 @@ export interface GameSession {
   // guards against two concurrent polls kicking off generation twice.
   language?: ChallengeLanguage;
   generating?: boolean;
+  // When generation was claimed. If a claim is older than the generation budget
+  // the previous attempt is assumed dead (request died mid-call) and a new poll
+  // retries — otherwise a crashed generation would freeze the room forever.
+  generatingStartedAt?: number;
+  // Opaque per-player secrets. The room code lets you read the game; mutating it
+  // (answer/abandon) requires the matching token. The Coder's is minted at start;
+  // the Helper's the first time they fetch the guide.
+  coderToken?: string;
+  helperToken?: string;
 }
 
 export interface StepResult {
@@ -131,6 +140,9 @@ export interface HelperStaticGuide {
   storyContext: string;
   totalExercises: number;
   sections: HelperGuideSection[];
+  // Minted on the Helper's first guide fetch; required to mutate (answer client
+  // questions, abandon). Stored client-side, like the Coder's token.
+  helperToken: string;
 }
 
 // Returned to a Helper who joins while the room is still 'idle' (Bedrock
@@ -139,7 +151,15 @@ export interface HelperGuidePending {
   pending: true;
 }
 
-export type HelperGuideResult = HelperStaticGuide | HelperGuidePending;
+// The room's single Helper seat is already taken by someone else.
+export interface HelperGuideOccupied {
+  occupied: true;
+}
+
+export type HelperGuideResult =
+  | HelperStaticGuide
+  | HelperGuidePending
+  | HelperGuideOccupied;
 
 export interface HelperSyncView {
   remainingTime: number;
@@ -163,6 +183,7 @@ export interface ClientQuestionAnswerResponse {
 
 export interface StartGameResponse {
   sessionId: string;
+  coderToken: string;
 }
 
 export interface AnswerResponse {

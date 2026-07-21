@@ -3,16 +3,27 @@
 import { HelperScreen } from '@/src/components/containers/HelperScreen';
 import { GameLoadingScreen } from '@/src/components/molecules/GameLoadingScreen';
 import { getHelperGuide } from '@/src/features/game/api/game-client';
+import { saveToken } from '@/src/features/game/api/session-token-store';
 import type { HelperStaticGuide } from '@/src/features/game/game-types';
 import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
 function HelperPageContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session');
   const [inputCode, setInputCode] = useState('');
+
+  // If the browser restores this page from bfcache (back/forward), its in-memory
+  // game state is stale — it could show a dead room. Force a fresh load.
+  useEffect(() => {
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) window.location.reload();
+    }
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
 
   // Poll the guide until the Coder's challenge is ready. While the room is idle
   // the backend returns { pending: true } instead of erroring, so the Helper
@@ -20,13 +31,19 @@ function HelperPageContent() {
   const loader = useCallback(async (): Promise<HelperStaticGuide> => {
     for (;;) {
       const result = await getHelperGuide(sessionId ?? '');
-      if (!('pending' in result)) return result;
+      if ('occupied' in result) {
+        throw new Error('Esta sala ya tiene un Helper. Pídele al Coder un código nuevo.');
+      }
+      if (!('pending' in result)) {
+        saveToken(sessionId ?? '', 'helper', result.helperToken);
+        return result;
+      }
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
   }, [sessionId]);
   const { data: guide, loading, error } = useGameSessionBootstrap(
     loader,
-    'No se encontró la sala. Verificá el código e intentá de nuevo.',
+    'No se encontró la sala. Verifica el código e intenta de nuevo.',
     sessionId,
     !!sessionId,
   );
@@ -49,8 +66,8 @@ function HelperPageContent() {
             Unirse como Helper
           </h1>
           <p className="mt-3 text-sm text-zinc-400">
-            Tenés el manual de debugging. El Coder ya inició la partida y te pasó un
-            código de sala — ingresalo para entrar.
+            Tienes el manual de debugging. El Coder ya inició la partida y te pasó un
+            código de sala — ingrésalo para entrar.
           </p>
 
           <form onSubmit={handleJoin} className="mt-8">
