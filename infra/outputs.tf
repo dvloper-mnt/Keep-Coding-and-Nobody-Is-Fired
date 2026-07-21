@@ -1,11 +1,6 @@
-output "service_endpoints" {
-  description = "Public HTTPS endpoint(s) of the ECS Express service."
-  value       = [for p in aws_ecs_express_gateway_service.app.ingress_paths : p.endpoint]
-}
-
-output "service_arn" {
-  description = "ARN of the ECS Express service."
-  value       = aws_ecs_express_gateway_service.app.service_arn
+output "app_url" {
+  description = "Public URL of the app (ALB, HTTP)."
+  value       = "http://${aws_lb.app.dns_name}"
 }
 
 output "ecr_repository_url" {

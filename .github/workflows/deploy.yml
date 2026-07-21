@@ -46,7 +46,7 @@ jobs:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
           IMAGE="$REGISTRY/$ECR_REPOSITORY"
-          docker build -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
+          docker build --platform linux/amd64 -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
           docker push "$IMAGE:${{ github.sha }}"
           docker push "$IMAGE:latest"
 

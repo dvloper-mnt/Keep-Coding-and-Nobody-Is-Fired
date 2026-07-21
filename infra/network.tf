@@ -53,10 +53,39 @@ resource "aws_route_table_association" "public" {
 # Security groups: the ECS tasks may reach Redis on 6379; nothing else can.
 # ---------------------------------------------------------------------------
 
+resource "aws_security_group" "alb" {
+  name        = "${var.service_name}-alb"
+  description = "Public ALB"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "HTTP from anywhere"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_security_group" "ecs" {
   name        = "${var.service_name}-ecs"
-  description = "ECS Express service tasks"
+  description = "Fargate app tasks"
   vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "App port from the ALB"
+    from_port       = var.container_port
+    to_port         = var.container_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
 
   egress {
     description = "All outbound"

@@ -38,70 +38,136 @@ resource "aws_iam_role_policy_attachment" "execution_managed" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# ---------------------------------------------------------------------------
-# IAM — infrastructure role (ECS Express manages ALB, target groups, scaling)
-# ---------------------------------------------------------------------------
+# Task role: what the running app may do — invoke Claude on Bedrock to generate
+# challenges at runtime. Bedrock authenticates via this role, not an env var.
+resource "aws_iam_role" "task" {
+  name               = "${var.service_name}-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume.json
+}
 
-data "aws_iam_policy_document" "ecs_infra_assume" {
+data "aws_iam_policy_document" "bedrock" {
   statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["ecs.amazonaws.com"]
-    }
+    actions = ["bedrock:InvokeModel"]
+    resources = [
+      "arn:aws:bedrock:*::foundation-model/anthropic.*",
+      "arn:aws:bedrock:*:*:inference-profile/*anthropic.*",
+    ]
   }
 }
 
-resource "aws_iam_role" "infrastructure" {
-  name               = "${var.service_name}-infrastructure"
-  assume_role_policy = data.aws_iam_policy_document.ecs_infra_assume.json
-}
-
-resource "aws_iam_role_policy_attachment" "infrastructure_managed" {
-  role = aws_iam_role.infrastructure.name
-  # AWS-managed policy for ECS Express Mode infrastructure (verified ARN).
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices"
+resource "aws_iam_role_policy" "bedrock" {
+  name   = "${var.service_name}-bedrock-invoke"
+  role   = aws_iam_role.task.id
+  policy = data.aws_iam_policy_document.bedrock.json
 }
 
 # ---------------------------------------------------------------------------
-# ECS Express Mode service
-# Schema mirrors AWS::ECS::ExpressGatewayService (CloudFormation). The Terraform
-# provider (>= 6.23.0) maps these to snake_case. Run `terraform validate` to
-# confirm exact nested-block names before apply.
+# Logs
 # ---------------------------------------------------------------------------
 
-resource "aws_ecs_express_gateway_service" "app" {
-  execution_role_arn      = aws_iam_role.execution.arn
-  infrastructure_role_arn = aws_iam_role.infrastructure.arn
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${var.service_name}"
+  retention_in_days = 7
+}
+
+# ---------------------------------------------------------------------------
+# ECS Fargate: cluster + task definition + ALB + service.
+# Classic Fargate (not Express) because the task needs assign_public_ip=true to
+# reach ECR from public subnets without a NAT gateway — Express does not expose
+# that control, which left tasks unable to pull the image.
+# ---------------------------------------------------------------------------
+
+resource "aws_ecs_cluster" "main" {
+  name = "${var.service_name}-cluster"
+}
+
+resource "aws_ecs_task_definition" "app" {
+  family                   = var.service_name
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+
+  container_definitions = jsonencode([
+    {
+      name         = "app"
+      image        = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
+      essential    = true
+      portMappings = [{ containerPort = var.container_port, protocol = "tcp" }]
+      environment = [
+        { name = "REDIS_HOST", value = aws_elasticache_replication_group.sessions.primary_endpoint_address },
+        { name = "REDIS_PORT", value = "6379" },
+        { name = "AWS_REGION", value = var.aws_region },
+        { name = "NODE_ENV", value = "production" },
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.app.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "app"
+        }
+      }
+    }
+  ])
+}
+
+resource "aws_lb" "app" {
+  name               = "${var.service_name}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = aws_subnet.private[*].id
+}
+
+resource "aws_lb_target_group" "app" {
+  name        = "${var.service_name}-tg"
+  port        = var.container_port
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    path                = "/"
+    healthy_threshold   = 2
+    unhealthy_threshold = 5
+    timeout             = 10
+    interval            = 30
+    matcher             = "200"
+  }
+}
+
+resource "aws_lb_listener" "app" {
+  load_balancer_arn = aws_lb.app.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
+resource "aws_ecs_service" "app" {
+  name            = var.service_name
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = aws_subnet.private[*].id
-    security_groups = [aws_security_group.ecs.id]
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = true
   }
 
-  primary_container {
-    image = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
-
-    environment {
-      name  = "REDIS_HOST"
-      value = aws_elasticache_replication_group.sessions.primary_endpoint_address
-    }
-    environment {
-      name  = "REDIS_PORT"
-      value = "6379"
-    }
-    environment {
-      name  = "AWS_REGION"
-      value = var.aws_region
-    }
-    environment {
-      name  = "NODE_ENV"
-      value = "production"
-    }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = "app"
+    container_port   = var.container_port
   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.execution_managed,
-    aws_iam_role_policy_attachment.infrastructure_managed,
-  ]
+  depends_on = [aws_lb_listener.app]
 }
