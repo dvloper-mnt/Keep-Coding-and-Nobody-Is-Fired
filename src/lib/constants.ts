@@ -36,12 +36,12 @@ export const BOSS_PRESSURE_CONFIG = {
   messages: BOSS_MESSAGES,
   spawnIntervalMs: 15_000,
   maxVisibleMessages: 7,
-  centerEmphasisChance: 0.35,
-  // Toasts are centered on their point (-translate-x-1/2) and can be ~190px wide
-  // at half-width, so a small margin lets long messages spill off-screen. Keep
-  // the spawn zone well inside the edges.
-  edgeMarginPercent: 18,
-  centerZoneRadiusPercent: 22,
+  // Toasts live in the side columns only, never over the central panel where the
+  // code, error and options are — otherwise the boss pressure hides the very
+  // thing the Coder needs to read. leftPercent stays under sideZoneMaxPercent
+  // (left column) or over its mirror (right column).
+  edgeMarginPercent: 8,
+  sideZoneMaxPercent: 26,
 } as const;
 
 export const WRONG_ANSWER_MESSAGE = 'El sistema sigue fallando…';

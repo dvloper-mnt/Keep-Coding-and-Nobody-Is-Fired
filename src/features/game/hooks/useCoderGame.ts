@@ -64,7 +64,7 @@ export function useCoderGame(
 
         if (data.success) {
           playCorrect();
-          setFeedback('Fix applied');
+          setFeedback('Parche aplicado');
           if (data.coderView) setView(data.coderView);
         } else {
           playWrong();

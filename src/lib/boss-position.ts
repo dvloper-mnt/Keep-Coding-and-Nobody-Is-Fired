@@ -1,7 +1,7 @@
 import { BOSS_PRESSURE_CONFIG } from '@/src/lib/constants';
 
 export type BossPressureConfig = typeof BOSS_PRESSURE_CONFIG;
-export type BossEmphasis = 'center' | 'random';
+export type BossEmphasis = 'left' | 'right';
 
 export interface BossPlacement {
   topPercent: number;
@@ -17,10 +17,6 @@ export interface BossToast {
 
 const MIN_PLACEMENT_DISTANCE = 12;
 const MAX_PLACEMENT_ATTEMPTS = 8;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 function randomInRange(min: number, max: number): number {
   return min + Math.random() * (max - min);
@@ -52,24 +48,21 @@ export function generateBossPlacement(
 ): BossPlacement {
   const margin = config.edgeMarginPercent;
   const maxCoord = 100 - margin;
+  const sideMax = config.sideZoneMaxPercent;
+  const rightZoneMin = 100 - sideMax;
 
   for (let attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; attempt++) {
-    const emphasis: BossEmphasis =
-      Math.random() < config.centerEmphasisChance ? 'center' : 'random';
+    const onLeft = Math.random() < 0.5;
+    const leftPercent = onLeft
+      ? randomInRange(margin, sideMax)
+      : randomInRange(rightZoneMin, maxCoord);
+    const topPercent = randomInRange(margin, maxCoord);
 
-    let topPercent: number;
-    let leftPercent: number;
-
-    if (emphasis === 'center') {
-      const radius = config.centerZoneRadiusPercent;
-      topPercent = clamp(50 + randomInRange(-radius, radius), margin, maxCoord);
-      leftPercent = clamp(50 + randomInRange(-radius, radius), margin, maxCoord);
-    } else {
-      topPercent = randomInRange(margin, maxCoord);
-      leftPercent = randomInRange(margin, maxCoord);
-    }
-
-    const placement: BossPlacement = { topPercent, leftPercent, emphasis };
+    const placement: BossPlacement = {
+      topPercent,
+      leftPercent,
+      emphasis: onLeft ? 'left' : 'right',
+    };
     const tooClose = existingPlacements.some(
       (existing) => placementDistance(existing, placement) < MIN_PLACEMENT_DISTANCE,
     );
@@ -79,7 +72,7 @@ export function generateBossPlacement(
     }
   }
 
-  return { topPercent: 50, leftPercent: 50, emphasis: 'center' };
+  return { topPercent: 50, leftPercent: margin, emphasis: 'left' };
 }
 
 export function createBossToast(
