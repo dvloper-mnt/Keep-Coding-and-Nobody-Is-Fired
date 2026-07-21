@@ -3,8 +3,8 @@
 import type { HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { ClientQuestionModal } from '@/src/components/organisms/ClientQuestionModal';
 import { GameTimer } from '@/src/components/atoms/GameTimer';
@@ -135,27 +135,21 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
         </div>
 
         {sync.status === 'victory' && (
-          <div className="mb-6 rounded-lg border border-green-500/30 bg-green-950/20 p-4 text-center">
-            <p className="text-green-400">Crisis resuelta. Buen trabajo en equipo.</p>
-            <Link
-              href="/"
-              className="mt-4 inline-block rounded-lg bg-green-600 px-6 py-2 font-semibold text-white transition-colors hover:bg-green-500"
-            >
-              Volver al inicio
-            </Link>
-          </div>
+          <GameResultBanner
+            containerClassName="mb-6 rounded-lg border border-green-500/30 bg-green-950/20 p-4 text-center"
+            title="Crisis resuelta. Buen trabajo en equipo."
+            titleClassName="text-green-400"
+            homeButtonClassName="mt-4 inline-block rounded-lg bg-green-600 px-6 py-2 font-semibold text-white transition-colors hover:bg-green-500"
+          />
         )}
 
         {sync.status === 'defeat' && (
-          <div className="mb-6 rounded-lg border border-red-500/30 bg-red-950/20 p-4 text-center">
-            <p className="text-red-400">Tiempo agotado. La guía sigue disponible para revisión.</p>
-            <Link
-              href="/"
-              className="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
-            >
-              Volver al inicio
-            </Link>
-          </div>
+          <GameResultBanner
+            containerClassName="mb-6 rounded-lg border border-red-500/30 bg-red-950/20 p-4 text-center"
+            title="Tiempo agotado. La guía sigue disponible para revisión."
+            titleClassName="text-red-400"
+            homeButtonClassName="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
+          />
         )}
 
         <ManualPanel
