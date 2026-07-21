@@ -38,8 +38,9 @@ resource "aws_iam_role" "github_actions" {
   assume_role_policy = data.aws_iam_policy_document.github_actions_assume.json
 }
 
-# Least-privilege: push to this ECR repo, read auth token, and trigger a
-# redeploy of the Express service. Scope down further if needed.
+# Least-privilege: push to this ECR repo, read the auth token, and trigger a
+# rolling redeploy of the Fargate service. No Terraform/infra rights on purpose —
+# the CI pipeline only ships the app, never mutates infrastructure.
 data "aws_iam_policy_document" "github_actions_permissions" {
   statement {
     sid       = "EcrAuth"
@@ -63,10 +64,18 @@ data "aws_iam_policy_document" "github_actions_permissions" {
   statement {
     sid = "EcsRedeploy"
     actions = [
-      "ecs:UpdateExpressGatewayService",
-      "ecs:DescribeExpressGatewayServices",
+      "ecs:UpdateService",
+      "ecs:DescribeServices",
     ]
     resources = ["*"]
+  }
+
+  # update-service with force-new-deployment launches a fresh task, which
+  # requires passing the execution and task roles to ECS.
+  statement {
+    sid       = "PassEcsRoles"
+    actions   = ["iam:PassRole"]
+    resources = [aws_iam_role.execution.arn, aws_iam_role.task.arn]
   }
 }
 
