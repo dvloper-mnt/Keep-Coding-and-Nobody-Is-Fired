@@ -160,6 +160,7 @@ Rules:
 async function generateForCategory(
   client: BedrockRuntimeClient,
   category: ClientQuestionCategory,
+  signal: AbortSignal,
 ): Promise<ClientQuestion[]> {
   console.log(`  Generating ${QUESTIONS_PER_CATEGORY} questions for category "${category}"...`);
 
@@ -182,21 +183,26 @@ async function generateForCategory(
     },
   });
 
-  const response = await client.send(command);
+  try {
+    // abortSignal actually cancels the in-flight request when the batch times out.
+    const response = await client.send(command, { abortSignal: signal });
 
-  const rawText =
-    response.output?.message?.content?.[0]?.text ?? '';
+    const rawText = response.output?.message?.content?.[0]?.text ?? '';
 
-  if (!rawText) {
-    console.warn(`  [WARN] Empty response for category "${category}"`);
+    if (!rawText) {
+      console.warn(`  [WARN] Empty response for category "${category}"`);
+      return [];
+    }
+
+    const { valid, discarded } = extractQuestions(rawText);
+    console.log(`  → ${valid.length} valid, ${discarded} discarded for "${category}"`);
+    return valid;
+  } catch (err) {
+    // A failed or aborted category must not lose the categories that succeeded.
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`  [WARN] Category "${category}" failed: ${message}`);
     return [];
   }
-
-  const { valid, discarded } = extractQuestions(rawText);
-  console.log(
-    `  → ${valid.length} valid, ${discarded} discarded for "${category}"`,
-  );
-  return valid;
 }
 
 // ---------------------------------------------------------------------------
@@ -212,24 +218,22 @@ async function main(): Promise<void> {
 
   const client = new BedrockRuntimeClient({ region: REGION });
 
-  // Collect results per category; partial failures are tolerated
-  const allValid: ClientQuestion[] = [];
+  // A single batch deadline: when it fires we ABORT the in-flight Bedrock calls
+  // (instead of just losing the race). allSettled then resolves with whatever
+  // categories already finished — a slow category never discards the fast ones.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BEDROCK_TIMEOUT_MS);
 
-  const categoryPromises = VALID_CATEGORIES.map((category) =>
-    generateForCategory(client, category).then((questions) => {
-      allValid.push(...questions);
-    }),
-  );
-
-  // Apply timeout to the entire batch
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(
-      () => reject(new Error(`Bedrock batch timeout after ${BEDROCK_TIMEOUT_MS}ms`)),
-      BEDROCK_TIMEOUT_MS,
+  const settled = await Promise.allSettled(
+    VALID_CATEGORIES.map((category) =>
+      generateForCategory(client, category, controller.signal),
     ),
   );
+  clearTimeout(timeout);
 
-  await Promise.race([Promise.allSettled(categoryPromises), timeoutPromise]);
+  const allValid = settled.flatMap((result) =>
+    result.status === 'fulfilled' ? result.value : [],
+  );
 
   // Deduplicate
   const deduplicated = deduplicateById(allValid);
