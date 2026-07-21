@@ -88,8 +88,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-incident-rise,
-  .animate-cursor-blink {
+  .animate-incident-rise {
     animation: none;
   }
 }
