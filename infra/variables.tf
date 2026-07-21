@@ -16,6 +16,12 @@ variable "image_tag" {
   default     = "latest"
 }
 
+variable "container_port" {
+  type        = number
+  description = "Port the Next.js server listens on inside the container."
+  default     = 3000
+}
+
 variable "github_repo" {
   type        = string
   description = "GitHub repo in owner/name form, used to scope the OIDC trust policy."
