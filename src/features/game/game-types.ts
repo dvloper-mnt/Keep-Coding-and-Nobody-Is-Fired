@@ -76,6 +76,9 @@ export interface GameSession {
   clientQuestions: ClientQuestionSessionState;
   startedAt: number;
   abandonedBy?: PlayerRole;
+  // When the challenge was generated at runtime (Bedrock) it is not in the static
+  // catalog, so it travels with the session. Absent → resolve from the catalog by id.
+  generatedChallenge?: Challenge;
 }
 
 export interface StepResult {

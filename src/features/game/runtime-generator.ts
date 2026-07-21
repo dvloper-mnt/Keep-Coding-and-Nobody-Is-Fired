@@ -1,0 +1,83 @@
+import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
+import { isValidChallenge } from './challenge-schema';
+import type { Challenge } from './game-types';
+
+const REGION = process.env['AWS_REGION'] ?? 'us-east-1';
+const MODEL_ID =
+  process.env['BEDROCK_MODEL_ID'] ?? 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
+const RUNTIME_TIMEOUT_MS = Number(process.env['BEDROCK_RUNTIME_TIMEOUT_MS'] ?? '10000');
+
+function stripMarkdownFences(text: string): string {
+  return text
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+}
+
+const SYSTEM_PROMPT = `Generás un desafío de debugging para un juego cooperativo. El Coder ve código roto y un error; el Helper ve reglas y conocimiento para guiarlo. Ninguno puede resolverlo solo.
+
+Devolvé SOLO un objeto JSON válido (sin markdown, sin texto extra) con esta forma EXACTA:
+{
+  "id": "lvl_<tema>_<corto>",
+  "title": "<título corto en español>",
+  "difficulty": "medium",
+  "story_context": "<una frase: una demo en vivo que se rompe en producción>",
+  "time_limit": 180,
+  "steps": [
+    {
+      "step": 1,
+      "coder_view": { "code": "<código PHP/Laravel con UN bug>", "error": "<mensaje de error, ej 500 Internal Server Error>" },
+      "helper_view": { "rules": ["<regla 1>", "<regla 2>"], "knowledge": ["<dato de dominio que el Coder NO ve>"] },
+      "options": ["<diagnóstico correcto>", "<distractor>", "<distractor>", "<distractor>"],
+      "correct_answer": 0,
+      "success_state": { "code_patch": "<el código ya corregido>" },
+      "hint": "<pista breve>"
+    }
+  ]
+}
+
+Reglas:
+- EXACTAMENTE 3 steps, encadenados: cada fix revela el siguiente bug. El código de cada step parte del code_patch del anterior.
+- Cada step: EXACTAMENTE 4 options, una correcta. correct_answer es el índice (0-3) de la correcta.
+- El bug debe ser diagnosticable SOLO combinando lo que ve el Coder (error) con lo que ve el Helper (knowledge). Esa es la regla de oro.
+- Dominio: bugs reales de Laravel/PHP (rutas, controladores, namespaces, middleware, form requests, inyección de dependencias).
+- Español en title, story_context, options, rules, knowledge, hint. El code es PHP.
+- Salida: solo el JSON, sin fences markdown.`;
+
+export async function generateChallenge(): Promise<Challenge | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), RUNTIME_TIMEOUT_MS);
+
+  try {
+    const client = new BedrockRuntimeClient({ region: REGION });
+    const command = new ConverseCommand({
+      modelId: MODEL_ID,
+      system: [{ text: SYSTEM_PROMPT }],
+      messages: [
+        {
+          role: 'user',
+          content: [{ text: 'Generá un desafío nuevo. Devolvé solo el JSON del objeto challenge.' }],
+        },
+      ],
+      inferenceConfig: { maxTokens: 4096, temperature: 0.8 },
+    });
+
+    const response = await client.send(command, { abortSignal: controller.signal });
+    const rawText = response.output?.message?.content?.[0]?.text ?? '';
+    if (!rawText) return null;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stripMarkdownFences(rawText));
+    } catch {
+      return null;
+    }
+
+    return isValidChallenge(parsed) ? parsed : null;
+  } catch {
+    // Network error, abort/timeout, throttling — caller falls back to curated.
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
