@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Bedrock-generated question candidates — work artifact, not source of truth.
+# Review and promote into questions.json manually; never commit unreviewed.
+/src/data/client-questions/questions.generated.json
