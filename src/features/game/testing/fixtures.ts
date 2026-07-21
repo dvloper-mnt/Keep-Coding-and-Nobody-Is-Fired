@@ -39,6 +39,7 @@ export function makeSession(overrides: Partial<GameSession> = {}): GameSession {
     remainingTime: 180,
     currentCode: 'echo "step 1";',
     status: 'playing',
+    startedAt: 1_000_000,
     clientQuestions: makeClientQuestionState(),
     ...overrides,
   };

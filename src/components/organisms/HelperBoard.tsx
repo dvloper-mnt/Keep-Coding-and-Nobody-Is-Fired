@@ -1,5 +1,6 @@
 import { GameTimer } from '@/src/components/atoms/GameTimer';
-import { GameResultBanner } from '@/src/components/molecules/GameResultBanner';
+import { ExitButton } from '@/src/components/molecules/ExitButton';
+import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { ManualPanel } from '@/src/components/molecules/ManualPanel';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { ClientQuestionModal } from '@/src/components/organisms/ClientQuestionModal';
@@ -13,6 +14,7 @@ interface HelperBoardProps {
   questionFeedback: string | null;
   questionResult: 'correct' | 'incorrect' | null;
   onClientQuestionAnswer: (answerIndex: number) => void;
+  onAbandoned: () => void;
 }
 
 export function HelperBoard({
@@ -23,6 +25,7 @@ export function HelperBoard({
   questionFeedback,
   questionResult,
   onClientQuestionAnswer,
+  onAbandoned,
 }: HelperBoardProps) {
   return (
     <div className="min-h-screen bg-amber-950 text-amber-100">
@@ -48,7 +51,12 @@ export function HelperBoard({
               Progreso Coder: ejercicio {sync.currentStep}/{sync.totalSteps} · Sala {sessionId}
             </p>
           </div>
-          <GameTimer remainingTime={sync.remainingTime} />
+          <div className="flex flex-col items-end gap-2">
+            <GameTimer remainingTime={sync.remainingTime} />
+            {sync.status === 'playing' && (
+              <ExitButton sessionId={sessionId} role="helper" onAbandoned={onAbandoned} />
+            )}
+          </div>
         </div>
 
         {sync.status === 'victory' && (
@@ -65,6 +73,17 @@ export function HelperBoard({
             containerClassName="mb-6 rounded-lg border border-red-500/30 bg-red-950/20 p-4 text-center"
             title="Tiempo agotado. La guía sigue disponible para revisión."
             titleClassName="text-red-400"
+            homeButtonClassName="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
+          />
+        )}
+
+        {sync.status === 'abandoned' && (
+          <GameResultBanner
+            containerClassName="mb-6 rounded-lg border border-amber-700/40 bg-amber-900/30 p-4 text-center"
+            title="Partida abandonada"
+            titleClassName="font-bold text-amber-300"
+            message={`Finalizada por ${sync.abandonedBy === 'coder' ? 'el Coder' : 'el Helper'} · Duró ${formatDuration(sync.durationSeconds ?? 0)}`}
+            messageClassName="mt-2 text-amber-400/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
           />
         )}

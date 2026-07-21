@@ -1,5 +1,6 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
-export type GameStatus = 'idle' | 'playing' | 'victory' | 'defeat';
+export type GameStatus = 'idle' | 'playing' | 'victory' | 'defeat' | 'abandoned';
+export type PlayerRole = 'coder' | 'helper';
 
 export type ClientQuestionCategory =
   | 'architecture'
@@ -73,6 +74,8 @@ export interface GameSession {
   status: GameStatus;
   lastResult?: 'correct' | 'incorrect';
   clientQuestions: ClientQuestionSessionState;
+  startedAt: number;
+  abandonedBy?: PlayerRole;
 }
 
 export interface StepResult {
@@ -91,6 +94,8 @@ export interface CoderStepView {
   remainingTime: number;
   status: GameStatus;
   lastResult?: 'correct' | 'incorrect';
+  abandonedBy?: PlayerRole;
+  durationSeconds?: number;
 }
 
 export interface HelperGuideSection {
@@ -113,6 +118,8 @@ export interface HelperSyncView {
   totalSteps: number;
   status: GameStatus;
   activeClientQuestion: ClientQuestionView | null;
+  abandonedBy?: PlayerRole;
+  durationSeconds?: number;
 }
 
 export interface ClientQuestionAnswerResponse {

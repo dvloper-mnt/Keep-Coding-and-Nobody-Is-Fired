@@ -6,6 +6,7 @@ import type {
   GameSession,
   GameStatus,
   HelperSyncView,
+  PlayerRole,
   StepResult,
 } from './game-types';
 
@@ -51,7 +52,11 @@ export function applyTimeDelta(session: GameSession, deltaSeconds: number): Game
   };
 }
 
-export function createSession(challenge: Challenge, sessionId: string): GameSession {
+export function createSession(
+  challenge: Challenge,
+  sessionId: string,
+  startedAt: number,
+): GameSession {
   const firstStep = challenge.steps[0];
   return {
     id: sessionId,
@@ -60,6 +65,7 @@ export function createSession(challenge: Challenge, sessionId: string): GameSess
     remainingTime: challenge.time_limit,
     currentCode: firstStep.coder_view.code,
     status: 'playing',
+    startedAt,
     clientQuestions: {
       activeQuestionId: null,
       answeredQuestionIds: [],
@@ -67,6 +73,22 @@ export function createSession(challenge: Challenge, sessionId: string): GameSess
       totalSpawned: 0,
     },
   };
+}
+
+export function abandonGame(session: GameSession, role: PlayerRole): GameSession {
+  if (session.status !== 'playing') {
+    return session;
+  }
+
+  return {
+    ...session,
+    status: 'abandoned',
+    abandonedBy: role,
+  };
+}
+
+export function gameDurationSeconds(session: GameSession, now: number): number {
+  return Math.max(0, Math.round((now - session.startedAt) / 1000));
 }
 
 export function getCoderStepView(session: GameSession, challenge: Challenge): CoderStepView {

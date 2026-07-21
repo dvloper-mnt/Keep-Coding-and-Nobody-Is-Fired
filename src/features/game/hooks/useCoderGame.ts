@@ -14,6 +14,7 @@ interface UseCoderGameResult {
   shake: boolean;
   feedback: string | null;
   handleAnswer: (answerIndex: number) => Promise<void>;
+  handleAbandoned: () => void;
 }
 
 export function useCoderGame(
@@ -82,5 +83,9 @@ export function useCoderGame(
     [submitting, view.status, sessionId, fetchState],
   );
 
-  return { view, sessionId, submitting, shake, feedback, handleAnswer };
+  const handleAbandoned = useCallback(() => {
+    void fetchState();
+  }, [fetchState]);
+
+  return { view, sessionId, submitting, shake, feedback, handleAnswer, handleAbandoned };
 }

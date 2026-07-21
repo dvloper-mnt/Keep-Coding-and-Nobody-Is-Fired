@@ -7,8 +7,10 @@ import {
   submitClientQuestionAnswer,
 } from './client-question-engine';
 import {
+  abandonGame,
   clearLastResult,
   createSession,
+  gameDurationSeconds,
   getCoderStepView,
   getHelperSyncView,
   submitAnswer,
@@ -20,6 +22,7 @@ import type {
   ClientQuestionAnswerResponse,
   GameSession,
   HelperStaticGuide,
+  PlayerRole,
   StartGameResponse,
 } from './game-types';
 
@@ -86,12 +89,35 @@ export function buildHelperGuide(challenge: Challenge): HelperStaticGuide {
 export async function startGame(): Promise<StartGameResponse> {
   const challenge = pickRandomChallenge();
   const sessionId = generateRoomCode();
-  const session = createSession(challenge, sessionId);
+  const session = createSession(challenge, sessionId, Date.now());
   await setSessionToStore(sessionId, session);
   return {
     sessionId,
     coderView: getCoderStepView(session, challenge),
   };
+}
+
+function withEndMeta<T extends { status: string }>(view: T, session: GameSession): T {
+  if (session.status !== 'abandoned' && session.status !== 'victory' && session.status !== 'defeat') {
+    return view;
+  }
+  return {
+    ...view,
+    abandonedBy: session.abandonedBy,
+    durationSeconds: gameDurationSeconds(session, Date.now()),
+  };
+}
+
+export async function processAbandon(
+  sessionId: string,
+  role: PlayerRole,
+): Promise<{ status: GameSession['status'] } | null> {
+  const session = await getSessionFromStore(sessionId);
+  if (!session) return null;
+
+  const updated = abandonGame(session, role);
+  await setSessionToStore(sessionId, updated);
+  return { status: updated.status };
 }
 
 export async function getSession(sessionId: string): Promise<GameSession | undefined> {
@@ -124,7 +150,7 @@ export async function getCoderState(sessionId: string) {
     await setSessionToStore(sessionId, current);
   }
 
-  return getCoderStepView(current, challenge);
+  return withEndMeta(getCoderStepView(current, challenge), current);
 }
 
 export async function getHelperSync(sessionId: string) {
@@ -132,10 +158,13 @@ export async function getHelperSync(sessionId: string) {
   if (!session) return null;
   const challenge = getChallengeById(session.challengeId);
   if (!challenge) return null;
-  return getHelperSyncView(
+  return withEndMeta(
+    getHelperSyncView(
+      session,
+      challenge,
+      getActiveClientQuestionView(session.clientQuestions),
+    ),
     session,
-    challenge,
-    getActiveClientQuestionView(session.clientQuestions),
   );
 }
 
