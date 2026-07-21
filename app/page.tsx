@@ -39,7 +39,7 @@ export default function Home() {
             <p className="font-mono text-xs tracking-widest text-red-400 uppercase">Rol A</p>
             <p className="mt-1 text-xl font-bold text-red-300">Soy Coder</p>
             <p className="mt-2 text-sm text-zinc-400">
-              Ves el código roto, el error y cuatro diagnósticos. Manejás el teclado y el reloj.
+              Ves el código roto, el error y cuatro diagnósticos. Manejas el teclado y el reloj.
             </p>
             <StartGameButton />
           </div>
@@ -51,7 +51,7 @@ export default function Home() {
             <p className="font-mono text-xs tracking-widest text-amber-400 uppercase">Rol B</p>
             <p className="mt-1 text-xl font-bold text-amber-200">Soy Helper</p>
             <p className="mt-2 text-sm text-zinc-400">
-              Tenés el manual completo de debugging. No podés responder: guiás al Coder con tu voz.
+              Tienes el manual completo de debugging. No puedes responder: guías al Coder con tu voz.
             </p>
             <p className="mt-4 font-mono text-xs text-amber-400/80 group-hover:text-amber-200">
               Unirse con el código →

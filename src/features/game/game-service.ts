@@ -1,6 +1,8 @@
 import { getChallengeById, loadChallenges } from '@/src/data/challenges';
 import { getClientQuestionById } from '@/src/data/client-questions';
 import { generateChallenge } from './runtime-generator';
+import { checkRateLimit, redisRateLimitStore } from './rate-limit';
+import { generateOpaqueToken, generateRoomCode, tokensMatch } from './session-credentials';
 import Redis from 'ioredis';
 import {
   getActiveClientQuestionView,
@@ -44,6 +46,14 @@ import type {
 const REDIS_HOST = process.env.REDIS_HOST;
 const REDIS_PORT = Number(process.env.REDIS_PORT ?? '6379');
 const SESSION_TTL_SECONDS = 60 * 60;
+
+// /start abuse = Bedrock cost. Allow a small burst per client, then 429.
+const START_RATE_LIMIT = Number(process.env.START_RATE_LIMIT ?? '10');
+const START_RATE_WINDOW_SECONDS = Number(process.env.START_RATE_WINDOW_SECONDS ?? '60');
+
+// A generation claim older than this is assumed dead (must clear the 20s Bedrock
+// timeout with margin) so a crashed generation never freezes the room.
+const GENERATION_CLAIM_TTL_MS = 30_000;
 
 const memorySessions = new Map<string, GameSession>();
 
@@ -96,15 +106,6 @@ async function setSessionToStore(id: string, session: GameSession): Promise<void
 
 
 
-function generateRoomCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
 export function pickRandomChallenge(): Challenge {
   const challenges = loadChallenges();
   const index = Math.floor(Math.random() * challenges.length);
@@ -131,7 +132,7 @@ function pendingCoderView(): CoderStepView {
   };
 }
 
-export function buildHelperGuide(challenge: Challenge): HelperStaticGuide {
+export function buildHelperGuide(challenge: Challenge, helperToken: string): HelperStaticGuide {
   return {
     title: challenge.title,
     storyContext: challenge.story_context,
@@ -142,7 +143,34 @@ export function buildHelperGuide(challenge: Challenge): HelperStaticGuide {
       knowledge: step.helper_view.knowledge,
       hint: step.hint,
     })),
+    helperToken,
   };
+}
+
+// Rate limit for /start: each game start fires a billable Bedrock call, so this
+// is the one endpoint where abuse costs real money. Fails open (see rate-limit).
+export async function isStartAllowed(clientKey: string): Promise<boolean> {
+  const redis = getRedis();
+  if (!redis) return true;
+  const store = redisRateLimitStore(redis);
+  const { allowed } = await checkRateLimit(store, `ratelimit:start:${clientKey}`, {
+    limit: START_RATE_LIMIT,
+    windowSeconds: START_RATE_WINDOW_SECONDS,
+  });
+  return allowed;
+}
+
+// Ownership check for state-mutating endpoints: the caller must present the
+// token that matches the role they claim. Knowing the room code is not enough.
+export async function isAuthorizedFor(
+  sessionId: string,
+  role: PlayerRole,
+  token: string | undefined,
+): Promise<boolean> {
+  const session = await getSessionFromStore(sessionId);
+  if (!session) return false;
+  const expected = role === 'coder' ? session.coderToken : session.helperToken;
+  return tokensMatch(token, expected);
 }
 
 export async function startGame(language: ChallengeLanguage = 'random'): Promise<StartGameResponse> {
@@ -150,9 +178,10 @@ export async function startGame(language: ChallengeLanguage = 'random'): Promise
   // share it with the Helper. Bedrock generates in the background (kicked off by
   // the first state poll), so nobody waits on a 14s call before getting a code.
   const sessionId = generateRoomCode();
-  const session = createPendingSession(sessionId, language, Date.now());
+  const coderToken = generateOpaqueToken();
+  const session = createPendingSession(sessionId, language, Date.now(), coderToken);
   await setSessionToStore(sessionId, session);
-  return { sessionId };
+  return { sessionId, coderToken };
 }
 
 // Idempotently turn an 'idle' room into a 'playing' one: generate the challenge
@@ -160,9 +189,19 @@ export async function startGame(language: ChallengeLanguage = 'random'): Promise
 // session. The `generating` flag stops two concurrent polls from doing it twice.
 async function ensureChallengeGenerated(session: GameSession): Promise<GameSession> {
   if (session.status !== 'idle') return session;
-  if (session.generating) return session;
 
-  const claimed: GameSession = { ...session, generating: true };
+  // Honour an in-flight claim, but only until the generation budget elapses. If
+  // the claiming request died mid-call the flag would otherwise freeze the room.
+  if (session.generating) {
+    const claimedAt = session.generatingStartedAt ?? 0;
+    if (Date.now() - claimedAt < GENERATION_CLAIM_TTL_MS) return session;
+  }
+
+  const claimed: GameSession = {
+    ...session,
+    generating: true,
+    generatingStartedAt: Date.now(),
+  };
   await setSessionToStore(claimed.id, claimed);
 
   const generated = await generateChallenge(session.language ?? 'random');
@@ -172,6 +211,9 @@ async function ensureChallengeGenerated(session: GameSession): Promise<GameSessi
   if (generated) {
     playing.generatedChallenge = generated;
   }
+  // Carry the credentials forward — createSession starts a fresh object.
+  playing.coderToken = session.coderToken;
+  playing.helperToken = session.helperToken;
   await setSessionToStore(session.id, playing);
   return playing;
 }
@@ -209,7 +251,16 @@ export async function getSessionChallenge(sessionId: string): Promise<Challenge 
   return resolveChallenge(session);
 }
 
-export async function getHelperGuide(sessionId: string): Promise<HelperGuideResult | null> {
+export type HelperJoinResult = HelperGuideResult | { occupied: true };
+
+// A room has exactly one Helper seat. The first joiner claims it (mints the
+// token); anyone after that is rejected unless they present the same token
+// (the original Helper reloading). This is both the IDOR fix and the
+// "one Coder, one Helper" rule.
+export async function getHelperGuide(
+  sessionId: string,
+  presentedToken?: string,
+): Promise<HelperJoinResult | null> {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
   // Room exists but the Coder's challenge isn't ready yet → tell the Helper to
@@ -217,7 +268,17 @@ export async function getHelperGuide(sessionId: string): Promise<HelperGuideResu
   if (session.status === 'idle') return { pending: true };
   const challenge = resolveChallenge(session);
   if (!challenge) return null;
-  return buildHelperGuide(challenge);
+
+  if (session.helperToken) {
+    // Seat already taken: only the same Helper (matching token) may return.
+    if (!tokensMatch(presentedToken, session.helperToken)) return { occupied: true };
+    return buildHelperGuide(challenge, session.helperToken);
+  }
+
+  // First Helper: claim the seat.
+  const helperToken = generateOpaqueToken();
+  await setSessionToStore(sessionId, { ...session, helperToken });
+  return buildHelperGuide(challenge, helperToken);
 }
 
 export async function getCoderState(sessionId: string) {

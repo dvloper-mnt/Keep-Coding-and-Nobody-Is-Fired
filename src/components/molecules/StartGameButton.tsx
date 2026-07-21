@@ -39,12 +39,12 @@ export function StartGameButton() {
 
       {confirming && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 px-4 py-8"
           role="dialog"
           aria-modal="true"
           aria-labelledby="start-modal-title"
         >
-          <div className="w-full max-w-md rounded-lg border border-red-500/40 bg-[#0a0a0b] p-6">
+          <div className="my-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-red-500/40 bg-[#0a0a0b] p-6">
             <p className="font-mono text-xs tracking-widest text-red-500 uppercase">
               Confirmar inicio
             </p>
@@ -52,7 +52,7 @@ export function StartGameButton() {
               ¿Listo para iniciar la partida?
             </h2>
             <p className="mt-3 text-sm text-zinc-400">
-              Vamos a generar un incidente único con IA para esta partida. Al iniciar recibís un
+              Vamos a generar un incidente único con IA para esta partida. Al iniciar recibirás un
               código de sala para compartir con el Helper. El reloj arranca en 180 segundos.
             </p>
 

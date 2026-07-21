@@ -7,9 +7,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
   }
 
-  const guide = await getHelperGuide(sessionId);
+  const token = request.nextUrl.searchParams.get('token') ?? undefined;
+  const guide = await getHelperGuide(sessionId, token);
   if (!guide) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+  }
+  if ('occupied' in guide) {
+    return NextResponse.json(
+      { error: 'Esta sala ya tiene un Helper. Pídele al Coder un código nuevo.' },
+      { status: 409 },
+    );
   }
 
   return NextResponse.json(guide);

@@ -3,6 +3,7 @@
 import { CoderScreen } from '@/src/components/containers/CoderScreen';
 import { GameLoadingScreen } from '@/src/components/molecules/GameLoadingScreen';
 import { getCoderState, startGame } from '@/src/features/game/api/game-client';
+import { saveToken } from '@/src/features/game/api/session-token-store';
 import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
 import type { CoderStepView } from '@/src/features/game/game-types';
 import Link from 'next/link';
@@ -39,6 +40,7 @@ function CoderPageContent() {
     // code is visible right away; the board's polling drives idle → playing
     // while Bedrock generates.
     const started = await startGame(requestedLanguage);
+    saveToken(started.sessionId, 'coder', started.coderToken);
     window.history.replaceState(null, '', `/coder?session=${started.sessionId}`);
     return { sessionId: started.sessionId, view: GENERATING_VIEW };
   }, [existingSession, requestedLanguage]);
@@ -53,7 +55,7 @@ function CoderPageContent() {
     return (
       <GameLoadingScreen
         title="Estamos preparando tu incidente…"
-        subtitle="Dame un momento mientras armo la partida."
+        subtitle="Espera un momento mientras preparo la partida."
       />
     );
   }

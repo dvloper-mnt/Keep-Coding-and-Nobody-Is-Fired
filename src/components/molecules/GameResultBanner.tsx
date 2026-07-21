@@ -1,4 +1,4 @@
-import Link from 'next/link';
+'use client';
 
 type GameOutcome = 'victory' | 'defeat';
 
@@ -19,13 +19,20 @@ export function GameResultBanner({
   messageClassName,
   homeButtonClassName,
 }: GameResultBannerProps) {
+  // Hard navigation (not a soft <Link>): the game is over, so we want a clean
+  // document load that drops all in-memory session state and bfcache, otherwise
+  // the player can bounce back into the dead room.
+  function goHome() {
+    window.location.assign('/');
+  }
+
   return (
     <div className={containerClassName}>
       <p className={titleClassName}>{title}</p>
       {message ? <p className={messageClassName}>{message}</p> : null}
-      <Link href="/" className={homeButtonClassName}>
+      <button type="button" onClick={goHome} className={homeButtonClassName}>
         Volver al inicio
-      </Link>
+      </button>
     </div>
   );
 }

@@ -43,7 +43,7 @@ export function ClientQuestionModal({
             {question.client_prompt}
           </h2>
           <p className="mt-2 text-xs text-amber-400/60">
-            Respondé correctamente para cerrar la consulta. No podés omitirla.
+            Responde correctamente para cerrar la consulta. No puedes omitirla.
           </p>
         </div>
 

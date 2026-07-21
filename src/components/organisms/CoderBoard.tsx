@@ -43,7 +43,7 @@ export function CoderBoard({
             <p className="mt-1 font-mono text-lg font-bold tracking-widest text-zinc-300">
               Sala: {sessionId}
             </p>
-            <p className="text-xs text-zinc-600">Compartí este código con el Helper</p>
+            <p className="text-xs text-zinc-600">Comparte este código con el Helper</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             <GameTimer remainingTime={view.remainingTime} />
@@ -93,7 +93,7 @@ export function CoderBoard({
               <span className="animate-pulse">…</span>
             </p>
             <p className="mt-2 text-xs text-zinc-500">
-              Compartí el código de sala con el Helper mientras tanto.
+              Comparte el código de sala con el Helper mientras tanto.
             </p>
           </div>
         ) : (

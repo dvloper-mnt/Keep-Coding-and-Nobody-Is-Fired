@@ -87,6 +87,7 @@ export function createPendingSession(
   sessionId: string,
   language: ChallengeLanguage | undefined,
   startedAt: number,
+  coderToken?: string,
 ): GameSession {
   return {
     id: sessionId,
@@ -98,6 +99,7 @@ export function createPendingSession(
     startedAt,
     language: language ?? 'random',
     generating: false,
+    coderToken,
     clientQuestions: freshClientQuestions(),
   };
 }
