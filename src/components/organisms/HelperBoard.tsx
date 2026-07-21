@@ -31,7 +31,7 @@ export function HelperBoard({
     <div className="min-h-screen bg-amber-950 text-amber-100">
       <BossOverlay active={sync.status === 'playing'} />
 
-      {sync.activeClientQuestion && (
+      {sync.activeClientQuestion && sync.status === 'playing' && (
         <ClientQuestionModal
           question={sync.activeClientQuestion}
           submitting={submittingQuestion}
