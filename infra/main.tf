@@ -59,9 +59,8 @@ resource "aws_iam_role" "infrastructure" {
 
 resource "aws_iam_role_policy_attachment" "infrastructure_managed" {
   role = aws_iam_role.infrastructure.name
-  # Managed policy for ECS Express Mode infrastructure management.
-  # Verify the exact ARN against the AWS docs for your account/region before apply.
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRolePolicyForExpressGatewayServices"
+  # AWS-managed policy for ECS Express Mode infrastructure (verified ARN).
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices"
 }
 
 # ---------------------------------------------------------------------------

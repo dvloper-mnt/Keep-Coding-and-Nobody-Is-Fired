@@ -45,7 +45,7 @@ resource "aws_security_group" "ecs" {
 
 resource "aws_security_group" "redis" {
   name        = "${var.service_name}-redis"
-  description = "ElastiCache Redis — reachable only from the ECS tasks"
+  description = "ElastiCache Redis reachable only from the ECS tasks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
