@@ -3,7 +3,7 @@ import type {
   ClientQuestionAnswerResponse,
   CoderStepView,
   GameStatus,
-  HelperStaticGuide,
+  HelperGuideResult,
   HelperSyncView,
   PlayerRole,
   StartGameResponse,
@@ -41,8 +41,8 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 
 export { GameApiError };
 
-export function startGame(): Promise<StartGameResponse> {
-  return postJson<StartGameResponse>('/api/game/start', {});
+export function startGame(language?: string): Promise<StartGameResponse> {
+  return postJson<StartGameResponse>('/api/game/start', { language });
 }
 
 export function getCoderState(sessionId: string): Promise<CoderStepView> {
@@ -57,8 +57,8 @@ export function submitAnswer(sessionId: string, answerIndex: number): Promise<An
   return postJson<AnswerResponse>('/api/game/answer', { sessionId, answerIndex });
 }
 
-export function getHelperGuide(sessionId: string): Promise<HelperStaticGuide> {
-  return getJson<HelperStaticGuide>(`/api/game/guide?sessionId=${sessionId}`);
+export function getHelperGuide(sessionId: string): Promise<HelperGuideResult> {
+  return getJson<HelperGuideResult>(`/api/game/guide?sessionId=${sessionId}`);
 }
 
 export function getHelperSync(sessionId: string): Promise<HelperSyncView> {

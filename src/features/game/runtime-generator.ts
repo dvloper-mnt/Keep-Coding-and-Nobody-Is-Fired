@@ -1,6 +1,7 @@
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { isValidChallenge } from './challenge-schema';
-import type { Challenge } from './game-types';
+import { languageInstruction, resolveLanguage } from './challenge-language';
+import type { Challenge, ChallengeLanguage } from './game-types';
 
 const REGION = process.env['AWS_REGION'] ?? 'us-east-1';
 const MODEL_ID =
@@ -40,15 +41,18 @@ Reglas:
 - EXACTAMENTE 3 steps, encadenados: cada fix revela el siguiente bug. El código de cada step parte del code_patch del anterior.
 - Cada step: EXACTAMENTE 4 options, una correcta. correct_answer es el índice (0-3) de la correcta.
 - El bug debe ser diagnosticable SOLO combinando lo que ve el Coder (error) con lo que ve el Helper (knowledge). Esa es la regla de oro.
-- Dominio: bugs reales de Laravel/PHP (rutas, controladores, namespaces, middleware, form requests, inyección de dependencias).
-- Español en title, story_context, options, rules, knowledge, hint. El code es PHP.
+- Bugs reales y verosímiles del lenguaje que se indique en el mensaje del usuario (rutas, tipos, queries, concurrencia, dependencias, según corresponda).
+- Español en title, story_context, options, rules, knowledge, hint. El code va en el lenguaje indicado.
 - Salida: solo el JSON, sin fences markdown.`;
 
-export async function generateChallenge(): Promise<Challenge | null> {
+export async function generateChallenge(
+  language: ChallengeLanguage = 'random',
+): Promise<Challenge | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), RUNTIME_TIMEOUT_MS);
 
   try {
+    const resolved = resolveLanguage(language);
     const client = new BedrockRuntimeClient({ region: REGION });
     const command = new ConverseCommand({
       modelId: MODEL_ID,
@@ -56,7 +60,11 @@ export async function generateChallenge(): Promise<Challenge | null> {
       messages: [
         {
           role: 'user',
-          content: [{ text: 'Generá un desafío nuevo. Devolvé solo el JSON del objeto challenge.' }],
+          content: [
+            {
+              text: `Generá un desafío nuevo. ${languageInstruction(resolved)} Devolvé solo el JSON del objeto challenge.`,
+            },
+          ],
         },
       ],
       inferenceConfig: { maxTokens: 4096, temperature: 0.8 },

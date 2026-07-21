@@ -3,6 +3,7 @@
 import { HelperScreen } from '@/src/components/containers/HelperScreen';
 import { GameLoadingScreen } from '@/src/components/molecules/GameLoadingScreen';
 import { getHelperGuide } from '@/src/features/game/api/game-client';
+import type { HelperStaticGuide } from '@/src/features/game/game-types';
 import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -13,7 +14,16 @@ function HelperPageContent() {
   const sessionId = searchParams.get('session');
   const [inputCode, setInputCode] = useState('');
 
-  const loader = useCallback(() => getHelperGuide(sessionId ?? ''), [sessionId]);
+  // Poll the guide until the Coder's challenge is ready. While the room is idle
+  // the backend returns { pending: true } instead of erroring, so the Helper
+  // waits for the Coder rather than seeing "room not found".
+  const loader = useCallback(async (): Promise<HelperStaticGuide> => {
+    for (;;) {
+      const result = await getHelperGuide(sessionId ?? '');
+      if (!('pending' in result)) return result;
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+  }, [sessionId]);
   const { data: guide, loading, error } = useGameSessionBootstrap(
     loader,
     'No se encontró la sala. Verificá el código e intentá de nuevo.',
@@ -82,7 +92,12 @@ function HelperPageContent() {
   }
 
   if (loading) {
-    return <GameLoadingScreen title="Cargando la guía de debugging…" />;
+    return (
+      <GameLoadingScreen
+        title="Esperando a que el Coder inicie…"
+        subtitle="En cuanto el incidente esté listo, vas a ver tu manual de debugging."
+      />
+    );
   }
 
   if (error || !guide) {

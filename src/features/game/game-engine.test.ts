@@ -4,6 +4,7 @@ import {
   abandonGame,
   applyTimeDelta,
   clearLastResult,
+  createPendingSession,
   gameDurationSeconds,
   isTerminalStatus,
   resolveMultipleChoice,
@@ -319,5 +320,24 @@ describe('gameDurationSeconds', () => {
   it('never returns a negative duration if clocks disagree', () => {
     const session = makeSession({ startedAt: 2_000_000 });
     expect(gameDurationSeconds(session, 1_000_000)).toBe(0);
+  });
+});
+
+describe('createPendingSession', () => {
+  it('creates an idle room with the requested language and no challenge yet', () => {
+    const session = createPendingSession('ABCD', 'python', 1_000_000);
+
+    expect(session.id).toBe('ABCD');
+    expect(session.status).toBe('idle');
+    expect(session.language).toBe('python');
+    expect(session.challengeId).toBe('');
+    expect(session.generatedChallenge).toBeUndefined();
+    expect(session.generating).toBe(false);
+    expect(session.startedAt).toBe(1_000_000);
+  });
+
+  it('defaults to random when no language is given', () => {
+    const session = createPendingSession('WXYZ', undefined, 1_000_000);
+    expect(session.language).toBe('random');
   });
 });

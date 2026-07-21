@@ -1,13 +1,13 @@
 'use client';
 
 import { abandonGame } from '@/src/features/game/api/game-client';
-import type { PlayerRole } from '@/src/features/game/game-types';
+import type { GameStatus, PlayerRole } from '@/src/features/game/game-types';
 import { useState } from 'react';
 
 interface ExitButtonProps {
   sessionId: string;
   role: PlayerRole;
-  onAbandoned: () => void;
+  onAbandoned: (status: GameStatus) => void;
 }
 
 export function ExitButton({ sessionId, role, onAbandoned }: ExitButtonProps) {
@@ -21,8 +21,8 @@ export function ExitButton({ sessionId, role, onAbandoned }: ExitButtonProps) {
 
     setLeaving(true);
     try {
-      await abandonGame(sessionId, role);
-      onAbandoned();
+      const { status } = await abandonGame(sessionId, role);
+      onAbandoned(status);
     } catch {
       setLeaving(false);
     }

@@ -14,9 +14,20 @@ interface CoderBootstrap {
   view: CoderStepView;
 }
 
+const GENERATING_VIEW: CoderStepView = {
+  code: '',
+  error: '',
+  options: [],
+  currentStep: 0,
+  totalSteps: 0,
+  remainingTime: 0,
+  status: 'idle',
+};
+
 function CoderPageContent() {
   const searchParams = useSearchParams();
   const existingSession = searchParams.get('session');
+  const requestedLanguage = searchParams.get('lang') ?? undefined;
 
   const loader = useCallback(async (): Promise<CoderBootstrap> => {
     if (existingSession) {
@@ -24,10 +35,13 @@ function CoderPageContent() {
       return { sessionId: existingSession, view };
     }
 
-    const started = await startGame();
+    // New game: create the room (idle) and enter the board immediately so the
+    // code is visible right away; the board's polling drives idle → playing
+    // while Bedrock generates.
+    const started = await startGame(requestedLanguage);
     window.history.replaceState(null, '', `/coder?session=${started.sessionId}`);
-    return { sessionId: started.sessionId, view: started.coderView };
-  }, [existingSession]);
+    return { sessionId: started.sessionId, view: GENERATING_VIEW };
+  }, [existingSession, requestedLanguage]);
 
   const { data, loading, error } = useGameSessionBootstrap(
     loader,
@@ -38,8 +52,8 @@ function CoderPageContent() {
   if (loading) {
     return (
       <GameLoadingScreen
-        title="Estamos creando tus preguntas con IA…"
-        subtitle="Generando un incidente único para esta partida. Esperá un momento."
+        title="Estamos preparando tu incidente…"
+        subtitle="Dame un momento mientras armo la partida."
       />
     );
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { getHelperSync, submitClientQuestionAnswer } from '@/src/features/game/api/game-client';
-import type { HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import type { GameStatus, HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
 import { useCallback, useEffect, useState } from 'react';
@@ -13,7 +13,7 @@ interface UseHelperGameResult {
   questionFeedback: string | null;
   questionResult: 'correct' | 'incorrect' | null;
   handleClientQuestionAnswer: (answerIndex: number) => Promise<void>;
-  handleAbandoned: () => void;
+  handleAbandoned: (status: GameStatus) => void;
 }
 
 export function useHelperGame(
@@ -108,9 +108,13 @@ export function useHelperGame(
     [submittingQuestion, sync.activeClientQuestion, sessionId],
   );
 
-  const handleAbandoned = useCallback(() => {
-    void fetchSync();
-  }, [fetchSync]);
+  const handleAbandoned = useCallback(
+    (status: GameStatus) => {
+      setSync((prev) => ({ ...prev, status }));
+      void fetchSync();
+    },
+    [fetchSync],
+  );
 
   return {
     sync,
