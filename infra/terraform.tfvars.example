@@ -1,11 +1,4 @@
-# Copy to terraform.tfvars (gitignored) and fill in real values before `terraform apply`.
-# These come from the Upstash Redis integration. NEVER commit the real file.
-
-kv_rest_api_url   = "https://your-db.upstash.io"
-kv_rest_api_token = "your-upstash-rest-token"
-
-# Optional overrides:
-# aws_region     = "us-east-1"
-# service_name   = "keep-coding-game"
-# image_tag      = "latest"
-# github_repo    = "MoisesCorcho/Hackacthon"
+# aws_region   = "us-east-1"
+# service_name = "keep-coding-game"
+# image_tag    = "latest"
+# github_repo  = "MoisesCorcho/Hackacthon"

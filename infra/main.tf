@@ -75,20 +75,29 @@ resource "aws_ecs_express_gateway_service" "app" {
   execution_role_arn      = aws_iam_role.execution.arn
   infrastructure_role_arn = aws_iam_role.infrastructure.arn
 
+  network_configuration {
+    subnets         = aws_subnet.private[*].id
+    security_groups = [aws_security_group.ecs.id]
+  }
+
   primary_container {
     image = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
 
     environment {
-      name  = "KV_REST_API_URL"
-      value = var.kv_rest_api_url
+      name  = "REDIS_HOST"
+      value = aws_elasticache_replication_group.sessions.primary_endpoint_address
     }
     environment {
-      name  = "KV_REST_API_TOKEN"
-      value = var.kv_rest_api_token
+      name  = "REDIS_PORT"
+      value = "6379"
     }
     environment {
       name  = "AWS_REGION"
       value = var.aws_region
+    }
+    environment {
+      name  = "NODE_ENV"
+      value = "production"
     }
   }
 
