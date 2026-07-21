@@ -154,7 +154,8 @@ export function tickTimer(session: GameSession): GameSession {
 }
 
 export function clearLastResult(session: GameSession): GameSession {
-  const { lastResult: _, ...rest } = session;
+  const { lastResult, ...rest } = session;
+  void lastResult;
   return rest;
 }
 

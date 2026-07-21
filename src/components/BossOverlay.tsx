@@ -34,14 +34,9 @@ export function BossOverlay({ active }: BossOverlayProps) {
   }, []);
 
   useEffect(() => {
-    if (!active) {
-      setToasts([]);
-      return;
-    }
+    if (!active) return;
 
-    setToasts([createBossToast(BOSS_PRESSURE_CONFIG, [], [])]);
-
-    const interval = setInterval(() => {
+    function spawnToast() {
       setToasts((prev) => {
         if (prev.length >= BOSS_PRESSURE_CONFIG.maxVisibleMessages) {
           return prev;
@@ -55,9 +50,15 @@ export function BossOverlay({ active }: BossOverlayProps) {
 
         return [...prev, newToast];
       });
-    }, BOSS_PRESSURE_CONFIG.spawnIntervalMs);
+    }
 
-    return () => clearInterval(interval);
+    spawnToast();
+    const interval = setInterval(spawnToast, BOSS_PRESSURE_CONFIG.spawnIntervalMs);
+
+    return () => {
+      clearInterval(interval);
+      setToasts([]);
+    };
   }, [active]);
 
   if (!active || toasts.length === 0) return null;

@@ -18,10 +18,7 @@ function HelperPageContent() {
   const [inputCode, setInputCode] = useState('');
 
   useEffect(() => {
-    if (!sessionId) {
-      setLoading(false);
-      return;
-    }
+    if (!sessionId) return;
 
     fetch(`/api/game/guide?sessionId=${sessionId}`)
       .then((res) => {
