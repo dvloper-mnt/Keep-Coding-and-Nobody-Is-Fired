@@ -1,6 +1,8 @@
 # ---------------------------------------------------------------------------
-# ElastiCache (Redis) — session store, replacing Upstash/@vercel/kv.
-# Single-node, no public access; only the ECS security group can reach 6379.
+# ElastiCache (Valkey) — session store, replacing Upstash/@vercel/kv.
+# Valkey is the open-source successor to Redis OSS (~20% cheaper, wire-compatible
+# with Redis 7.2 — ioredis works unchanged). Single-node, private; only the ECS
+# security group can reach 6379.
 # ---------------------------------------------------------------------------
 
 resource "aws_elasticache_subnet_group" "main" {
@@ -10,9 +12,10 @@ resource "aws_elasticache_subnet_group" "main" {
 
 resource "aws_elasticache_replication_group" "sessions" {
   replication_group_id = "${var.service_name}-sessions"
-  description          = "Redis session store for ${var.service_name}"
+  description          = "Valkey session store for ${var.service_name}"
 
-  engine             = "redis"
+  engine             = "valkey"
+  engine_version     = "8.0"
   node_type          = "cache.t4g.micro"
   num_cache_clusters = 1
   port               = 6379
