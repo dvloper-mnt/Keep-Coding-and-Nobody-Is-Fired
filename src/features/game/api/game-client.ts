@@ -2,8 +2,10 @@ import type {
   AnswerResponse,
   ClientQuestionAnswerResponse,
   CoderStepView,
+  GameStatus,
   HelperStaticGuide,
   HelperSyncView,
+  PlayerRole,
   StartGameResponse,
 } from '@/src/features/game/game-types';
 
@@ -71,4 +73,11 @@ export function submitClientQuestionAnswer(
     sessionId,
     answerIndex,
   });
+}
+
+export function abandonGame(
+  sessionId: string,
+  role: PlayerRole,
+): Promise<{ status: GameStatus }> {
+  return postJson<{ status: GameStatus }>('/api/game/abandon', { sessionId, role });
 }

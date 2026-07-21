@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  abandonGame,
   GameApiError,
   getCoderState,
   getHelperGuide,
@@ -90,6 +91,16 @@ describe('game-client', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/game/client-question');
     expect(JSON.parse(init.body)).toEqual({ sessionId: 'X7K2', answerIndex: 1 });
+  });
+
+  it('abandonGame sends sessionId and role', async () => {
+    const fetchMock = mockFetch({ status: 'abandoned' });
+
+    await abandonGame('X7K2', 'coder');
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/game/abandon');
+    expect(JSON.parse(init.body)).toEqual({ sessionId: 'X7K2', role: 'coder' });
   });
 
   it('throws GameApiError with the status code when the response is not ok', async () => {

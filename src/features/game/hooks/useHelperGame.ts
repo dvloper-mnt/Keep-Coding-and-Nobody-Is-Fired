@@ -13,6 +13,7 @@ interface UseHelperGameResult {
   questionFeedback: string | null;
   questionResult: 'correct' | 'incorrect' | null;
   handleClientQuestionAnswer: (answerIndex: number) => Promise<void>;
+  handleAbandoned: () => void;
 }
 
 export function useHelperGame(
@@ -107,5 +108,16 @@ export function useHelperGame(
     [submittingQuestion, sync.activeClientQuestion, sessionId],
   );
 
-  return { sync, submittingQuestion, questionFeedback, questionResult, handleClientQuestionAnswer };
+  const handleAbandoned = useCallback(() => {
+    void fetchSync();
+  }, [fetchSync]);
+
+  return {
+    sync,
+    submittingQuestion,
+    questionFeedback,
+    questionResult,
+    handleClientQuestionAnswer,
+    handleAbandoned,
+  };
 }

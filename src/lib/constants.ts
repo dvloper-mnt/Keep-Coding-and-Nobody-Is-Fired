@@ -37,7 +37,10 @@ export const BOSS_PRESSURE_CONFIG = {
   spawnIntervalMs: 15_000,
   maxVisibleMessages: 7,
   centerEmphasisChance: 0.35,
-  edgeMarginPercent: 8,
+  // Toasts are centered on their point (-translate-x-1/2) and can be ~190px wide
+  // at half-width, so a small margin lets long messages spill off-screen. Keep
+  // the spawn zone well inside the edges.
+  edgeMarginPercent: 18,
   centerZoneRadiusPercent: 22,
 } as const;
 

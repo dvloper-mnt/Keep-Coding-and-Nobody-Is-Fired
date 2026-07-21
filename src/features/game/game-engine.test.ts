@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { PENALTY_SECONDS, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
 import {
+  abandonGame,
   applyTimeDelta,
   clearLastResult,
+  gameDurationSeconds,
   isTerminalStatus,
   resolveMultipleChoice,
   resolveStep,
@@ -270,4 +272,52 @@ describe('isTerminalStatus', () => {
       expect(isTerminalStatus(status)).toBe(false);
     },
   );
+});
+
+describe('abandonGame', () => {
+  it('sets status to abandoned and records who abandoned, when playing', () => {
+    const session = makeSession({ status: 'playing' });
+    const result = abandonGame(session, 'coder');
+    expect(result.status).toBe('abandoned');
+    expect(result.abandonedBy).toBe('coder');
+  });
+
+  it('records the helper as the one who abandoned', () => {
+    const result = abandonGame(makeSession({ status: 'playing' }), 'helper');
+    expect(result.abandonedBy).toBe('helper');
+  });
+
+  it('does not mutate remaining time or step on abandon', () => {
+    const session = makeSession({ status: 'playing', remainingTime: 120, currentStep: 2 });
+    const result = abandonGame(session, 'coder');
+    expect(result.remainingTime).toBe(120);
+    expect(result.currentStep).toBe(2);
+  });
+
+  it.each(['victory', 'defeat', 'abandoned'] as const)(
+    'does nothing when the game is already in terminal status %s',
+    (status) => {
+      const session = makeSession({ status });
+      const result = abandonGame(session, 'coder');
+      expect(result).toEqual(session);
+    },
+  );
+});
+
+describe('gameDurationSeconds', () => {
+  it('returns whole seconds elapsed since startedAt', () => {
+    const session = makeSession({ startedAt: 1_000_000 });
+    expect(gameDurationSeconds(session, 1_045_000)).toBe(45);
+  });
+
+  it('rounds to the nearest second', () => {
+    const session = makeSession({ startedAt: 1_000_000 });
+    expect(gameDurationSeconds(session, 1_002_400)).toBe(2);
+    expect(gameDurationSeconds(session, 1_002_600)).toBe(3);
+  });
+
+  it('never returns a negative duration if clocks disagree', () => {
+    const session = makeSession({ startedAt: 2_000_000 });
+    expect(gameDurationSeconds(session, 1_000_000)).toBe(0);
+  });
 });

@@ -10,10 +10,8 @@ interface CoderScreenProps {
 }
 
 export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps) {
-  const { view, sessionId, submitting, shake, feedback, handleAnswer } = useCoderGame(
-    initialSessionId,
-    initialView,
-  );
+  const { view, sessionId, submitting, shake, feedback, handleAnswer, handleAbandoned } =
+    useCoderGame(initialSessionId, initialView);
 
   return (
     <CoderBoard
@@ -23,6 +21,7 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
       shake={shake}
       feedback={feedback}
       onAnswer={handleAnswer}
+      onAbandoned={handleAbandoned}
     />
   );
 }
