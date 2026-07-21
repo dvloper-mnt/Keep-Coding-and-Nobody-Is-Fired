@@ -105,6 +105,7 @@ resource "aws_ecs_task_definition" "app" {
         { name = "REDIS_PORT", value = "6379" },
         { name = "AWS_REGION", value = var.aws_region },
         { name = "NODE_ENV", value = "production" },
+        { name = "BEDROCK_RUNTIME_TIMEOUT_MS", value = tostring(var.bedrock_timeout_ms) },
       ]
       logConfiguration = {
         logDriver = "awslogs"

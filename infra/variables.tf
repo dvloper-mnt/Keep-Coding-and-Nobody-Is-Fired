@@ -33,3 +33,9 @@ variable "domain_name" {
   description = "Custom domain that serves the app over HTTPS."
   default     = "hackaton.dvloper.com.co"
 }
+
+variable "bedrock_timeout_ms" {
+  type        = number
+  description = "Timeout for the runtime Bedrock challenge generation. Generation measured at 13-14s, so this must clear that with margin."
+  default     = 20000
+}
