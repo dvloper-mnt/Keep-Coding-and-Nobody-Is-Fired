@@ -1,7 +1,7 @@
 import { getChallengeById, loadChallenges } from '@/src/data/challenges';
 import { getClientQuestionById } from '@/src/data/client-questions';
 import { generateChallenge } from './runtime-generator';
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 import {
   getActiveClientQuestionView,
   processClientQuestionSpawnTick,
@@ -29,28 +29,58 @@ import type {
 
 // ---------------------------------------------------------------------------
 // Session persistence abstraction
-// Sessions are stored using Upstash Redis (via @vercel/kv) when the
-// corresponding environment variables are configured. Falls back to an
-// in-memory Map for local development when no KV store is configured.
+// Sessions live in AWS ElastiCache (Redis) when REDIS_HOST is configured.
+// Falls back to an in-memory Map for local development only.
+//
+// IMPORTANT (audit CRITICAL): in production we must NOT silently fall back to
+// memory — that breaks Coder/Helper sync across ECS tasks. If REDIS_HOST is
+// missing in production the process fails fast instead of degrading quietly.
 // ---------------------------------------------------------------------------
 
-const USE_KV =
-  !!process.env.KV_REST_API_URL || !!process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_HOST = process.env.REDIS_HOST;
+const REDIS_PORT = Number(process.env.REDIS_PORT ?? '6379');
+const SESSION_TTL_SECONDS = 60 * 60;
 
-// Simple in-memory fallback (dev only, or when no KV)
+if (process.env.NODE_ENV === 'production' && !REDIS_HOST) {
+  throw new Error(
+    'REDIS_HOST is not set in production. Refusing to start with in-memory sessions ' +
+      '(would break Coder/Helper sync across tasks).',
+  );
+}
+
 const memorySessions = new Map<string, GameSession>();
 
+// Singleton connection — created once, reused across requests. Without this a
+// new TCP connection would open on every serverless invocation.
+let redisClient: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (!REDIS_HOST) return null;
+  if (!redisClient) {
+    redisClient = new Redis({
+      host: REDIS_HOST,
+      port: REDIS_PORT,
+      ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
+      lazyConnect: true,
+      maxRetriesPerRequest: 2,
+    });
+  }
+  return redisClient;
+}
+
 async function getSessionFromStore(id: string): Promise<GameSession | undefined> {
-  if (USE_KV) {
-    const data = await kv.get<GameSession>(`session:${id}`);
-    return data ?? undefined;
+  const redis = getRedis();
+  if (redis) {
+    const raw = await redis.get(`session:${id}`);
+    return raw ? (JSON.parse(raw) as GameSession) : undefined;
   }
   return memorySessions.get(id);
 }
 
 async function setSessionToStore(id: string, session: GameSession): Promise<void> {
-  if (USE_KV) {
-    await kv.set(`session:${id}`, session, { ex: 60 * 60 });
+  const redis = getRedis();
+  if (redis) {
+    await redis.set(`session:${id}`, JSON.stringify(session), 'EX', SESSION_TTL_SECONDS);
     return;
   }
   memorySessions.set(id, session);

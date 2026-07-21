@@ -16,18 +16,6 @@ variable "image_tag" {
   default     = "latest"
 }
 
-variable "kv_rest_api_url" {
-  type        = string
-  description = "Upstash Redis REST URL for session persistence. Provided via TF_VAR_kv_rest_api_url or a gitignored .tfvars."
-  sensitive   = true
-}
-
-variable "kv_rest_api_token" {
-  type        = string
-  description = "Upstash Redis REST token. Provided via TF_VAR_kv_rest_api_token or a gitignored .tfvars."
-  sensitive   = true
-}
-
 variable "github_repo" {
   type        = string
   description = "GitHub repo in owner/name form, used to scope the OIDC trust policy."
