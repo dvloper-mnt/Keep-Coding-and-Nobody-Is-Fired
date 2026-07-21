@@ -11,6 +11,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: keep-coding-game
+  ECS_CLUSTER: keep-coding-game-cluster
   ECS_SERVICE: keep-coding-game
 
 jobs:
@@ -19,17 +20,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Lint and test
         run: |
-          npm run lint
-          npm run test
+          pnpm run lint
+          pnpm run test
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -50,8 +53,10 @@ jobs:
           docker push "$IMAGE:${{ github.sha }}"
           docker push "$IMAGE:latest"
 
-      - name: Trigger ECS Express redeploy
+      - name: Trigger ECS redeploy
         run: |
-          aws ecs update-express-gateway-service \
-            --service-name "$ECS_SERVICE" \
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --force-new-deployment \
             --region "$AWS_REGION"

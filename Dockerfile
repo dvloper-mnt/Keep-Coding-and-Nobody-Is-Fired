@@ -4,18 +4,20 @@
 # when built on an Apple Silicon (arm64) machine. This makes every build produce
 # the right platform without relying on a --platform flag at build time.
 
-FROM --platform=linux/amd64 node:20-alpine AS deps
+FROM --platform=linux/amd64 node:22-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
-FROM --platform=linux/amd64 node:20-alpine AS build
+FROM --platform=linux/amd64 node:22-alpine AS build
 WORKDIR /app
+RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
-FROM --platform=linux/amd64 node:20-alpine AS runner
+FROM --platform=linux/amd64 node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

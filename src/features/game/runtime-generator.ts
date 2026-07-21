@@ -64,18 +64,27 @@ export async function generateChallenge(): Promise<Challenge | null> {
 
     const response = await client.send(command, { abortSignal: controller.signal });
     const rawText = response.output?.message?.content?.[0]?.text ?? '';
-    if (!rawText) return null;
+    if (!rawText) {
+      console.error('[bedrock] empty response, falling back to curated challenge');
+      return null;
+    }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripMarkdownFences(rawText));
     } catch {
+      console.error('[bedrock] response was not valid JSON, falling back');
       return null;
     }
 
-    return isValidChallenge(parsed) ? parsed : null;
-  } catch {
-    // Network error, abort/timeout, throttling — caller falls back to curated.
+    if (!isValidChallenge(parsed)) {
+      console.error('[bedrock] response failed challenge validation, falling back');
+      return null;
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error('[bedrock] generation failed, falling back to curated challenge:', error);
     return null;
   } finally {
     clearTimeout(timeout);
