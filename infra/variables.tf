@@ -6,7 +6,7 @@ variable "aws_region" {
 
 variable "service_name" {
   type        = string
-  description = "Name of the ECS Express Mode service and ECR repository."
+  description = "Name of the ECS service and ECR repository."
   default     = "keep-coding-game"
 }
 
@@ -26,4 +26,10 @@ variable "github_repo" {
   type        = string
   description = "GitHub repo in owner/name form, used to scope the OIDC trust policy."
   default     = "MoisesCorcho/Hackacthon"
+}
+
+variable "domain_name" {
+  type        = string
+  description = "Custom domain that serves the app over HTTPS."
+  default     = "hackaton.dvloper.com.co"
 }
