@@ -41,13 +41,6 @@ const REDIS_HOST = process.env.REDIS_HOST;
 const REDIS_PORT = Number(process.env.REDIS_PORT ?? '6379');
 const SESSION_TTL_SECONDS = 60 * 60;
 
-if (process.env.NODE_ENV === 'production' && !REDIS_HOST) {
-  throw new Error(
-    'REDIS_HOST is not set in production. Refusing to start with in-memory sessions ' +
-      '(would break Coder/Helper sync across tasks).',
-  );
-}
-
 const memorySessions = new Map<string, GameSession>();
 
 // Singleton connection — created once, reused across requests. Without this a
@@ -55,7 +48,18 @@ const memorySessions = new Map<string, GameSession>();
 let redisClient: Redis | null = null;
 
 function getRedis(): Redis | null {
-  if (!REDIS_HOST) return null;
+  if (!REDIS_HOST) {
+    // Fail fast at RUNTIME (not at build/module load): in production a missing
+    // REDIS_HOST means sessions would silently use in-memory storage, breaking
+    // Coder/Helper sync across tasks. The build itself does not need Redis.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'REDIS_HOST is not set in production. Refusing to use in-memory sessions ' +
+          '(would break Coder/Helper sync across tasks).',
+      );
+    }
+    return null;
+  }
   if (!redisClient) {
     redisClient = new Redis({
       host: REDIS_HOST,
