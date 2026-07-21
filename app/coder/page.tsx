@@ -1,56 +1,38 @@
 'use client';
 
-import { CoderScreen } from '@/src/components/CoderScreen';
-import type { CoderStepView, StartGameResponse } from '@/src/features/game/game-types';
+import { CoderScreen } from '@/src/components/containers/CoderScreen';
+import { getCoderState, startGame } from '@/src/features/game/api/game-client';
+import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
+import type { CoderStepView } from '@/src/features/game/game-types';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback } from 'react';
+
+interface CoderBootstrap {
+  sessionId: string;
+  view: CoderStepView;
+}
 
 function CoderPageContent() {
   const searchParams = useSearchParams();
   const existingSession = searchParams.get('session');
-  const [sessionId, setSessionId] = useState<string | null>(existingSession);
-  const [coderView, setCoderView] = useState<CoderStepView | null>(null);
-  // Always start in loading state when we have a session id from URL (we must validate via /state).
-  // This prevents flashing the error UI ("Error desconocido" / "Sesión no encontrada")
-  // while the async lookup is in flight.
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loader = useCallback(async (): Promise<CoderBootstrap> => {
     if (existingSession) {
-      fetch(`/api/game/state?sessionId=${existingSession}`)
-        .then((res) => {
-          if (!res.ok) throw new Error('Sesión no encontrada');
-          return res.json();
-        })
-        .then((data: CoderStepView) => {
-          setCoderView(data);
-          setLoading(false);
-        })
-        .catch(() => {
-          setError('Sesión no encontrada');
-          setLoading(false);
-        });
-      return;
+      const view = await getCoderState(existingSession);
+      return { sessionId: existingSession, view };
     }
 
-    fetch('/api/game/start', { method: 'POST' })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to start');
-        return res.json();
-      })
-      .then((data: StartGameResponse) => {
-        setSessionId(data.sessionId);
-        setCoderView(data.coderView);
-        setLoading(false);
-        window.history.replaceState(null, '', `/coder?session=${data.sessionId}`);
-      })
-      .catch(() => {
-        setError('No se pudo iniciar la partida');
-        setLoading(false);
-      });
+    const started = await startGame();
+    window.history.replaceState(null, '', `/coder?session=${started.sessionId}`);
+    return { sessionId: started.sessionId, view: started.coderView };
   }, [existingSession]);
+
+  const { data, loading, error } = useGameSessionBootstrap(
+    loader,
+    existingSession ? 'Sesión no encontrada' : 'No se pudo iniciar la partida',
+    existingSession ?? '__start__',
+  );
 
   if (loading) {
     return (
@@ -60,7 +42,7 @@ function CoderPageContent() {
     );
   }
 
-  if (error || !sessionId || !coderView) {
+  if (error || !data) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-950 text-red-400">
         <p>{error ?? 'Error desconocido'}</p>
@@ -71,7 +53,7 @@ function CoderPageContent() {
     );
   }
 
-  return <CoderScreen initialSessionId={sessionId} initialView={coderView} />;
+  return <CoderScreen initialSessionId={data.sessionId} initialView={data.view} />;
 }
 
 export default function CoderPage() {
