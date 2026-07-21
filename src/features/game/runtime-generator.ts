@@ -15,9 +15,9 @@ function stripMarkdownFences(text: string): string {
     .trim();
 }
 
-const SYSTEM_PROMPT = `Generás un desafío de debugging para un juego cooperativo. El Coder ve código roto y un error; el Helper ve reglas y conocimiento para guiarlo. Ninguno puede resolverlo solo.
+const SYSTEM_PROMPT = `Eres un generador de desafíos de debugging para un juego cooperativo. El Coder ve código roto y un error; el Helper ve reglas y conocimiento para guiarlo. Ninguno puede resolverlo solo.
 
-Devolvé SOLO un objeto JSON válido (sin markdown, sin texto extra) con esta forma EXACTA:
+Devuelve SOLO un objeto JSON válido (sin markdown, sin texto extra) con esta forma EXACTA:
 {
   "id": "lvl_<tema>_<corto>",
   "title": "<título corto en español>",
@@ -62,7 +62,7 @@ export async function generateChallenge(
           role: 'user',
           content: [
             {
-              text: `Generá un desafío nuevo. ${languageInstruction(resolved)} Devolvé solo el JSON del objeto challenge.`,
+              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} Devuelve solo el JSON del objeto challenge.`,
             },
           ],
         },
