@@ -88,8 +88,17 @@ export function createBossToast(
   recentMessages: string[] = [],
 ): BossToast {
   return {
-    id: crypto.randomUUID(),
+    id: generateId(),
     message: pickBossMessage(config.messages, recentMessages),
     placement: generateBossPlacement(config, existingPlacements),
   };
+}
+
+// crypto.randomUUID only exists in secure contexts (HTTPS or localhost); over
+// plain HTTP the browser leaves it undefined, which used to crash the page.
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
