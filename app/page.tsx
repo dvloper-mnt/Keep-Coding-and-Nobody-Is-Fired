@@ -5,19 +5,20 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0a0b] px-4 py-12 text-zinc-100 sm:py-16">
       <div className="mx-auto flex max-w-3xl flex-col">
-        <p className="animate-incident-rise font-mono text-xs tracking-widest text-red-500 uppercase">
-          <span className="text-zinc-600">[</span>
-          INCIDENT-001
-          <span className="text-zinc-600">]</span> producción · severidad alta
+        <p className="font-mono text-xs tracking-widest text-red-500 uppercase">
+          <span className="animate-type-eyebrow align-bottom">
+            <span className="text-zinc-600">[</span>
+            INCIDENT-001
+            <span className="text-zinc-600">]</span> producción · severidad alta
+          </span>
         </p>
 
-        <h1
-          className="animate-incident-rise mt-3 text-4xl font-bold tracking-tight sm:text-5xl"
-          style={{ animationDelay: '60ms' }}
-        >
-          Keep Coding and
-          <br />
-          Nobody Is Fired
+        <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
+          <span className="animate-type-wipe inline-block">
+            Keep Coding and
+            <br />
+            Nobody Is Fired
+          </span>
           <span className="ml-1 inline-block w-[0.6ch] animate-cursor-blink bg-red-500 align-baseline text-transparent">
             _
           </span>
