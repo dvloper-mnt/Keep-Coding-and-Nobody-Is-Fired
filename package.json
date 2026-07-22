@@ -6,6 +6,11 @@
   "engines": {
     "node": ">=22"
   },
+  "pnpm": {
+    "overrides": {
+      "postcss@<8.5.10": ">=8.5.10"
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

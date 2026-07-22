@@ -4,6 +4,7 @@ import { GameTimer } from '@/src/components/atoms/GameTimer';
 import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
+import { ProductionLogTail } from '@/src/components/organisms/ProductionLogTail';
 import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
 import type { StreamingPreview } from '@/src/features/game/streaming-preview';
 
@@ -95,36 +96,10 @@ export function CoderBoard({
         )}
 
         {view.status === 'idle' ? (
-          <div className="mt-6 rounded-lg border border-red-500/30 bg-red-950/10 p-10">
-            <p className="text-center font-mono text-xs tracking-widest text-red-500 uppercase">
-              <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500 align-middle" />
-              La IA está generando el incidente
-            </p>
-
-            {streamingPreview.title ? (
-              // Friendly live preview: the incident's title and context appear as
-              // Bedrock streams them in. Decorative only — never parsed; the board
-              // is built solely from the validated Challenge once it's playing.
-              <div className="mt-6 space-y-3 text-center">
-                <p className="text-xl font-bold text-red-200">
-                  {streamingPreview.title}
-                  <span className="animate-pulse text-red-500">▍</span>
-                </p>
-                {streamingPreview.storyContext && (
-                  <p className="text-sm text-zinc-400">{streamingPreview.storyContext}</p>
-                )}
-              </div>
-            ) : (
-              <p className="mt-6 text-center font-mono text-sm tracking-wider text-red-400">
-                Estamos preparando tu incidente
-                <span className="animate-pulse">…</span>
-              </p>
-            )}
-
-            <p className="mt-6 text-center text-xs text-zinc-500">
-              Comparte el código de sala con el Helper mientras tanto.
-            </p>
-          </div>
+          <ProductionLogTail
+            language={view.language ?? 'random'}
+            streamingPreview={streamingPreview}
+          />
         ) : (
           <>
             <CodePanel code={view.code} />

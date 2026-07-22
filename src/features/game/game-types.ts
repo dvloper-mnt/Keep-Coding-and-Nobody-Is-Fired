@@ -126,6 +126,9 @@ export interface CoderStepView {
   lastResult?: 'correct' | 'incorrect';
   abandonedBy?: PlayerRole;
   durationSeconds?: number;
+  // Set only on the 'idle' view: the language being generated, so the Coder's
+  // waiting screen can tail a production log in that language.
+  language?: ChallengeLanguage;
 }
 
 export interface HelperGuideSection {
