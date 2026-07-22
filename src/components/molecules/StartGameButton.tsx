@@ -44,19 +44,18 @@ export function StartGameButton() {
           aria-modal="true"
           aria-labelledby="start-modal-title"
         >
-          <div className="my-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-red-500/40 bg-[#0a0a0b] p-6">
+          <div className="my-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-red-500/40 bg-[#0a0a0b] p-5">
             <p className="font-mono text-xs tracking-widest text-red-500 uppercase">
               Confirmar inicio
             </p>
-            <h2 id="start-modal-title" className="mt-2 text-xl font-bold text-zinc-100">
+            <h2 id="start-modal-title" className="mt-2 text-lg font-bold text-zinc-100">
               ¿Listo para iniciar la partida?
             </h2>
-            <p className="mt-3 text-sm text-zinc-400">
-              Vamos a generar un incidente único con IA para esta partida. Al iniciar recibirás un
-              código de sala para compartir con el Helper. El reloj arranca en 180 segundos.
+            <p className="mt-2 text-sm text-zinc-400">
+              Generamos un incidente único con IA. Recibirás un código de sala para el Helper.
             </p>
 
-            <div className="mt-5">
+            <div className="mt-4">
               <label
                 htmlFor="language-select"
                 className="font-mono text-xs tracking-wider text-zinc-500 uppercase"
@@ -78,7 +77,7 @@ export function StartGameButton() {
               </select>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setConfirming(false)}

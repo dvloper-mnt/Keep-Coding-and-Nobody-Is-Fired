@@ -78,10 +78,10 @@ export default function Home() {
         </dl>
 
         <p
-          className="animate-incident-rise mt-6 font-mono text-xs text-zinc-600"
+          className="animate-incident-rise mt-6 font-mono text-xs text-zinc-400"
           style={{ animationDelay: '300ms' }}
         >
-          <span className="text-emerald-500">$</span> El Coder inicia la partida y comparte el
+          <span className="text-emerald-400">$</span> El Coder inicia la partida y comparte el
           código de sala. El Helper entra con ese código.
         </p>
       </div>
