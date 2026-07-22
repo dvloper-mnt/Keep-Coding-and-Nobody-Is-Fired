@@ -13,8 +13,11 @@ export const dynamic = 'force-dynamic';
 // SSE helpers
 // ---------------------------------------------------------------------------
 
+// JSON-encode the payload so newlines inside it (the streamed JSON has plenty)
+// don't break the SSE framing — a raw newline in `data:` would split the event.
+// The client JSON.parses it back.
 function sseEvent(event: string, data: string): string {
-  return `event: ${event}\ndata: ${data}\n\n`;
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,8 +47,30 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // The client (EventSource) can disconnect mid-stream — on reload, navigate
+      // away, or once it has what it needs. Writing to a closed controller throws
+      // ("Controller is already closed"), which used to abort generation. Guard
+      // every write and close once.
+      let closed = false;
+
       function emit(event: string, data: string) {
-        controller.enqueue(encoder.encode(sseEvent(event, data)));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(sseEvent(event, data)));
+        } catch {
+          // Client went away — stop trying to write to a dead stream.
+          closed = true;
+        }
+      }
+
+      function finish() {
+        if (closed) return;
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          // Already closed by the runtime — nothing to do.
+        }
       }
 
       try {
@@ -58,7 +83,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         const session = await claimGeneratingSlot(sessionId);
         if (!session) {
           emit('done', '');
-          controller.close();
+          finish();
           return;
         }
 
@@ -75,13 +100,13 @@ export async function GET(request: NextRequest): Promise<Response> {
         const wasGenerated = generated !== null;
 
         // Persist the room as playing so subsequent getCoderState polls see it.
+        // This MUST happen even if the client already disconnected, so the game
+        // still starts — so it runs before any emit/close guard short-circuits.
         await promoteSessionWithChallenge(session, challenge, wasGenerated);
 
         emit('done', '');
-        controller.close();
+        finish();
       } catch (error) {
-        // Unexpected error in the route itself — still try to emit done so the
-        // client can fall through to the polling path.
         console.error('[generate-stream] unexpected error, falling back to polling:', error);
         try {
           const session = await claimGeneratingSlot(sessionId);
@@ -92,8 +117,8 @@ export async function GET(request: NextRequest): Promise<Response> {
         } catch {
           // Best-effort — if the session is gone or already promoted, ignore.
         }
-        controller.enqueue(encoder.encode(sseEvent('done', '')));
-        controller.close();
+        emit('done', '');
+        finish();
       }
     },
   });

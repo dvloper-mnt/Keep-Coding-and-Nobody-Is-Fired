@@ -3,6 +3,7 @@
 import { CoderBoard } from '@/src/components/organisms/CoderBoard';
 import { useCoderGame } from '@/src/features/game/hooks/useCoderGame';
 import { useChallengeStream } from '@/src/features/game/hooks/useChallengeStream';
+import { extractStreamingPreview } from '@/src/features/game/streaming-preview';
 import type { CoderStepView } from '@/src/features/game/game-types';
 
 interface CoderScreenProps {
@@ -19,6 +20,9 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
   // no-op; the board assembles from the validated Challenge via getCoderState.
   const { partialText } = useChallengeStream(sessionId, view.status === 'idle');
 
+  // Extract a friendly preview (title + context) from the raw streaming JSON.
+  const streamingPreview = extractStreamingPreview(partialText);
+
   return (
     <CoderBoard
       view={view}
@@ -28,7 +32,7 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
       feedback={feedback}
       onAnswer={handleAnswer}
       onAbandoned={handleAbandoned}
-      streamingPartialText={partialText}
+      streamingPreview={streamingPreview}
     />
   );
 }

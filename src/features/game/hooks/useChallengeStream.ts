@@ -41,8 +41,13 @@ export function useChallengeStream(
     esRef.current = es;
 
     es.addEventListener('delta', (e: MessageEvent) => {
-      // e.data is the full accumulated buffer from the server — replace, don't append.
-      setPartialText(e.data as string);
+      // The server JSON-encodes the payload (to survive newlines in SSE framing),
+      // so decode it. It's the full accumulated buffer — replace, don't append.
+      try {
+        setPartialText(JSON.parse(e.data as string) as string);
+      } catch {
+        // Malformed frame — ignore this delta, the next one carries the full buffer.
+      }
     });
 
     es.addEventListener('done', () => {
