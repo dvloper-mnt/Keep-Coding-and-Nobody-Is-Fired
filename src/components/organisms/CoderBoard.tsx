@@ -1,12 +1,15 @@
-import { CodePanel } from '@/src/components/atoms/CodePanel';
+'use client';
+
 import { ErrorBanner } from '@/src/components/atoms/ErrorBanner';
 import { GameTimer } from '@/src/components/atoms/GameTimer';
 import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
+import { TypewriterCodePanel } from '@/src/components/molecules/TypewriterCodePanel';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { ProductionLogTail } from '@/src/components/organisms/ProductionLogTail';
 import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
 import type { StreamingPreview } from '@/src/features/game/streaming-preview';
+import { useState } from 'react';
 
 interface CoderBoardProps {
   view: CoderStepView;
@@ -34,6 +37,8 @@ export function CoderBoard({
   onAbandoned,
   streamingPreview,
 }: CoderBoardProps) {
+  const [isCodeRevealing, setIsCodeRevealing] = useState(false);
+
   return (
     <div
       className={`min-h-screen bg-zinc-950 text-zinc-100 ${shake ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}
@@ -102,7 +107,13 @@ export function CoderBoard({
           />
         ) : (
           <>
-            <CodePanel code={view.code} />
+            <TypewriterCodePanel
+              code={view.code}
+              currentStep={view.currentStep}
+              lastResult={view.lastResult}
+              enabled={view.status === 'playing' || view.status === 'victory'}
+              onRevealingChange={setIsCodeRevealing}
+            />
             <div className="mt-4">
               <ErrorBanner error={view.error} />
             </div>
@@ -128,7 +139,7 @@ export function CoderBoard({
               <button
                 key={option}
                 type="button"
-                disabled={submitting}
+                disabled={submitting || isCodeRevealing}
                 onClick={() => onAnswer(index)}
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-left text-sm transition-colors hover:border-zinc-500 hover:bg-zinc-800 disabled:opacity-50"
               >
