@@ -62,35 +62,71 @@ function logBedrockResponse(
   }
 }
 
-const SYSTEM_PROMPT = `Eres un generador de desafíos de debugging para un juego cooperativo. El Coder ve código roto y un error; el Helper ve reglas y conocimiento para guiarlo. Ninguno puede resolverlo solo.
+const SYSTEM_PROMPT = `You generate debugging challenges for a two-player cooperative game.
 
-Devuelve SOLO un objeto JSON válido (sin markdown, sin texto extra) con esta forma EXACTA:
+THE GAME (understand it before generating):
+- The CODER sees a code snippet with ONE bug and the error message it produces. The Coder sees no explanation.
+- The HELPER does NOT see the code or the error. The Helper only sees "rules" (language/framework theory) and "knowledge" (facts about the system's domain), and guides the Coder by talking to them.
+- To solve it, the Coder describes the error out loud and the Helper, using their theory, deduces the cause and guides them. Neither can solve it alone: the Coder lacks the theory, the Helper cannot see the symptom.
+
+WHAT MAKES A GOOD CHALLENGE (this is what matters):
+- The bug is ONE concrete, real, common error of the language (a method that does not exist, a wrong HTTP verb, a misused type, an unhandled null, a wrong namespace, a forgotten await, etc.).
+- The Helper's "rules" are real, verifiable language/framework theory: they explain HOW something works, they do not describe the code. E.g. "A GET request to a route registered as POST returns 405".
+- The Helper's "knowledge" are facts about the system's domain that the Coder cannot deduce from the code they see. E.g. "The demo frontend always sends POST to /logout".
+- The correct option names the CAUSE of the bug (a diagnosis), not the literal fix.
+
+FORBIDDEN (this breaks the game — we have seen it fail):
+- NEVER generate text-counting rules like "IF the word X appears N times -> ...". That is not theory, it is garbage.
+- NEVER use "N/A", "none", empty lists or placeholders in rules, knowledge or hint. If you have nothing useful to put there, the challenge is poorly designed: redo it.
+- NEVER repeat the Coder's code inside rules/knowledge. The Helper does not see the code.
+- NEVER put the literal answer in the rules.
+
+EXAMPLE OF A PERFECT CHALLENGE (match THIS quality — one step shown):
 {
-  "id": "lvl_<tema>_<corto>",
-  "title": "<título corto en español>",
-  "difficulty": "medium",
-  "story_context": "<una frase: una demo en vivo que se rompe en producción>",
-  "time_limit": 300,
-  "steps": [
-    {
-      "step": 1,
-      "coder_view": { "code": "<código PHP/Laravel con UN bug>", "error": "<mensaje de error, ej 500 Internal Server Error>" },
-      "helper_view": { "rules": ["<regla 1>", "<regla 2>"], "knowledge": ["<dato de dominio que el Coder NO ve>"] },
-      "options": ["<diagnóstico correcto>", "<distractor>", "<distractor>", "<distractor>"],
-      "correct_answer": 0,
-      "success_state": { "code_patch": "<el código ya corregido>" },
-      "hint": "<pista breve>"
-    }
-  ]
+  "step": 1,
+  "coder_view": {
+    "code": "use Illuminate\\\\Support\\\\Facades\\\\Route;\\nuse App\\\\Http\\\\Controllers\\\\Auth\\\\LoginController;\\n\\nRoute::post('/login', [LoginController::class, 'index']);",
+    "error": "500 Internal Server Error"
+  },
+  "helper_view": {
+    "rules": [
+      "En Laravel, si una ruta apunta a un método que no existe en el controlador, se lanza un error 500 en runtime, no en el arranque.",
+      "El error 500 genérico casi nunca indica la ruta; hay que mirar si el método invocado existe."
+    ],
+    "knowledge": [
+      "En este proyecto, LoginController solo expone los métodos: login y logout.",
+      "El frontend de la demo está enviando POST a /login en este momento."
+    ]
+  },
+  "options": [
+    "El método index no existe en LoginController",
+    "El controlador no está importado",
+    "Hay un error de conexión a la base de datos",
+    "El verbo HTTP de la ruta es incorrecto"
+  ],
+  "correct_answer": 0,
+  "success_state": { "code_patch": "...the same code with 'index' changed to 'login'..." },
+  "hint": "El error 500 aparece al invocar la ruta: revisá si el método llamado existe en el controlador."
 }
 
-Reglas:
-- EXACTAMENTE 3 steps, encadenados: cada fix revela el siguiente bug. El código de cada step parte del code_patch del anterior.
-- Cada step: EXACTAMENTE 4 options, una correcta. correct_answer es el índice (0-3) de la correcta.
-- El bug debe ser diagnosticable SOLO combinando lo que ve el Coder (error) con lo que ve el Helper (knowledge). Esa es la regla de oro.
-- Bugs reales y verosímiles del lenguaje que se indique en el mensaje del usuario (rutas, tipos, queries, concurrencia, dependencias, según corresponda).
-- Español en title, story_context, options, rules, knowledge, hint. El code va en el lenguaje indicado.
-- Salida: solo el JSON, sin fences markdown.`;
+OUTPUT FORMAT — return ONLY a valid JSON object (no markdown, no extra text):
+{
+  "id": "lvl_<topic>_<short>",
+  "title": "<short title in Spanish>",
+  "difficulty": "medium",
+  "story_context": "<one sentence: a live demo breaking in production>",
+  "time_limit": 300,
+  "steps": [ /* EXACTLY 3 steps with the shape of the example */ ]
+}
+
+STRUCTURE RULES:
+- EXACTLY 3 chained steps: each step's code starts from the previous step's code_patch, and each fix reveals the next bug.
+- Each step: EXACTLY 4 options, only one correct. correct_answer is the index (0-3) of the correct one.
+- rules: 2 or 3 real theory entries. knowledge: 2 or 3 real domain facts. Nothing empty.
+
+LANGUAGE OF THE OUTPUT (critical):
+- All player-facing text — title, story_context, options, rules, knowledge and hint — MUST be written in Spanish, exactly like the example above.
+- Only the "code" and "error" fields use the programming language requested in the user message.`;
 
 /**
  * Generates a challenge using Bedrock's streaming API (`ConverseStreamCommand`).

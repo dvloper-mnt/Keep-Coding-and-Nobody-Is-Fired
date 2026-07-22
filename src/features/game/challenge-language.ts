@@ -34,5 +34,10 @@ export function resolveLanguage(language: ChallengeLanguage): Exclude<ChallengeL
 }
 
 export function languageInstruction(language: Exclude<ChallengeLanguage, 'random'>): string {
-  return `El bug y el código deben ser de ${LANGUAGE_LABEL[language]}.`;
+  return (
+    `El código, el bug y el mensaje de error deben ser de ${LANGUAGE_LABEL[language]} ` +
+    `y usar un error idiomático y realista de ESE lenguaje/framework (no de otro). ` +
+    `El ejemplo del sistema usa PHP solo como muestra de CALIDAD; no copies su contenido ` +
+    `si el lenguaje pedido es otro.`
+  );
 }
