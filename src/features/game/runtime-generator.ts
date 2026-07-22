@@ -3,6 +3,7 @@ import {
   ConverseCommand,
   ConverseStreamCommand,
 } from '@aws-sdk/client-bedrock-runtime';
+import { dumpBedrockResponse } from './bedrock-response-log';
 import { isValidChallenge } from './challenge-schema';
 import { languageInstruction, resolveLanguage } from './challenge-language';
 import type { Challenge, ChallengeLanguage } from './game-types';
@@ -45,6 +46,22 @@ function stripMarkdownFences(text: string): string {
     .trim();
 }
 
+function logBedrockResponse(
+  outcome: string,
+  rawText: string,
+  meta?: Record<string, unknown>,
+): void {
+  const dumpPath = dumpBedrockResponse(outcome, rawText, meta);
+  if (!dumpPath) return;
+
+  const message = `[bedrock] raw response saved to ${dumpPath}`;
+  if (outcome === 'success' || outcome === 'streaming-success') {
+    console.log(message);
+  } else {
+    console.error(message);
+  }
+}
+
 const SYSTEM_PROMPT = `Eres un generador de desafíos de debugging para un juego cooperativo. El Coder ve código roto y un error; el Helper ve reglas y conocimiento para guiarlo. Ninguno puede resolverlo solo.
 
 Devuelve SOLO un objeto JSON válido (sin markdown, sin texto extra) con esta forma EXACTA:
@@ -53,7 +70,7 @@ Devuelve SOLO un objeto JSON válido (sin markdown, sin texto extra) con esta fo
   "title": "<título corto en español>",
   "difficulty": "medium",
   "story_context": "<una frase: una demo en vivo que se rompe en producción>",
-  "time_limit": 180,
+  "time_limit": 300,
   "steps": [
     {
       "step": 1,
@@ -139,14 +156,19 @@ export async function generateChallengeStreaming(
       parsed = JSON.parse(stripMarkdownFences(buffer));
     } catch {
       console.error('[bedrock] streaming: response was not valid JSON, falling back');
+      logBedrockResponse('streaming-invalid-json', buffer);
       return null;
     }
 
     if (!isValidChallenge(parsed)) {
       console.error('[bedrock] streaming: response failed challenge validation, falling back');
+      logBedrockResponse('streaming-validation-failed', buffer, { parsed: typeof parsed });
       return null;
     }
 
+    logBedrockResponse('streaming-success', buffer, {
+      challengeId: (parsed as Challenge).id,
+    });
     return parsed;
   } catch (error) {
     console.error('[bedrock] streaming: generation failed, falling back to curated challenge:', error);
@@ -202,14 +224,17 @@ export async function generateChallenge(
       parsed = JSON.parse(stripMarkdownFences(rawText));
     } catch {
       console.error('[bedrock] response was not valid JSON, falling back');
+      logBedrockResponse('invalid-json', rawText);
       return null;
     }
 
     if (!isValidChallenge(parsed)) {
       console.error('[bedrock] response failed challenge validation, falling back');
+      logBedrockResponse('validation-failed', rawText, { parsed: typeof parsed });
       return null;
     }
 
+    logBedrockResponse('success', rawText, { challengeId: (parsed as Challenge).id });
     return parsed;
   } catch (error) {
     const isAbort = error instanceof Error && (error.name === 'AbortError' || error.message?.includes('aborted'));
