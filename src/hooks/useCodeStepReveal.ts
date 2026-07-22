@@ -104,7 +104,9 @@ export function useCodeStepReveal({
 
   useEffect(() => {
     if (!enabled) {
-      settle({ step: currentStep, code });
+      clearTimer();
+      settledRef.current = { step: currentStep, code };
+      animatingTargetRef.current = null;
       return;
     }
 
@@ -112,6 +114,9 @@ export function useCodeStepReveal({
     const next = { step: currentStep, code };
 
     if (previous.step === next.step && previous.code === next.code) {
+      if (displayedCode !== next.code || isRevealing) {
+        queueMicrotask(() => settle(next));
+      }
       return;
     }
 
@@ -130,9 +135,13 @@ export function useCodeStepReveal({
     }
 
     settle(next);
-  }, [code, currentStep, enabled, lastResult, settle, startReveal]);
+  }, [code, currentStep, displayedCode, enabled, isRevealing, lastResult, settle, startReveal, clearTimer]);
 
   useEffect(() => clearTimer, [clearTimer]);
 
-  return { displayedCode, isRevealing, skipReveal };
+  return {
+    displayedCode: enabled ? displayedCode : code,
+    isRevealing: enabled && isRevealing,
+    skipReveal,
+  };
 }
