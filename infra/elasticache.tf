@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# ElastiCache (Valkey) — session store, replacing Upstash/@vercel/kv.
+# ElastiCache (Valkey) — session store for the game.
 # Valkey is the open-source successor to Redis OSS (~20% cheaper, wire-compatible
 # with Redis 7.2 — ioredis works unchanged). Single-node, private; only the ECS
 # security group can reach 6379.
