@@ -2,6 +2,7 @@
 
 import { ErrorBanner } from '@/src/components/atoms/ErrorBanner';
 import { GameTimer } from '@/src/components/atoms/GameTimer';
+import { LivesIndicator } from '@/src/components/atoms/LivesIndicator';
 import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { TypewriterCodePanel } from '@/src/components/molecules/TypewriterCodePanel';
@@ -9,6 +10,8 @@ import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { ProductionLogTail } from '@/src/components/organisms/ProductionLogTail';
 import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
 import type { StreamingPreview } from '@/src/features/game/streaming-preview';
+import { getDefeatCopy } from '@/src/lib/defeat-messages';
+import { MAX_LIVES } from '@/src/lib/constants';
 import { useState } from 'react';
 
 interface CoderBoardProps {
@@ -16,6 +19,7 @@ interface CoderBoardProps {
   sessionId: string;
   submitting: boolean;
   shake: boolean;
+  livesPulse: boolean;
   feedback: string | null;
   onAnswer: (answerIndex: number) => void;
   onAbandoned: (status: GameStatus) => void;
@@ -32,12 +36,14 @@ export function CoderBoard({
   sessionId,
   submitting,
   shake,
+  livesPulse,
   feedback,
   onAnswer,
   onAbandoned,
   streamingPreview,
 }: CoderBoardProps) {
   const [isCodeRevealing, setIsCodeRevealing] = useState(false);
+  const defeatCopy = getDefeatCopy('coder', view.defeatReason);
 
   return (
     <div
@@ -60,7 +66,15 @@ export function CoderBoard({
             <p className="text-xs text-zinc-600">Comparte este código con el Helper</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <GameTimer remainingTime={view.remainingTime} />
+            <div className="flex items-center gap-2">
+              <LivesIndicator
+                lives={view.coderLives}
+                maxLives={MAX_LIVES}
+                variant="coder"
+                pulse={livesPulse}
+              />
+              <GameTimer remainingTime={view.remainingTime} />
+            </div>
             {view.status === 'playing' && (
               <ExitButton sessionId={sessionId} role="coder" onAbandoned={onAbandoned} />
             )}
@@ -81,9 +95,9 @@ export function CoderBoard({
         {view.status === 'defeat' && (
           <GameResultBanner
             containerClassName="mb-6 rounded-lg border border-red-500/50 bg-red-950/30 p-6 text-center"
-            title="Se acabó el tiempo"
+            title={defeatCopy.title}
             titleClassName="text-2xl font-bold text-red-400"
-            message="El jefe no está contento…"
+            message={defeatCopy.message}
             messageClassName="mt-2 text-red-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-zinc-600 px-6 py-2 font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
           />

@@ -4,6 +4,7 @@ import { getCoderState, submitAnswer, tick } from '@/src/features/game/api/game-
 import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
+import { LIFE_LOST_MESSAGE } from '@/src/lib/constants';
 import { useCallback, useState } from 'react';
 import { usePolling } from './usePolling';
 
@@ -12,6 +13,7 @@ interface UseCoderGameResult {
   sessionId: string;
   submitting: boolean;
   shake: boolean;
+  livesPulse: boolean;
   feedback: string | null;
   handleAnswer: (answerIndex: number) => Promise<void>;
   handleAbandoned: (status: GameStatus) => void;
@@ -25,6 +27,7 @@ export function useCoderGame(
   const [view, setView] = useState<CoderStepView>(initialView);
   const [submitting, setSubmitting] = useState(false);
   const [shake, setShake] = useState(false);
+  const [livesPulse, setLivesPulse] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   useClockTickSound(view.status === 'playing');
@@ -73,8 +76,11 @@ export function useCoderGame(
         } else {
           playWrong();
           setShake(true);
-          setFeedback(data.message ?? 'El sistema sigue fallando…');
+          setLivesPulse(true);
+          const baseMessage = data.message ?? 'El sistema sigue fallando…';
+          setFeedback(data.lifeLost ? `${baseMessage} ${LIFE_LOST_MESSAGE}` : baseMessage);
           setTimeout(() => setShake(false), 500);
+          setTimeout(() => setLivesPulse(false), 600);
           if (data.coderView) setView(data.coderView);
           else await fetchState();
         }
@@ -98,5 +104,5 @@ export function useCoderGame(
     [fetchState],
   );
 
-  return { view, sessionId, submitting, shake, feedback, handleAnswer, handleAbandoned };
+  return { view, sessionId, submitting, shake, livesPulse, feedback, handleAnswer, handleAbandoned };
 }

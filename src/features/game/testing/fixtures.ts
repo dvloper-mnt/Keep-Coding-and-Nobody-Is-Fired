@@ -1,3 +1,4 @@
+import { MAX_LIVES } from '@/src/lib/constants';
 import type {
   ChallengeStep,
   ClientQuestion,
@@ -41,6 +42,8 @@ export function makeSession(overrides: Partial<GameSession> = {}): GameSession {
     status: 'playing',
     startedAt: 1_000_000,
     clientQuestions: makeClientQuestionState(),
+    coderLives: MAX_LIVES,
+    helperLives: MAX_LIVES,
     ...overrides,
   };
 }

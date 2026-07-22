@@ -5,6 +5,7 @@ import {
   CLIENT_QUESTION_WRONG_MESSAGE,
 } from '@/src/lib/constants';
 import { applyTimeDelta, resolveMultipleChoice } from './game-engine';
+import { loseLife } from './lives-engine';
 import type {
   ClientQuestion,
   ClientQuestionAnswerResponse,
@@ -167,7 +168,11 @@ export function submitClientQuestionAnswer(
     };
   }
 
-  const penalizedSession = applyTimeDelta(session, -CLIENT_QUESTION_CONFIG.wrongPenaltySeconds);
+  const afterLifeLoss = loseLife(session, 'helper');
+  const penalizedSession = applyTimeDelta(
+    afterLifeLoss,
+    -CLIENT_QUESTION_CONFIG.wrongPenaltySeconds,
+  );
 
   return {
     session: penalizedSession,
@@ -178,6 +183,8 @@ export function submitClientQuestionAnswer(
       remainingTime: penalizedSession.remainingTime,
       status: penalizedSession.status,
       activeClientQuestion: getActiveClientQuestionView(penalizedSession.clientQuestions),
+      livesRemaining: penalizedSession.helperLives,
+      lifeLost: true,
     },
   };
 }

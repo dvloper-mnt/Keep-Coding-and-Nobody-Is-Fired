@@ -1,4 +1,5 @@
 import { getChallengeById, loadChallenges } from '@/src/data/challenges';
+import { MAX_LIVES } from '@/src/lib/constants';
 import { getClientQuestionById } from '@/src/data/client-questions';
 import { generateChallenge } from './runtime-generator';
 import { checkRateLimit, redisRateLimitStore } from './rate-limit';
@@ -20,6 +21,7 @@ import {
   submitAnswer,
   tickTimer,
 } from './game-engine';
+import { normalizeSessionLives } from './lives-engine';
 import type {
   AnswerResponse,
   Challenge,
@@ -88,11 +90,14 @@ function getRedis(): Redis | null {
 
 async function getSessionFromStore(id: string): Promise<GameSession | undefined> {
   const redis = getRedis();
+  let session: GameSession | undefined;
   if (redis) {
     const raw = await redis.get(`session:${id}`);
-    return raw ? (JSON.parse(raw) as GameSession) : undefined;
+    session = raw ? (JSON.parse(raw) as GameSession) : undefined;
+  } else {
+    session = memorySessions.get(id);
   }
-  return memorySessions.get(id);
+  return session ? normalizeSessionLives(session) : undefined;
 }
 
 async function setSessionToStore(id: string, session: GameSession): Promise<void> {
@@ -130,6 +135,7 @@ function pendingCoderView(language: ChallengeLanguage): CoderStepView {
     remainingTime: 0,
     status: 'idle',
     language,
+    coderLives: MAX_LIVES,
   };
 }
 
@@ -281,6 +287,7 @@ function withEndMeta<T extends { status: string }>(view: T, session: GameSession
     ...view,
     abandonedBy: session.abandonedBy,
     durationSeconds: gameDurationSeconds(session, Date.now()),
+    defeatReason: session.defeatReason,
   };
 }
 
@@ -415,7 +422,12 @@ export async function processAnswer(sessionId: string, answerIndex: number): Pro
     remainingTime: updated.remainingTime,
   };
 
-  if (updated.status === 'playing' || updated.status === 'victory') {
+  if (!result) {
+    response.livesRemaining = updated.coderLives;
+    response.lifeLost = true;
+  }
+
+  if (updated.status === 'playing' || updated.status === 'victory' || updated.status === 'defeat') {
     response.coderView = getCoderStepView(updated, challenge);
   }
 

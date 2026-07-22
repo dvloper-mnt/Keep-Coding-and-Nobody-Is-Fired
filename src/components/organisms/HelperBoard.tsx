@@ -1,10 +1,13 @@
 import { GameTimer } from '@/src/components/atoms/GameTimer';
+import { LivesIndicator } from '@/src/components/atoms/LivesIndicator';
 import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { ManualPanel } from '@/src/components/molecules/ManualPanel';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { ClientQuestionModal } from '@/src/components/organisms/ClientQuestionModal';
 import type { GameStatus, HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import { getDefeatCopy } from '@/src/lib/defeat-messages';
+import { MAX_LIVES } from '@/src/lib/constants';
 
 interface HelperBoardProps {
   sessionId: string;
@@ -13,6 +16,7 @@ interface HelperBoardProps {
   submittingQuestion: boolean;
   questionFeedback: string | null;
   questionResult: 'correct' | 'incorrect' | null;
+  livesPulse: boolean;
   onClientQuestionAnswer: (answerIndex: number) => void;
   onAbandoned: (status: GameStatus) => void;
 }
@@ -24,9 +28,12 @@ export function HelperBoard({
   submittingQuestion,
   questionFeedback,
   questionResult,
+  livesPulse,
   onClientQuestionAnswer,
   onAbandoned,
 }: HelperBoardProps) {
+  const defeatCopy = getDefeatCopy('helper', sync.defeatReason);
+
   return (
     <div className="min-h-screen bg-amber-950 text-amber-100">
       <BossOverlay active={sync.status === 'playing'} />
@@ -52,7 +59,15 @@ export function HelperBoard({
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <GameTimer remainingTime={sync.remainingTime} />
+            <div className="flex items-center gap-2">
+              <LivesIndicator
+                lives={sync.helperLives}
+                maxLives={MAX_LIVES}
+                variant="helper"
+                pulse={livesPulse}
+              />
+              <GameTimer remainingTime={sync.remainingTime} />
+            </div>
             {sync.status === 'playing' && (
               <ExitButton sessionId={sessionId} role="helper" onAbandoned={onAbandoned} />
             )}
@@ -71,8 +86,10 @@ export function HelperBoard({
         {sync.status === 'defeat' && (
           <GameResultBanner
             containerClassName="mb-6 rounded-lg border border-red-500/30 bg-red-950/20 p-4 text-center"
-            title="Tiempo agotado. La guía sigue disponible para revisión."
+            title={defeatCopy.title}
             titleClassName="text-red-400"
+            message={defeatCopy.message}
+            messageClassName="mt-2 text-red-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
           />
         )}
