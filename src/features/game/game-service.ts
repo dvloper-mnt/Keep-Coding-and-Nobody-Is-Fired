@@ -120,7 +120,7 @@ function resolveChallenge(session: GameSession): Challenge | undefined {
 
 // Shown to the Coder while the room is still 'idle' (Bedrock generating). No
 // challenge data yet — the client renders a "generating" screen on this status.
-function pendingCoderView(): CoderStepView {
+function pendingCoderView(language: ChallengeLanguage): CoderStepView {
   return {
     code: '',
     error: '',
@@ -129,6 +129,7 @@ function pendingCoderView(): CoderStepView {
     totalSteps: 0,
     remainingTime: 0,
     status: 'idle',
+    language,
   };
 }
 
@@ -343,7 +344,7 @@ export async function getCoderState(sessionId: string) {
   // Coder sees the 'idle' (generating) view instead of an error.
   if (session.status === 'idle') {
     session = await ensureChallengeGenerated(session);
-    if (session.status === 'idle') return pendingCoderView();
+    if (session.status === 'idle') return pendingCoderView(session.language ?? 'random');
   }
 
   const challenge = resolveChallenge(session);
