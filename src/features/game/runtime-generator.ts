@@ -1,4 +1,8 @@
-import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  ConverseStreamCommand,
+} from '@aws-sdk/client-bedrock-runtime';
 import { isValidChallenge } from './challenge-schema';
 import { languageInstruction, resolveLanguage } from './challenge-language';
 import type { Challenge, ChallengeLanguage } from './game-types';
@@ -44,6 +48,86 @@ Reglas:
 - Bugs reales y verosímiles del lenguaje que se indique en el mensaje del usuario (rutas, tipos, queries, concurrencia, dependencias, según corresponda).
 - Español en title, story_context, options, rules, knowledge, hint. El code va en el lenguaje indicado.
 - Salida: solo el JSON, sin fences markdown.`;
+
+/**
+ * Generates a challenge using Bedrock's streaming API (`ConverseStreamCommand`).
+ *
+ * Accumulates `contentBlockDelta` text fragments in a buffer and calls
+ * `onDelta(buffer)` after each new fragment so callers can render progress.
+ * Returns the validated `Challenge` when the stream closes, or `null` on any
+ * failure (network error, timeout, abort, invalid JSON, validation failure) —
+ * identical fallback semantics to `generateChallenge`.
+ *
+ * @param language - Challenge language preference (default 'random')
+ * @param onDelta  - Called with the full accumulated text after each new fragment
+ */
+export async function generateChallengeStreaming(
+  language: ChallengeLanguage = 'random',
+  onDelta: (partialText: string) => void,
+): Promise<Challenge | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), RUNTIME_TIMEOUT_MS);
+
+  try {
+    const resolved = resolveLanguage(language);
+    const client = new BedrockRuntimeClient({ region: REGION });
+    const command = new ConverseStreamCommand({
+      modelId: MODEL_ID,
+      system: [{ text: SYSTEM_PROMPT }],
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} Devuelve solo el JSON del objeto challenge.`,
+            },
+          ],
+        },
+      ],
+      inferenceConfig: { maxTokens: 4096, temperature: 0.8 },
+    });
+
+    const response = await client.send(command, { abortSignal: controller.signal });
+
+    if (!response.stream) {
+      console.error('[bedrock] streaming: no stream in response, falling back to curated challenge');
+      return null;
+    }
+
+    let buffer = '';
+    for await (const chunk of response.stream) {
+      if (chunk.contentBlockDelta?.delta?.text) {
+        buffer += chunk.contentBlockDelta.delta.text;
+        onDelta(buffer);
+      }
+    }
+
+    if (!buffer) {
+      console.error('[bedrock] streaming: empty response, falling back to curated challenge');
+      return null;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stripMarkdownFences(buffer));
+    } catch {
+      console.error('[bedrock] streaming: response was not valid JSON, falling back');
+      return null;
+    }
+
+    if (!isValidChallenge(parsed)) {
+      console.error('[bedrock] streaming: response failed challenge validation, falling back');
+      return null;
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error('[bedrock] streaming: generation failed, falling back to curated challenge:', error);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 export async function generateChallenge(
   language: ChallengeLanguage = 'random',

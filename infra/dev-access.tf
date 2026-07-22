@@ -18,6 +18,7 @@ data "aws_iam_policy_document" "bedrock_dev" {
   statement {
     actions = [
       "bedrock:InvokeModel",
+      "bedrock:InvokeModelWithResponseStream",
       "bedrock:Converse",
       "bedrock:ConverseStream",
     ]
