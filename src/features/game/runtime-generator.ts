@@ -10,6 +10,16 @@ import type { Challenge, ChallengeLanguage } from './game-types';
 const REGION = process.env['AWS_REGION'] ?? 'us-east-1';
 const MODEL_ID =
   process.env['BEDROCK_MODEL_ID'] ?? 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
+
+const GUARDRAIL_ID = process.env['BEDROCK_GUARDRAIL_ID'];
+const GUARDRAIL_VERSION = process.env['BEDROCK_GUARDRAIL_VERSION'];
+
+// Apply the content guardrail when configured. Absent (e.g. local dev without
+// the env vars) → undefined, so the call runs without a guardrail.
+function guardrailConfig() {
+  if (!GUARDRAIL_ID || !GUARDRAIL_VERSION) return undefined;
+  return { guardrailIdentifier: GUARDRAIL_ID, guardrailVersion: GUARDRAIL_VERSION };
+}
 const RUNTIME_TIMEOUT_MS = Number(process.env['BEDROCK_RUNTIME_TIMEOUT_MS'] ?? '10000');
 
 function stripMarkdownFences(text: string): string {
@@ -85,6 +95,7 @@ export async function generateChallengeStreaming(
         },
       ],
       inferenceConfig: { maxTokens: 4096, temperature: 0.8 },
+      guardrailConfig: guardrailConfig(),
     });
 
     const response = await client.send(command, { abortSignal: controller.signal });
@@ -152,6 +163,7 @@ export async function generateChallenge(
         },
       ],
       inferenceConfig: { maxTokens: 4096, temperature: 0.8 },
+      guardrailConfig: guardrailConfig(),
     });
 
     const response = await client.send(command, { abortSignal: controller.signal });
