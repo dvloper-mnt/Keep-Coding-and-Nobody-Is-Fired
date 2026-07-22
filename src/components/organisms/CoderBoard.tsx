@@ -5,6 +5,7 @@ import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
+import type { StreamingPreview } from '@/src/features/game/streaming-preview';
 
 interface CoderBoardProps {
   view: CoderStepView;
@@ -15,11 +16,11 @@ interface CoderBoardProps {
   onAnswer: (answerIndex: number) => void;
   onAbandoned: (status: GameStatus) => void;
   /**
-   * Partial text streamed from Bedrock while the room is idle.
-   * DECORATIVE ONLY — never parsed, never used to build the board.
-   * The board is assembled only from the validated Challenge via getCoderState.
+   * Live preview (title + context) extracted from Bedrock's stream while the
+   * room is idle. DECORATIVE ONLY — never used to build the board. The board is
+   * assembled only from the validated Challenge via getCoderState.
    */
-  streamingPartialText?: string;
+  streamingPreview: StreamingPreview;
 }
 
 export function CoderBoard({
@@ -30,7 +31,7 @@ export function CoderBoard({
   feedback,
   onAnswer,
   onAbandoned,
-  streamingPartialText,
+  streamingPreview,
 }: CoderBoardProps) {
   return (
     <div
@@ -95,19 +96,32 @@ export function CoderBoard({
 
         {view.status === 'idle' ? (
           <div className="mt-6 rounded-lg border border-red-500/30 bg-red-950/10 p-10">
-            {streamingPartialText ? (
-              // Streaming partial text — decorative only, never parsed.
-              // Shown as a live preview of the challenge JSON being generated.
-              <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-red-300/80">
-                {streamingPartialText}
-              </pre>
+            <p className="text-center font-mono text-xs tracking-widest text-red-500 uppercase">
+              <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500 align-middle" />
+              La IA está generando el incidente
+            </p>
+
+            {streamingPreview.title ? (
+              // Friendly live preview: the incident's title and context appear as
+              // Bedrock streams them in. Decorative only — never parsed; the board
+              // is built solely from the validated Challenge once it's playing.
+              <div className="mt-6 space-y-3 text-center">
+                <p className="text-xl font-bold text-red-200">
+                  {streamingPreview.title}
+                  <span className="animate-pulse text-red-500">▍</span>
+                </p>
+                {streamingPreview.storyContext && (
+                  <p className="text-sm text-zinc-400">{streamingPreview.storyContext}</p>
+                )}
+              </div>
             ) : (
-              <p className="text-center font-mono text-sm tracking-wider text-red-400">
+              <p className="mt-6 text-center font-mono text-sm tracking-wider text-red-400">
                 Estamos preparando tu incidente
                 <span className="animate-pulse">…</span>
               </p>
             )}
-            <p className="mt-4 text-center text-xs text-zinc-500">
+
+            <p className="mt-6 text-center text-xs text-zinc-500">
               Comparte el código de sala con el Helper mientras tanto.
             </p>
           </div>
