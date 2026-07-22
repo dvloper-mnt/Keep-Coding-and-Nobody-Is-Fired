@@ -6,6 +6,7 @@ import { getCoderState, startGame } from '@/src/features/game/api/game-client';
 import { saveToken } from '@/src/features/game/api/session-token-store';
 import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
 import type { CoderStepView } from '@/src/features/game/game-types';
+import { MAX_LIVES } from '@/src/lib/constants';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback } from 'react';
@@ -23,6 +24,7 @@ const GENERATING_VIEW: CoderStepView = {
   totalSteps: 0,
   remainingTime: 0,
   status: 'idle',
+  coderLives: MAX_LIVES,
 };
 
 function CoderPageContent() {

@@ -1,6 +1,7 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameStatus = 'idle' | 'playing' | 'victory' | 'defeat' | 'abandoned';
 export type PlayerRole = 'coder' | 'helper';
+export type DefeatReason = 'timeout' | 'coder_lives' | 'helper_lives';
 
 // The Coder may request a language for the generated challenge; 'random' (the
 // default) lets the generator pick one.
@@ -106,6 +107,9 @@ export interface GameSession {
   // the Helper's the first time they fetch the guide.
   coderToken?: string;
   helperToken?: string;
+  coderLives: number;
+  helperLives: number;
+  defeatReason?: DefeatReason;
 }
 
 export interface StepResult {
@@ -126,6 +130,8 @@ export interface CoderStepView {
   lastResult?: 'correct' | 'incorrect';
   abandonedBy?: PlayerRole;
   durationSeconds?: number;
+  coderLives: number;
+  defeatReason?: DefeatReason;
   // Set only on the 'idle' view: the language being generated, so the Coder's
   // waiting screen can tail a production log in that language.
   language?: ChallengeLanguage;
@@ -172,6 +178,8 @@ export interface HelperSyncView {
   activeClientQuestion: ClientQuestionView | null;
   abandonedBy?: PlayerRole;
   durationSeconds?: number;
+  helperLives: number;
+  defeatReason?: DefeatReason;
 }
 
 export interface ClientQuestionAnswerResponse {
@@ -182,6 +190,8 @@ export interface ClientQuestionAnswerResponse {
   remainingTime: number;
   status: GameStatus;
   activeClientQuestion: ClientQuestionView | null;
+  livesRemaining?: number;
+  lifeLost?: boolean;
 }
 
 export interface StartGameResponse {
@@ -197,4 +207,6 @@ export interface AnswerResponse {
   status: GameStatus;
   remainingTime: number;
   coderView?: CoderStepView;
+  livesRemaining?: number;
+  lifeLost?: boolean;
 }

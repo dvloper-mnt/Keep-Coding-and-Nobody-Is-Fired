@@ -1,10 +1,11 @@
 export const PENALTY_SECONDS = 10;
 export const DEFAULT_TIME_LIMIT = 180;
+export const MAX_LIVES = 3;
 
 export const CLIENT_QUESTION_CONFIG = {
   spawnIntervalSeconds: 40,
   spawnChance: 0.45,
-  wrongPenaltySeconds: 8,
+  wrongPenaltySeconds: 10,
   correctBonusSeconds: 5,
   maxQuestionsPerSession: 6,
 } as const;
@@ -45,3 +46,4 @@ export const BOSS_PRESSURE_CONFIG = {
 } as const;
 
 export const WRONG_ANSWER_MESSAGE = 'El sistema sigue fallando…';
+export const LIFE_LOST_MESSAGE = 'Perdiste 1 vida.';

@@ -165,10 +165,32 @@ describe('submitClientQuestionAnswer', () => {
       expect(updated.clientQuestions.activeQuestionId).toBe('q-stays');
     });
 
+    it('decrements helper lives on wrong answer', () => {
+      const question = makeClientQuestion({ id: 'q-lives', correct_answer: 0 });
+      const session = makeSessionWithActiveQuestion('q-lives', { helperLives: 3 });
+
+      const { session: updated, response } = submitClientQuestionAnswer(session, question, 2);
+
+      expect(updated.helperLives).toBe(2);
+      expect(response.livesRemaining).toBe(2);
+      expect(response.lifeLost).toBe(true);
+    });
+
+    it('triggers defeat with helper_lives after the third wrong answer', () => {
+      const question = makeClientQuestion({ id: 'q-no-lives', correct_answer: 0 });
+      const session = makeSessionWithActiveQuestion('q-no-lives', { helperLives: 1 });
+
+      const { session: updated, response } = submitClientQuestionAnswer(session, question, 2);
+
+      expect(updated.status).toBe('defeat');
+      expect(updated.helperLives).toBe(0);
+      expect(updated.defeatReason).toBe('helper_lives');
+      expect(response.status).toBe('defeat');
+    });
+
     it('clamps remainingTime to 0 and triggers defeat when penalty exceeds remaining time', () => {
       const question = makeClientQuestion({ id: 'q-lethal', correct_answer: 0 });
-      // remainingTime less than wrongPenaltySeconds (8)
-      const session = makeSessionWithActiveQuestion('q-lethal', { remainingTime: 3 });
+      const session = makeSessionWithActiveQuestion('q-lethal', { remainingTime: 3, helperLives: 3 });
 
       const { session: updated, response } = submitClientQuestionAnswer(
         session,

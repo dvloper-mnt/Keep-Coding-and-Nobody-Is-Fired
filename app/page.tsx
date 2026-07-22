@@ -36,14 +36,7 @@ export default function Home() {
           className="animate-incident-rise mt-10 grid gap-4 sm:grid-cols-2"
           style={{ animationDelay: '180ms' }}
         >
-          <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-5">
-            <p className="font-mono text-xs tracking-widest text-red-400 uppercase">Rol A</p>
-            <p className="mt-1 text-xl font-bold text-red-300">Soy Coder</p>
-            <p className="mt-2 text-sm text-zinc-400">
-              Ves el código roto, el error y cuatro diagnósticos. Manejas el teclado y el reloj.
-            </p>
-            <StartGameButton />
-          </div>
+          <StartGameButton />
 
           <Link
             href="/helper"

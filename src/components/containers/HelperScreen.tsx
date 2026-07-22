@@ -15,6 +15,7 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
     submittingQuestion,
     questionFeedback,
     questionResult,
+    livesPulse,
     handleClientQuestionAnswer,
     handleAbandoned,
   } = useHelperGame(sessionId, guide);
@@ -27,6 +28,7 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
       submittingQuestion={submittingQuestion}
       questionFeedback={questionFeedback}
       questionResult={questionResult}
+      livesPulse={livesPulse}
       onClientQuestionAnswer={handleClientQuestionAnswer}
       onAbandoned={handleAbandoned}
     />

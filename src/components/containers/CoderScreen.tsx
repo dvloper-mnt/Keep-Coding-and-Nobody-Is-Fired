@@ -12,7 +12,7 @@ interface CoderScreenProps {
 }
 
 export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps) {
-  const { view, sessionId, submitting, shake, feedback, handleAnswer, handleAbandoned } =
+  const { view, sessionId, submitting, shake, livesPulse, feedback, handleAnswer, handleAbandoned } =
     useCoderGame(initialSessionId, initialView);
 
   // Open the SSE stream only while the room is idle so Bedrock's output appears
@@ -29,6 +29,7 @@ export function CoderScreen({ initialSessionId, initialView }: CoderScreenProps)
       sessionId={sessionId}
       submitting={submitting}
       shake={shake}
+      livesPulse={livesPulse}
       feedback={feedback}
       onAnswer={handleAnswer}
       onAbandoned={handleAbandoned}

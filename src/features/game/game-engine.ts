@@ -1,4 +1,5 @@
 import { CLIENT_QUESTION_CONFIG, PENALTY_SECONDS, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
+import { createInitialLives, loseLife } from './lives-engine';
 import type {
   Challenge,
   ChallengeLanguage,
@@ -43,13 +44,13 @@ export function resolveStep(step: ChallengeStep, answerIndex: number): StepResul
 
 export function applyTimeDelta(session: GameSession, deltaSeconds: number): GameSession {
   const newTime = Math.max(0, session.remainingTime + deltaSeconds);
-  const status =
-    newTime <= 0 && session.status === 'playing' ? 'defeat' : session.status;
+  const timedOut = newTime <= 0 && session.status === 'playing';
 
   return {
     ...session,
     remainingTime: newTime,
-    status,
+    status: timedOut ? 'defeat' : session.status,
+    defeatReason: timedOut && !session.defeatReason ? 'timeout' : session.defeatReason,
   };
 }
 
@@ -77,6 +78,7 @@ export function createSession(
     status: 'playing',
     startedAt,
     clientQuestions: freshClientQuestions(),
+    ...createInitialLives(),
   };
 }
 
@@ -101,6 +103,7 @@ export function createPendingSession(
     generating: false,
     coderToken,
     clientQuestions: freshClientQuestions(),
+    ...createInitialLives(),
   };
 }
 
@@ -133,6 +136,8 @@ export function getCoderStepView(session: GameSession, challenge: Challenge): Co
       remainingTime: session.remainingTime,
       status: session.status,
       lastResult: session.lastResult,
+      coderLives: session.coderLives,
+      defeatReason: session.defeatReason,
     };
   }
 
@@ -145,6 +150,8 @@ export function getCoderStepView(session: GameSession, challenge: Challenge): Co
     remainingTime: session.remainingTime,
     status: session.status,
     lastResult: session.lastResult,
+    coderLives: session.coderLives,
+    defeatReason: session.defeatReason,
   };
 }
 
@@ -159,6 +166,8 @@ export function getHelperSyncView(
     totalSteps: challenge.steps.length,
     status: session.status,
     activeClientQuestion,
+    helperLives: session.helperLives,
+    defeatReason: session.defeatReason,
   };
 }
 
@@ -185,8 +194,9 @@ export function submitAnswer(
     };
   }
 
+  const afterLifeLoss = loseLife(session, 'coder');
   return {
-    ...applyTimeDelta(session, -(result.penalty ?? PENALTY_SECONDS)),
+    ...applyTimeDelta(afterLifeLoss, -(result.penalty ?? PENALTY_SECONDS)),
     lastResult: 'incorrect',
   };
 }
@@ -197,10 +207,13 @@ export function tickTimer(session: GameSession): GameSession {
   }
 
   const newTime = session.remainingTime - 1;
+  const timedOut = newTime <= 0;
+
   return {
     ...session,
     remainingTime: newTime,
-    status: newTime <= 0 ? 'defeat' : session.status,
+    status: timedOut ? 'defeat' : session.status,
+    defeatReason: timedOut && !session.defeatReason ? 'timeout' : session.defeatReason,
   };
 }
 

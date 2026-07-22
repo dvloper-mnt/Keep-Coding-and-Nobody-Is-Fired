@@ -202,6 +202,31 @@ describe('submitAnswer', () => {
     expect(result.lastResult).toBe('incorrect');
     expect(result.currentStep).toBe(1); // unchanged
     expect(result.remainingTime).toBe(60 - PENALTY_SECONDS);
+    expect(result.coderLives).toBe(2);
+  });
+
+  it('triggers defeat with coder_lives after the third wrong answer', () => {
+    const step = makeStep({ correct_answer: 0 });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({ currentStep: 1, remainingTime: 120, coderLives: 1 });
+
+    const result = submitAnswer(session, challenge, 3);
+
+    expect(result.status).toBe('defeat');
+    expect(result.coderLives).toBe(0);
+    expect(result.defeatReason).toBe('coder_lives');
+  });
+
+  it('prioritizes coder_lives over timeout when the third wrong answer also drains the timer', () => {
+    const step = makeStep({ correct_answer: 0 });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({ currentStep: 1, remainingTime: 5, coderLives: 1 });
+
+    const result = submitAnswer(session, challenge, 3);
+
+    expect(result.status).toBe('defeat');
+    expect(result.remainingTime).toBe(0);
+    expect(result.defeatReason).toBe('coder_lives');
   });
 });
 
@@ -234,6 +259,7 @@ describe('tickTimer', () => {
     const result = tickTimer(session);
     expect(result.remainingTime).toBe(0);
     expect(result.status).toBe('defeat');
+    expect(result.defeatReason).toBe('timeout');
   });
 });
 

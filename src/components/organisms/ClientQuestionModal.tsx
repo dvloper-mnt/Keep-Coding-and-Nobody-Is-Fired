@@ -43,7 +43,7 @@ export function ClientQuestionModal({
             {question.client_prompt}
           </h2>
           <p className="mt-2 text-xs text-amber-400/60">
-            Responde correctamente para cerrar la consulta. No puedes omitirla.
+            Cada error cuesta 1 vida y 10 segundos del timer compartido. No puedes omitirla.
           </p>
         </div>
 
