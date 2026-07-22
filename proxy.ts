@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
 
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
+// React's dev build uses eval() for debugging (hot reload, callstacks); it
+// never does in production. So 'unsafe-eval' is allowed ONLY in development —
+// production keeps the strict policy. 'unsafe-inline' on scripts is needed by
+// Next's bootstrap inline script in both modes.
+const SCRIPT_SRC = IS_DEV
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+  : "script-src 'self' 'unsafe-inline'";
+
 // Baseline security headers on every response. The app is served over HTTPS
 // behind the ALB, so HSTS is safe; the CSP is tight because the game ships no
 // third-party scripts and inlines its own styles via Tailwind.
@@ -11,7 +21,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    SCRIPT_SRC,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "connect-src 'self'",

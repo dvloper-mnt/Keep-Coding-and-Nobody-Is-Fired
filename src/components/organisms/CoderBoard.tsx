@@ -14,6 +14,12 @@ interface CoderBoardProps {
   feedback: string | null;
   onAnswer: (answerIndex: number) => void;
   onAbandoned: (status: GameStatus) => void;
+  /**
+   * Partial text streamed from Bedrock while the room is idle.
+   * DECORATIVE ONLY — never parsed, never used to build the board.
+   * The board is assembled only from the validated Challenge via getCoderState.
+   */
+  streamingPartialText?: string;
 }
 
 export function CoderBoard({
@@ -24,6 +30,7 @@ export function CoderBoard({
   feedback,
   onAnswer,
   onAbandoned,
+  streamingPartialText,
 }: CoderBoardProps) {
   return (
     <div
@@ -87,12 +94,20 @@ export function CoderBoard({
         )}
 
         {view.status === 'idle' ? (
-          <div className="mt-6 rounded-lg border border-red-500/30 bg-red-950/10 p-10 text-center">
-            <p className="font-mono text-sm tracking-wider text-red-400">
-              Estamos preparando tu incidente
-              <span className="animate-pulse">…</span>
-            </p>
-            <p className="mt-2 text-xs text-zinc-500">
+          <div className="mt-6 rounded-lg border border-red-500/30 bg-red-950/10 p-10">
+            {streamingPartialText ? (
+              // Streaming partial text — decorative only, never parsed.
+              // Shown as a live preview of the challenge JSON being generated.
+              <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-red-300/80">
+                {streamingPartialText}
+              </pre>
+            ) : (
+              <p className="text-center font-mono text-sm tracking-wider text-red-400">
+                Estamos preparando tu incidente
+                <span className="animate-pulse">…</span>
+              </p>
+            )}
+            <p className="mt-4 text-center text-xs text-zinc-500">
               Comparte el código de sala con el Helper mientras tanto.
             </p>
           </div>
