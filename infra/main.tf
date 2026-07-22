@@ -58,6 +58,12 @@ data "aws_iam_policy_document" "bedrock" {
       "arn:aws:bedrock:*:*:inference-profile/*anthropic.*",
     ]
   }
+
+  # Apply the content guardrail on generation.
+  statement {
+    actions   = ["bedrock:ApplyGuardrail"]
+    resources = [aws_bedrock_guardrail.main.guardrail_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "bedrock" {
@@ -107,6 +113,8 @@ resource "aws_ecs_task_definition" "app" {
         { name = "AWS_REGION", value = var.aws_region },
         { name = "NODE_ENV", value = "production" },
         { name = "BEDROCK_RUNTIME_TIMEOUT_MS", value = tostring(var.bedrock_timeout_ms) },
+        { name = "BEDROCK_GUARDRAIL_ID", value = aws_bedrock_guardrail.main.guardrail_id },
+        { name = "BEDROCK_GUARDRAIL_VERSION", value = aws_bedrock_guardrail_version.main.version },
       ]
       logConfiguration = {
         logDriver = "awslogs"
