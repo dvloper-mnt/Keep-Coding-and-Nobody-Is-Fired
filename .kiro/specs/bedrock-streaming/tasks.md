@@ -27,7 +27,7 @@ Implementación en orden de dependencias (de adentro hacia afuera). TDD donde ha
 
 - [x] 4.1 `npm run test` verde (115 tests: 107 existentes + 8 nuevos), `tsc --noEmit` 0 errores, `npm run lint` 0 warnings. (R5.3)
 - [x] 4.2 Smoke test en local: iniciar partida y ver el texto del challenge apareciendo en vivo; forzar un fallo de Bedrock y confirmar que cae al curado sin romper. (R4) — verificado: 574 eventos delta en vivo; reveló que faltaba el permiso bedrock:InvokeModelWithResponseStream.
-- [ ] 4.3 Verificar en producción tras deploy: el challenge aparece en streaming y, si falla, el fallback funciona. (R4.3)
+- [x] 4.3 Verificar en producción tras deploy: el challenge aparece en streaming y, si falla, el fallback funciona. (R4.3) — verificado en hackaton.dvloper.com.co: 655 eventos delta en vivo, sala promovida a playing con 3 steps.
 
 ## Notas
 
