@@ -33,9 +33,16 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 export function proxy() {
   const response = NextResponse.next();
-  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
-    response.headers.set(name, value);
+
+  // Only apply strict security headers (incl. tight CSP) in production.
+  // In development (pnpm dev) we skip it so React can use eval() for
+  // call stack reconstruction, Fast Refresh, error overlays, etc.
+  if (process.env.NODE_ENV === 'production') {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+      response.headers.set(name, value);
+    }
   }
+
   return response;
 }
 

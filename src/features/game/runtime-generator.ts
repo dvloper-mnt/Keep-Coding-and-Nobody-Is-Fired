@@ -20,7 +20,23 @@ function guardrailConfig() {
   if (!GUARDRAIL_ID || !GUARDRAIL_VERSION) return undefined;
   return { guardrailIdentifier: GUARDRAIL_ID, guardrailVersion: GUARDRAIL_VERSION };
 }
-const RUNTIME_TIMEOUT_MS = Number(process.env['BEDROCK_RUNTIME_TIMEOUT_MS'] ?? '10000');
+const RUNTIME_TIMEOUT_MS = Number(process.env['BEDROCK_RUNTIME_TIMEOUT_MS'] ?? '30000');
+
+// In local development, skip the Bedrock call entirely (and fast) if there are
+// no obvious signs of AWS credentials. This prevents 10-30s delays on every
+// game start when the developer has no Bedrock access configured.
+function shouldSkipBedrockInDev(): boolean {
+  if (process.env.NODE_ENV !== 'development') return false;
+
+  const hasCredentialHint =
+    process.env.AWS_ACCESS_KEY_ID ||
+    process.env.AWS_PROFILE ||
+    process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI ||
+    process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI ||
+    process.env.AWS_EXECUTION_ENV; // Lambda / ECS / etc.
+
+  return !hasCredentialHint;
+}
 
 function stripMarkdownFences(text: string): string {
   return text
@@ -143,6 +159,14 @@ export async function generateChallengeStreaming(
 export async function generateChallenge(
   language: ChallengeLanguage = 'random',
 ): Promise<Challenge | null> {
+
+  if (shouldSkipBedrockInDev()) {
+    console.log('[bedrock] no AWS credentials detected in dev, using curated challenge immediately');
+    return null;
+  }
+
+  console.log('[bedrock] attempting to generate challenge with AWS Bedrock...');
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), RUNTIME_TIMEOUT_MS);
 
@@ -188,7 +212,12 @@ export async function generateChallenge(
 
     return parsed;
   } catch (error) {
-    console.error('[bedrock] generation failed, falling back to curated challenge:', error);
+    const isAbort = error instanceof Error && (error.name === 'AbortError' || error.message?.includes('aborted'));
+    if (isAbort) {
+      console.error('[bedrock] request timed out, falling back to curated challenge');
+    } else {
+      console.error('[bedrock] generation failed, falling back to curated challenge:', error);
+    }
     return null;
   } finally {
     clearTimeout(timeout);
