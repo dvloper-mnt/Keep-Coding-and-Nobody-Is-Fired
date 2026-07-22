@@ -19,7 +19,7 @@ services:
     image: valkey/valkey:8-alpine
     container_name: keep-coding-valkey
     ports:
-      - '6380:6379'
+      - '6379:6379'
     healthcheck:
       test: ['CMD', 'valkey-cli', 'ping']
       interval: 5s
