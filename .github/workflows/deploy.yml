@@ -3,6 +3,9 @@ name: Deploy
 on:
   push:
     branches: [develop]
+    paths-ignore:
+      - '.kiro/**'
+      - '**.md'
 
 permissions:
   id-token: write
