@@ -1,0 +1,28 @@
+# Local development services.
+#
+# Only the session store runs in Docker — the Next.js dev server runs natively
+# on your machine (`pnpm dev`) for fast hot reload. This mirrors production,
+# where the app talks to AWS ElastiCache Valkey.
+#
+# Usage:
+#   docker compose up -d            # start Valkey in the background
+#   # in .env.local: REDIS_HOST=localhost  REDIS_PORT=6380
+#   pnpm dev                        # run the app natively
+#   docker compose down             # stop it
+#
+# Valkey (not Redis) to match production exactly (ElastiCache Valkey 8.0).
+# Host port is 6380 (not 6379) to avoid clashing with other local Redis
+# containers; inside the container it's still 6379.
+
+services:
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: keep-coding-valkey
+    ports:
+      - '6380:6379'
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
