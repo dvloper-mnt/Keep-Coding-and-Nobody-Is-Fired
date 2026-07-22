@@ -1,0 +1,91 @@
+{
+  "id": "lvl_routes_001",
+  "title": "Rutas en producción",
+  "difficulty": "medium",
+  "story_context": "La empresa presenta en vivo el API de pedidos cuando el archivo de rutas empieza a fallar con el cliente mirando.",
+  "time_limit": 300,
+  "steps": [
+    {
+      "step": 1,
+      "coder_view": {
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Orders\\OrderController;\nuse App\\Http\\Controllers\\Dashboard\\DashboardController;\nuse App\\Http\\Controllers\\Reports\\ReportController;\n\nRoute::post('/orders', [OrderController::class, 'create']);\nRoute::get('/dashboard', [DashboardController::class, 'summary']);\nRoute::get('/orders/{id}', [OrderController::class, 'show']);\nRoute::get('/reports/daily', [ReportController::class, 'daily']);",
+        "error": "500 Internal Server Error"
+      },
+      "helper_view": {
+        "rules": ["N/A"],
+        "knowledge": [
+          "SI OrderController aparece 2 veces en el bloque → métodos definidos en el proyecto: index, store, show",
+          "SI DashboardController aparece 1 vez en el bloque → métodos definidos: summary, stats",
+          "SI ReportController aparece 1 vez en el bloque → métodos definidos: daily, weekly"
+        ]
+      },
+      "options": [
+        "DashboardController debe invocar stats en su ruta",
+        "OrderController debe invocar store en la ruta POST de pedidos",
+        "ReportController debe invocar weekly en su ruta",
+        "OrderController debe invocar index en la ruta GET con parámetro {id}"
+      ],
+      "correct_answer": 1,
+      "success_state": {
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Orders\\OrderController;\nuse App\\Http\\Controllers\\Dashboard\\DashboardController;\nuse App\\Http\\Controllers\\Reports\\ReportController;\n\nRoute::post('/orders', [OrderController::class, 'store']);\nRoute::get('/dashboard', [DashboardController::class, 'summary']);\nRoute::get('/orders/{id}', [OrderController::class, 'show']);\nRoute::get('/reports/daily', [ReportController::class, 'daily']);"
+      },
+      "hint": "¿Cuántas rutas de OrderController hay en el bloque y qué métodos se invocan en cada una?"
+    },
+    {
+      "step": 2,
+      "coder_view": {
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Orders\\OrderController;\nuse App\\Http\\Controllers\\Dashboard\\DashboardController;\nuse App\\Http\\Controllers\\Reports\\ReportController;\nuse App\\Http\\Controllers\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/orders', [OrderController::class, 'store']);\n    Route::get('/dashboard', [DashboardController::class, 'summary']);\n    Route::get('/orders/{id}', [OrderController::class, 'show']);\n    Route::get('/reports/daily', [ReportController::class, 'daily']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});",
+        "error": "500 Internal Server Error"
+      },
+      "helper_view": {
+        "rules": ["N/A"],
+        "knowledge": [
+          "SI OrderController aparece 2 veces en el bloque → métodos: store, show",
+          "SI DashboardController aparece 1 vez en el bloque → métodos: summary, stats",
+          "SI ReportController aparece 1 vez en el bloque → métodos: daily, weekly",
+          "SI ProfileController aparece 1 vez en el bloque → en este proyecto puede vivir en App\\Http\\Controllers\\User o en App\\Http\\Controllers\\Auth"
+        ]
+      },
+      "options": [
+        "ProfileController debe importarse desde App\\Http\\Controllers\\User\\ProfileController",
+        "OrderController debe importarse desde App\\Http\\Controllers\\OrderController",
+        "DashboardController debe importarse desde App\\Http\\Controllers\\Dashboard\\DashboardController",
+        "ReportController debe importarse desde App\\Http\\Controllers\\Reports\\ReportController"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Orders\\OrderController;\nuse App\\Http\\Controllers\\Dashboard\\DashboardController;\nuse App\\Http\\Controllers\\Reports\\ReportController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/orders', [OrderController::class, 'store']);\n    Route::get('/dashboard', [DashboardController::class, 'summary']);\n    Route::get('/orders/{id}', [OrderController::class, 'show']);\n    Route::get('/reports/daily', [ReportController::class, 'daily']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});"
+      },
+      "hint": "¿Apareció una ruta nueva en el grupo? ¿Qué controlador la atiende?"
+    },
+    {
+      "step": 3,
+      "coder_view": {
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Orders\\OrderController;\nuse App\\Http\\Controllers\\Dashboard\\DashboardController;\nuse App\\Http\\Controllers\\Reports\\ReportController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/orders', [OrderController::class, 'store']);\n    Route::get('/dashboard', [DashboardController::class, 'summary']);\n    Route::get('/orders/{id}', [OrderController::class, 'show']);\n    Route::get('/orders/{id}/cancel', [OrderController::class, 'cancel']);\n    Route::get('/reports/daily', [ReportController::class, 'daily']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});",
+        "error": "405 Method Not Allowed"
+      },
+      "helper_view": {
+        "rules": ["N/A"],
+        "knowledge": [
+          "SI OrderController aparece 3 veces en el bloque → acciones en rutas: store, show, cancel",
+          "SI DashboardController aparece 1 vez en el bloque → acción de lectura: summary",
+          "SI ReportController aparece 1 vez en el bloque → acción de lectura: daily",
+          "SI ProfileController aparece 1 vez en el bloque → acción de lectura: show",
+          "En este proyecto, store y cancel son acciones de escritura → convención POST",
+          "En este proyecto, show, summary y daily son acciones de lectura → convención GET"
+        ]
+      },
+      "options": [
+        "La ruta de DashboardController con summary debe registrarse como POST",
+        "La ruta de OrderController con show debe registrarse como POST",
+        "La ruta de ReportController con daily debe registrarse como POST",
+        "La ruta de OrderController con cancel debe registrarse como POST y no como GET"
+      ],
+      "correct_answer": 3,
+      "success_state": {
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Orders\\OrderController;\nuse App\\Http\\Controllers\\Dashboard\\DashboardController;\nuse App\\Http\\Controllers\\Reports\\ReportController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/orders', [OrderController::class, 'store']);\n    Route::get('/dashboard', [DashboardController::class, 'summary']);\n    Route::get('/orders/{id}', [OrderController::class, 'show']);\n    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);\n    Route::get('/reports/daily', [ReportController::class, 'daily']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});"
+      },
+      "hint": "¿Qué verbos HTTP ves en las rutas de OrderController?"
+    }
+  ]
+}
