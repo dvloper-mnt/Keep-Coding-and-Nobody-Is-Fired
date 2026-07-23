@@ -41,7 +41,7 @@ export function ExitButton({ sessionId, role, onAbandoned }: ExitButtonProps) {
         onClose={() => setConfirming(false)}
         onConfirm={handleExit}
         eyebrow="Abandonar partida"
-        title="¿Seguro que querés salir?"
+        title="¿Seguro que quieres salir?"
         description="La partida terminará para los dos jugadores. No se puede deshacer."
         confirmLabel="Sí, abandonar"
         loading={leaving}

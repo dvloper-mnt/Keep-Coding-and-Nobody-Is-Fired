@@ -44,7 +44,7 @@
         "rules": [
           "En Laravel, importar un controlador desde un namespace que no coincide con su ubicación real produce un error 500 en runtime, aunque la línea use exista.",
           "El namespace de un controlador debe reflejar la carpeta física donde vive dentro de app/Http/Controllers.",
-          "Cuando el 500 aparece justo tras agregar una ruta, sospechá del import más nuevo: preguntale al Coder qué controlador atiende la ruta recién agregada y desde qué namespace se importa."
+          "Cuando el 500 aparece justo tras agregar una ruta, sospecha del import más nuevo: pregúntale al Coder qué controlador atiende la ruta recién agregada y desde qué namespace se importa."
         ],
         "knowledge": [
           "En este proyecto los controladores están agrupados por dominio en subcarpetas; no todos viven en la raíz de Controllers, así que un import a la raíz puede no coincidir con la ubicación real.",
@@ -72,7 +72,7 @@
       "helper_view": {
         "rules": [
           "Un error 405 Method Not Allowed significa que el verbo HTTP de la petición no coincide con el verbo registrado en la ruta.",
-          "Por convención REST, las acciones que modifican estado usan un verbo distinto al de las de solo lectura: preguntale al Coder qué hace cada ruta nueva y con qué verbo está registrada.",
+          "Por convención REST, las acciones que modifican estado usan un verbo distinto al de las de solo lectura: pregúntale al Coder qué hace cada ruta nueva y con qué verbo está registrada.",
           "Un 405 no es un método inexistente ni un namespace mal importado: el método existe y la ruta resuelve, pero el verbo no encaja con el de la petición."
         ],
         "knowledge": [

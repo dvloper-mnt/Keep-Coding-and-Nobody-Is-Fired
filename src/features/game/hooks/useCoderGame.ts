@@ -85,7 +85,7 @@ export function useCoderGame(
           else await fetchState();
         }
       } catch {
-        setFeedback('Error de conexión. Reintentá.');
+        setFeedback('Error de conexión. Reintenta.');
       } finally {
         setSubmitting(false);
       }

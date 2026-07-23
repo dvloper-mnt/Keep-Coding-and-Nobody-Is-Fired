@@ -118,7 +118,7 @@ EXAMPLE OF A PERFECT CHALLENGE (match THIS quality — one step shown):
   ],
   "correct_answer": 0,
   "success_state": { "code_patch": "...the same code with 'index' changed to 'login'..." },
-  "hint": "El error 500 aparece al invocar la ruta: revisá si el método llamado existe en el controlador."
+  "hint": "El error 500 aparece al invocar la ruta: revisa si el método llamado existe en el controlador."
 }
 
 OUTPUT FORMAT — return ONLY a valid JSON object (no markdown, no extra text):

@@ -7,12 +7,12 @@ export const GAME_MODE_OPTIONS = [
   {
     value: 'classic' as const,
     label: 'Partida normal',
-    description: 'Un incidente. Lo resolvés y ganás.',
+    description: 'Un incidente. Lo resuelves y ganas.',
   },
   {
     value: 'endless' as const,
     label: 'Modo infinito',
-    description: 'Rondas seguidas. Sobrevivís lo más que puedas.',
+    description: 'Rondas seguidas. Sobrevives lo más que puedas.',
   },
 ] as const;
 

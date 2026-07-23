@@ -66,7 +66,7 @@ export function LeaderboardPanel({ sessionId }: LeaderboardPanelProps) {
     <div className="mt-6 rounded-lg border border-amber-500/40 bg-amber-950/20 p-6">
       <p className="text-lg font-semibold text-amber-300">Entra al ranking global</p>
       <p className="mt-1 text-sm text-amber-200/70">
-        Ponle un nombre a tu equipo y compará qué tan lejos llegaste.
+        Ponle un nombre a tu equipo y compara qué tan lejos llegaste.
       </p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <input

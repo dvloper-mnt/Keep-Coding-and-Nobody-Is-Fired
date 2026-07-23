@@ -15,7 +15,7 @@
         "rules": [
           "En Laravel, el orden de los middlewares en un grupo importa: se ejecutan en el orden en que se listan, de izquierda a derecha.",
           "Un middleware que necesita un usuario ya resuelto fallará si corre antes que el que autentica.",
-          "Preguntale al Coder qué middlewares hay en el grupo y en qué orden aparecen: el 500 aquí suele ser un middleware que corre fuera de secuencia."
+          "Pregúntale al Coder qué middlewares hay en el grupo y en qué orden aparecen: el 500 aquí suele ser un middleware que corre fuera de secuencia."
         ],
         "knowledge": [
           "En este proyecto, el control de tasa por usuario necesita que la sesión ya esté autenticada para saber a quién limitar.",
@@ -44,7 +44,7 @@
         "rules": [
           "El límite de tasa por defecto cuenta todas las peticiones del grupo juntas; dos rutas de un mismo flujo pueden agotarlo entre sí.",
           "Se puede nombrar un limitador específico para separar el presupuesto de peticiones de cada acción.",
-          "Preguntale al Coder qué rutas comparten el grupo y si el flujo dispara varias en poco tiempo: el 429 sale cuando comparten el mismo cupo."
+          "Pregúntale al Coder qué rutas comparten el grupo y si el flujo dispara varias en poco tiempo: el 429 sale cuando comparten el mismo cupo."
         ],
         "knowledge": [
           "En este proyecto, procesar y confirmar un checkout son dos llamadas seguidas del mismo usuario en segundos.",
@@ -73,7 +73,7 @@
         "rules": [
           "Un método sobre null aparece cuando una búsqueda por id no encontró el registro y devolvió null.",
           "Buscar-o-fallar lanza un error claro (404) en vez de dejar continuar con null hacia una llamada que revienta.",
-          "Preguntale al Coder qué devuelve la búsqueda cuando el id no existe y qué se hace con ese resultado antes de usarlo."
+          "Pregúntale al Coder qué devuelve la búsqueda cuando el id no existe y qué se hace con ese resultado antes de usarlo."
         ],
         "knowledge": [
           "En este proyecto, algunos pedidos de la demo llegan con ids que ya fueron archivados y no están en la tabla activa.",
@@ -90,7 +90,7 @@
       "success_state": {
         "code_patch": "public function confirm(Request $request): JsonResponse\n{\n    $order = Order::findOrFail($request->input('order_id'));\n    $order->markConfirmed();\n    return response()->json($order);\n}"
       },
-      "hint": "¿Qué pasa si la búsqueda por id no encuentra nada y seguís usando el resultado?"
+      "hint": "¿Qué pasa si la búsqueda por id no encuentra nada y sigues usando el resultado?"
     },
     {
       "step": 4,
@@ -100,9 +100,9 @@
       },
       "helper_view": {
         "rules": [
-          "Recordá lo que ya resolviste antes en este mismo incidente: el límite de tasa de este flujo fue separado con un limitador propio en un paso anterior.",
+          "Recuerda lo que ya resolviste antes en este mismo incidente: el límite de tasa de este flujo fue separado con un limitador propio en un paso anterior.",
           "Enviar una notificación sincrónica dentro de la petición puede disparar llamadas que caen bajo ese mismo limitador ya ajustado y volver a agotarlo.",
-          "Preguntale al Coder qué acción nueva agrega esta petición sobre lo que ya venía haciendo, y si esa acción debería correr dentro del ciclo de la petición o diferirse."
+          "Pregúntale al Coder qué acción nueva agrega esta petición sobre lo que ya venía haciendo, y si esa acción debería correr dentro del ciclo de la petición o diferirse."
         ],
         "knowledge": [
           "En este proyecto, las notificaciones pesadas se difieren a una cola para no cargar la petición ni contar contra el límite del flujo que ya se ajustó antes.",
@@ -119,7 +119,7 @@
       "success_state": {
         "code_patch": "public function confirm(Request $request): JsonResponse\n{\n    $order = Order::findOrFail($request->input('order_id'));\n    $order->markConfirmed();\n    Notification::send($order->user, (new OrderConfirmed($order))->afterCommit());\n    ConfirmationJob::dispatch($order);\n    return response()->json($order);\n}"
       },
-      "hint": "Conectá este error con lo que ya ajustaste antes sobre el límite del flujo: algo nuevo lo vuelve a saturar."
+      "hint": "Conecta este error con lo que ya ajustaste antes sobre el límite del flujo: algo nuevo lo vuelve a saturar."
     },
     {
       "step": 5,
@@ -131,7 +131,7 @@
         "rules": [
           "Una propiedad tipada sin valor inicial explota al leerse si nunca se le asignó, típicamente porque el constructor no la recibió ni la guardó.",
           "Un trabajo de cola necesita recibir en su constructor los datos que va a usar en handle, porque se ejecuta en otro proceso sin el contexto de la petición.",
-          "Preguntale al Coder si la propiedad que se usa en handle se recibe y se asigna en el constructor del trabajo."
+          "Pregúntale al Coder si la propiedad que se usa en handle se recibe y se asigna en el constructor del trabajo."
         ],
         "knowledge": [
           "En este proyecto, los trabajos de cola corren fuera de la petición y solo tienen lo que se les pasó al encolarlos.",
