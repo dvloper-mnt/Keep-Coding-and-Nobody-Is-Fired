@@ -4,6 +4,8 @@ import type {
   CoderStepView,
   GameStatus,
   HelperGuideResult,
+  HelperRevealResponse,
+  HelperRevealTarget,
   HelperSyncView,
   LeaderboardTop,
   PlayerRole,
@@ -93,4 +95,16 @@ export function abandonGame(
 
 export function getLeaderboardTop(): Promise<LeaderboardTop> {
   return getJson<LeaderboardTop>('/api/game/leaderboard');
+}
+
+export function revealHelperItem(
+  sessionId: string,
+  target: HelperRevealTarget,
+): Promise<HelperRevealResponse> {
+  const token = readToken(sessionId, 'helper');
+  return postJson<HelperRevealResponse>('/api/game/helper-reveal', {
+    sessionId,
+    token,
+    target,
+  });
 }
