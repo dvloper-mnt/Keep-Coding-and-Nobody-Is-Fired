@@ -5,8 +5,9 @@ import {
 } from '@aws-sdk/client-bedrock-runtime';
 import { dumpBedrockResponse } from './bedrock-response-log';
 import { isValidChallenge } from './challenge-schema';
+import { difficultyInstruction } from './challenge-difficulty';
 import { languageInstruction, resolveLanguage } from './challenge-language';
-import type { Challenge, ChallengeLanguage } from './game-types';
+import type { Challenge, ChallengeLanguage, Difficulty } from './game-types';
 
 const REGION = process.env['AWS_REGION'] ?? 'us-east-1';
 const MODEL_ID =
@@ -117,7 +118,7 @@ OUTPUT FORMAT — return ONLY a valid JSON object (no markdown, no extra text):
 {
   "id": "lvl_<topic>_<short>",
   "title": "<short title in Spanish>",
-  "difficulty": "medium",
+  "difficulty": "<must match the difficulty level requested in the user message>",
   "story_context": "<one sentence: a live demo breaking in production>",
   "time_limit": 300,
   "steps": [ /* EXACTLY 3 steps with the shape of the example */ ]
@@ -130,7 +131,8 @@ STRUCTURE RULES:
 
 LANGUAGE OF THE OUTPUT (critical):
 - All player-facing text — title, story_context, options, rules, knowledge and hint — MUST be written in Spanish, exactly like the example above.
-- Only the "code" and "error" fields use the programming language requested in the user message.`;
+- Only the "code" and "error" fields use the programming language requested in the user message.
+- The "difficulty" field in the JSON MUST exactly match the difficulty level requested in the user message (easy, medium, hard, or expert).`;
 
 /**
  * Generates a challenge using Bedrock's streaming API (`ConverseStreamCommand`).
@@ -141,12 +143,14 @@ LANGUAGE OF THE OUTPUT (critical):
  * failure (network error, timeout, abort, invalid JSON, validation failure) —
  * identical fallback semantics to `generateChallenge`.
  *
- * @param language - Challenge language preference (default 'random')
- * @param onDelta  - Called with the full accumulated text after each new fragment
+ * @param language   - Challenge language preference (default 'random')
+ * @param onDelta    - Called with the full accumulated text after each new fragment
+ * @param difficulty - Target difficulty for the generated challenge (default 'easy')
  */
 export async function generateChallengeStreaming(
   language: ChallengeLanguage = 'random',
   onDelta: (partialText: string) => void,
+  difficulty: Difficulty = 'easy',
 ): Promise<Challenge | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), RUNTIME_TIMEOUT_MS);
@@ -162,7 +166,7 @@ export async function generateChallengeStreaming(
           role: 'user',
           content: [
             {
-              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} Devuelve solo el JSON del objeto challenge.`,
+              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} ${difficultyInstruction(difficulty)} Devuelve solo el JSON del objeto challenge.`,
             },
           ],
         },
@@ -225,6 +229,7 @@ export async function generateChallengeStreaming(
 
 export async function generateChallenge(
   language: ChallengeLanguage = 'random',
+  difficulty: Difficulty = 'easy',
 ): Promise<Challenge | null> {
 
   if (shouldSkipBedrockInDev()) {
@@ -248,7 +253,7 @@ export async function generateChallenge(
           role: 'user',
           content: [
             {
-              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} Devuelve solo el JSON del objeto challenge.`,
+              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} ${difficultyInstruction(difficulty)} Devuelve solo el JSON del objeto challenge.`,
             },
           ],
         },

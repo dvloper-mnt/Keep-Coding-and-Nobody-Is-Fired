@@ -1,6 +1,6 @@
 import type { Challenge, ChallengeStep } from './game-types';
 
-const VALID_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
+const VALID_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert'] as const;
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== '';

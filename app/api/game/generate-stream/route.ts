@@ -1,3 +1,4 @@
+import { difficultyForSession } from '@/src/features/game/challenge-difficulty';
 import {
   claimGeneratingSlot,
   pickRandomChallenge,
@@ -93,6 +94,7 @@ export async function GET(request: NextRequest): Promise<Response> {
           (partialText: string) => {
             emit('delta', partialText);
           },
+          difficultyForSession(session),
         );
 
         // Resolve final challenge: generated or curated fallback.
