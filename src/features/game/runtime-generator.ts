@@ -23,6 +23,10 @@ function guardrailConfig() {
 }
 const RUNTIME_TIMEOUT_MS = Number(process.env['BEDROCK_RUNTIME_TIMEOUT_MS'] ?? '30000');
 
+// A valid challenge is a few KB. This caps a runaway/malformed Bedrock response
+// from growing the buffer unbounded and exhausting server memory mid-demo.
+const MAX_STREAM_BUFFER_BYTES = 200_000;
+
 // In local development, skip the Bedrock call entirely (and fast) if there are
 // no obvious signs of AWS credentials. This prevents 10-30s delays on every
 // game start when the developer has no Bedrock access configured.
@@ -178,6 +182,11 @@ export async function generateChallengeStreaming(
     for await (const chunk of response.stream) {
       if (chunk.contentBlockDelta?.delta?.text) {
         buffer += chunk.contentBlockDelta.delta.text;
+        if (buffer.length > MAX_STREAM_BUFFER_BYTES) {
+          console.error('[bedrock] streaming: response exceeded buffer cap, falling back to curated challenge');
+          controller.abort();
+          return null;
+        }
         onDelta(buffer);
       }
     }

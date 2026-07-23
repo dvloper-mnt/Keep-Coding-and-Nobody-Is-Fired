@@ -12,11 +12,13 @@
         "error": "500 Internal Server Error"
       },
       "helper_view": {
-        "rules": ["N/A"],
+        "rules": [
+          "En Laravel, una ruta que apunta a un método inexistente en el controlador lanza un error 500 en runtime, no al arrancar.",
+          "Por convención REST, crear un recurso (POST) se mapea al método store del controlador, no a create ni index."
+        ],
         "knowledge": [
-          "SI OrderController aparece 2 veces en el bloque → métodos definidos en el proyecto: index, store, show",
-          "SI DashboardController aparece 1 vez en el bloque → métodos definidos: summary, stats",
-          "SI ReportController aparece 1 vez en el bloque → métodos definidos: daily, weekly"
+          "En este proyecto, OrderController expone los métodos: store, show.",
+          "La demo está enviando un POST a /orders para crear un pedido en este momento."
         ]
       },
       "options": [
@@ -38,12 +40,13 @@
         "error": "500 Internal Server Error"
       },
       "helper_view": {
-        "rules": ["N/A"],
+        "rules": [
+          "En Laravel, importar un controlador desde un namespace que no coincide con su ubicación real produce un error 500 en runtime, aunque la línea use exista.",
+          "El namespace de un controlador debe reflejar la carpeta física donde vive dentro de app/Http/Controllers."
+        ],
         "knowledge": [
-          "SI OrderController aparece 2 veces en el bloque → métodos: store, show",
-          "SI DashboardController aparece 1 vez en el bloque → métodos: summary, stats",
-          "SI ReportController aparece 1 vez en el bloque → métodos: daily, weekly",
-          "SI ProfileController aparece 1 vez en el bloque → en este proyecto puede vivir en App\\Http\\Controllers\\User o en App\\Http\\Controllers\\Auth"
+          "En este proyecto, ProfileController vive en la carpeta User (App\\Http\\Controllers\\User), no en la raíz de Controllers.",
+          "La ruta nueva /profile es la que se agregó al grupo y la que está rompiendo."
         ]
       },
       "options": [
@@ -65,14 +68,13 @@
         "error": "405 Method Not Allowed"
       },
       "helper_view": {
-        "rules": ["N/A"],
+        "rules": [
+          "Un error 405 Method Not Allowed significa que el verbo HTTP de la petición no coincide con el verbo registrado en la ruta.",
+          "Por convención REST, una acción que modifica estado (cancelar un pedido) se registra como POST, no como GET."
+        ],
         "knowledge": [
-          "SI OrderController aparece 3 veces en el bloque → acciones en rutas: store, show, cancel",
-          "SI DashboardController aparece 1 vez en el bloque → acción de lectura: summary",
-          "SI ReportController aparece 1 vez en el bloque → acción de lectura: daily",
-          "SI ProfileController aparece 1 vez en el bloque → acción de lectura: show",
-          "En este proyecto, store y cancel son acciones de escritura → convención POST",
-          "En este proyecto, show, summary y daily son acciones de lectura → convención GET"
+          "En este proyecto, cancelar un pedido (cancel) es una acción de escritura: el front la invoca con POST.",
+          "Las acciones de lectura del proyecto (show, summary, daily) sí usan GET correctamente."
         ]
       },
       "options": [
