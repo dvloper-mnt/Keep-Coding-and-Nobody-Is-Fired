@@ -26,6 +26,8 @@ const GENERATING_VIEW: CoderStepView = {
   remainingTime: 0,
   status: 'idle',
   coderLives: MAX_LIVES,
+  streak: 0,
+  multiplier: 1,
 };
 
 function CoderPageContent() {

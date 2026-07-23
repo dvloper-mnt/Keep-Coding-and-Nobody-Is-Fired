@@ -1,8 +1,11 @@
 import {
+  BASE_MULTIPLIER,
   CLIENT_QUESTION_CONFIG,
+  COMBO_BASE_PER_HIT,
   ENDLESS_BASE_SECONDS,
   ENDLESS_REWARD_SECONDS,
   PENALTY_SECONDS,
+  STREAK_TIERS,
   WRONG_ANSWER_MESSAGE,
 } from '@/src/lib/constants';
 import { createInitialLives, loseLife } from './lives-engine';
@@ -65,6 +68,48 @@ export function endlessScore(playedRounds: number, secondsSurvived: number): num
   return playedRounds * 1000 + secondsSurvived;
 }
 
+export function streakMultiplier(streak: number): number {
+  for (const tier of STREAK_TIERS) {
+    if (streak >= tier.minStreak) {
+      return tier.multiplier;
+    }
+  }
+  return BASE_MULTIPLIER;
+}
+
+export function comboPoints(basePerHit: number, multiplier: number): number {
+  return Math.round(basePerHit * multiplier);
+}
+
+export function finalScore(endless: number, comboScore: number): number {
+  return endless + comboScore;
+}
+
+function comboFieldsOnCorrect(session: GameSession): Pick<GameSession, 'streak' | 'bestStreak' | 'comboScore'> {
+  const nextStreak = session.streak + 1;
+  const multiplier = streakMultiplier(nextStreak);
+  const bonus =
+    multiplier > BASE_MULTIPLIER ? comboPoints(COMBO_BASE_PER_HIT, multiplier) : 0;
+
+  return {
+    streak: nextStreak,
+    bestStreak: Math.max(session.bestStreak, nextStreak),
+    comboScore: session.comboScore + bonus,
+  };
+}
+
+export function buildEndlessGameOverMeta(
+  session: GameSession,
+  durationSeconds: number,
+): { playedRounds: number; endlessScore: number; bestStreak: number } {
+  const base = endlessScore(session.playedRounds, durationSeconds);
+  return {
+    playedRounds: session.playedRounds,
+    endlessScore: finalScore(base, session.comboScore),
+    bestStreak: session.bestStreak,
+  };
+}
+
 function freshClientQuestions(): GameSession['clientQuestions'] {
   return {
     activeQuestionId: null,
@@ -97,6 +142,9 @@ export function createSession(
     round: 1,
     playedRounds: 0,
     mode,
+    streak: 0,
+    bestStreak: 0,
+    comboScore: 0,
     ...createInitialLives(),
   };
 }
@@ -177,6 +225,9 @@ export function createPendingSession(
     round: 1,
     playedRounds: 0,
     mode,
+    streak: 0,
+    bestStreak: 0,
+    comboScore: 0,
     ...createInitialLives(),
   };
 }
@@ -197,10 +248,12 @@ export function gameDurationSeconds(session: GameSession, now: number): number {
   return Math.max(0, Math.round((now - session.startedAt) / 1000));
 }
 
-function viewMeta(session: GameSession): Pick<CoderStepView, 'round' | 'mode'> {
+function viewMeta(session: GameSession): Pick<CoderStepView, 'round' | 'mode' | 'streak' | 'multiplier'> {
   return {
     round: session.round,
     mode: session.mode,
+    streak: session.streak,
+    multiplier: streakMultiplier(session.streak),
   };
 }
 
@@ -275,6 +328,7 @@ export function submitAnswer(
       const withReward = applyTimeDelta(session, ENDLESS_REWARD_SECONDS);
       return {
         ...withReward,
+        ...comboFieldsOnCorrect(session),
         currentCode: result.patch!,
         status: 'playing',
         roundComplete: true,
@@ -285,6 +339,7 @@ export function submitAnswer(
 
     return {
       ...session,
+      ...comboFieldsOnCorrect(session),
       currentCode: result.patch!,
       currentStep: isLastStep ? session.currentStep : session.currentStep + 1,
       status: isLastStep ? 'victory' : 'playing',
@@ -295,6 +350,7 @@ export function submitAnswer(
   const afterLifeLoss = loseLife(session, 'coder');
   return {
     ...applyTimeDelta(afterLifeLoss, -(result.penalty ?? PENALTY_SECONDS)),
+    streak: 0,
     lastResult: 'incorrect',
   };
 }

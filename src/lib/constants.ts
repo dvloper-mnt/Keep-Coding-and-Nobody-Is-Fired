@@ -50,3 +50,13 @@ export const BOSS_PRESSURE_CONFIG = {
 
 export const WRONG_ANSWER_MESSAGE = 'El sistema sigue fallando…';
 export const LIFE_LOST_MESSAGE = 'Perdiste 1 vida.';
+
+/** Combo tiers — highest minStreak first; edit here to tune balance without touching engine logic. */
+export const STREAK_TIERS = [
+  { minStreak: 7, multiplier: 3 },
+  { minStreak: 5, multiplier: 2 },
+  { minStreak: 3, multiplier: 1.5 },
+] as const;
+
+export const BASE_MULTIPLIER = 1;
+export const COMBO_BASE_PER_HIT = 100;

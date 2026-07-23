@@ -47,6 +47,9 @@ export function makeSession(overrides: Partial<GameSession> = {}): GameSession {
     round: 1,
     playedRounds: 0,
     mode: 'classic',
+    streak: 0,
+    bestStreak: 0,
+    comboScore: 0,
     ...overrides,
   };
 }
