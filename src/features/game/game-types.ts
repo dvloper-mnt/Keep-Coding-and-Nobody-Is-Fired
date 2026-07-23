@@ -127,6 +127,12 @@ export interface GameSession {
   /** Set once this session's score has been registered in the leaderboard, so a
    * client retry cannot register the same run twice. */
   leaderboardRegistered?: boolean;
+  /** Failures per challenge language, accumulated during the run. Feeds the run
+   * summary's "language you failed most". Absent → no failures yet. */
+  failuresByLanguage?: Partial<Record<ChallengeLanguage, number>>;
+  /** Highest difficulty reached across the run's generated challenges. Absent →
+   * defaults to the difficulty of the round reached. */
+  maxDifficulty?: Difficulty;
 }
 
 export interface StepResult {
@@ -134,6 +140,26 @@ export interface StepResult {
   patch?: string;
   penalty?: number;
   message?: string;
+}
+
+// The language the player failed most during the run, for the run summary.
+// null when there were no failures (nothing to report — shown as "—").
+export interface TopFailure {
+  language: ChallengeLanguage;
+  count: number;
+}
+
+// End-of-run summary, DERIVED (pure) from the persisted game-over session. It
+// reads the score the game already computed (endlessScore, with combos) — it
+// never recomputes it. Missing data is explicit (null), never invented.
+export interface RunSummary {
+  roundsReached: number;
+  score: number;
+  secondsSurvived: number;
+  bestStreak: number;
+  topFailure: TopFailure | null;
+  maxDifficulty: Difficulty | null;
+  defeatReason: DefeatReason | null;
 }
 
 // A single row of the global leaderboard. `score` is the endlessScore (with
@@ -188,6 +214,8 @@ export interface CoderStepView {
   streak: number;
   multiplier: number;
   bestStreak?: number;
+  // Present only at endless game over: the full run summary for the results screen.
+  runSummary?: RunSummary;
 }
 
 export interface HelperGuideSection {
@@ -238,6 +266,8 @@ export interface HelperSyncView {
   playedRounds?: number;
   endlessScore?: number;
   bestStreak?: number;
+  // Present only at endless game over: the full run summary for the results screen.
+  runSummary?: RunSummary;
 }
 
 export interface ClientQuestionAnswerResponse {
