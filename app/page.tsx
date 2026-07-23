@@ -14,13 +14,15 @@ export default function Home() {
         </p>
 
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-          <span className="animate-type-wipe inline-block">
+          {/* The caret lives INSIDE the clipped span, right after the text, so
+              it rides the typing edge instead of sitting still at the end. */}
+          <span className="animate-type-wipe inline">
             Keep Coding and
             <br />
             Nobody Is Fired
-          </span>
-          <span className="ml-1 inline-block w-[0.6ch] animate-cursor-blink bg-red-500 align-baseline text-transparent">
-            _
+            <span className="ml-1 inline-block w-[0.6ch] animate-cursor-blink bg-red-500 align-baseline text-transparent">
+              _
+            </span>
           </span>
         </h1>
 

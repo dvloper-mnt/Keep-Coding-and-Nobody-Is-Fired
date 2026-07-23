@@ -131,6 +131,11 @@ export interface GameSession {
   /** Set once this session's score has been registered in the leaderboard, so a
    * client retry cannot register the same run twice. */
   leaderboardRegistered?: boolean;
+  /** The exact leaderboard member key ("teamName#opaqueSuffix") produced at
+   * registration. Persisted so a reload can look up the player's rank directly —
+   * rebuilding it from the display name would mint a NEW random suffix that
+   * never matches the stored entry. Absent → not registered yet. */
+  leaderboardMember?: string;
   /** Cached mentor feedback for this finished run. A run is immutable once over,
    * so the analysis is generated once and replayed on retries/refreshes instead
    * of triggering another billable Bedrock stream. Absent → not generated yet;
@@ -230,6 +235,9 @@ export interface CoderStepView {
   runSummary?: RunSummary;
   // The active round modifier so the board can flag a boss round / surprise event.
   roundModifier?: RoundModifier;
+  // True once the Coder registered this run — lets the results UI show the
+  // ranking instead of the (already-used) registration form after a reload.
+  leaderboardRegistered?: boolean;
 }
 
 export interface HelperGuideSection {

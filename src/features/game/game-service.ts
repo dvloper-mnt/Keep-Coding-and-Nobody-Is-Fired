@@ -19,6 +19,7 @@ import { resolveRoundForGeneration } from './challenge-difficulty';
 import {
   createMemoryLeaderboardStore,
   createRedisLeaderboardStore,
+  rankOf,
   readTop10,
   registerScore,
   type LeaderboardStore,
@@ -300,17 +301,36 @@ export async function registerLeaderboardScore(
   const session = await getSessionFromStore(sessionId);
   if (!session) return { kind: 'unauthorized' };
 
-  if (session.leaderboardRegistered) return { kind: 'already' };
+  // Already registered: don't double-register. Replay the current ranking with
+  // the team's rank so the client can show the scoreboard instead of the form.
+  // Rank the EXACT stored member — rebuilding it from the name would mint a new
+  // opaque suffix that never matches the sorted-set entry (rank would be 0).
+  if (session.leaderboardRegistered) {
+    const store = getLeaderboardStore();
+    const { entries } = await readTop10(store);
+    const rank = session.leaderboardMember ? await rankOf(store, session.leaderboardMember) : 0;
+    return { kind: 'ok', result: { rank, entries } };
+  }
 
   const durationSeconds = gameDurationSeconds(session, Date.now());
   const score = scoreFromGameOver(session, durationSeconds);
   if (!score.ok) return { kind: 'not-game-over', reason: score.reason };
 
   const store = getLeaderboardStore();
-  const { rank } = await registerScore(store, name.name, score.endlessScore, score.playedRounds);
+  const { member, rank } = await registerScore(
+    store,
+    name.name,
+    score.endlessScore,
+    score.playedRounds,
+  );
 
-  // Mark the run registered so a client retry cannot double-register it.
-  await setSessionToStore(sessionId, { ...session, leaderboardRegistered: true });
+  // Mark the run registered (and remember the exact member key) so a client
+  // retry cannot double-register it and a reload can re-derive the same rank.
+  await setSessionToStore(sessionId, {
+    ...session,
+    leaderboardRegistered: true,
+    leaderboardMember: member,
+  });
 
   const { entries } = await readTop10(store);
   return { kind: 'ok', result: { rank, entries } };
@@ -481,6 +501,8 @@ function withEndMeta<T extends { status: string }>(view: T, session: GameSession
     abandonedBy: session.abandonedBy,
     durationSeconds,
     defeatReason: session.defeatReason,
+    // So the results UI can show the ranking (not the form) after a reload.
+    leaderboardRegistered: session.leaderboardRegistered ?? false,
     ...endlessMeta,
     ...runSummary,
   };
