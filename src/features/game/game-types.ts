@@ -147,6 +147,14 @@ export interface GameSession {
   /** Highest difficulty reached across the run's generated challenges. Absent →
    * defaults to the difficulty of the round reached. */
   maxDifficulty?: Difficulty;
+  /** Which Helper guide items are unlocked, per step. Absent → nothing revealed
+   * yet. Keys are step numbers as strings (JSON-safe). Each entry lists the
+   * revealed knowledge indices and whether the hint is unlocked. Reveals
+   * persist for the life of the round; time cost is applied once, at reveal. */
+  revealedHelperItems?: Record<
+    string,
+    { knowledge: number[]; hint: boolean }
+  >;
   /** The active round modifier (boss encounter or surprise event). Absent →
    * a normal round ('none'). Set when the round loads. */
   roundModifier?: RoundModifier;
@@ -245,6 +253,26 @@ export interface HelperGuideSection {
   rules: string[];
   knowledge: string[];
   hint?: string;
+  /** Knowledge indices the Helper hasn't paid to reveal yet. The client renders
+   * these as "🔒 Revelar (−Ns)" buttons instead of the text. Server-side gate
+   * uses the same list. Absent/empty → everything is visible. */
+  lockedKnowledgeIndices: number[];
+  /** True when this step has a hint that the Helper hasn't unlocked. Absent for
+   * steps without a hint. */
+  hintLocked: boolean;
+}
+
+// Body of POST /api/game/helper-reveal.
+export type HelperRevealTarget =
+  | { type: 'knowledge'; step: number; index: number }
+  | { type: 'hint'; step: number };
+
+// Result of the reveal endpoint. Returns the updated guide (locked lists
+// shifted) plus the new remaining time so the UI can reflect the cost without
+// waiting for the next sync poll.
+export interface HelperRevealResponse {
+  guide: HelperStaticGuide;
+  remainingTime: number;
 }
 
 export interface HelperStaticGuide {
