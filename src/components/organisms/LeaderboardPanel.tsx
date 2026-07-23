@@ -2,19 +2,24 @@
 
 import { readToken } from '@/src/features/game/api/session-token-store';
 import type { LeaderboardEntry, RunSummary } from '@/src/features/game/game-types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface LeaderboardPanelProps {
   sessionId: string;
   // Optional run summary — when present, the "done" phase adds a download link
   // to the share-card OG image (which needs score + rounds + team).
   runSummary?: RunSummary;
+  // True when the server says this run is already in the leaderboard (e.g. the
+  // page was reloaded after registering). We then fetch the ranking on mount
+  // and show it instead of the (already-used) registration form.
+  alreadyRegistered?: boolean;
 }
 
 type Phase =
   | { step: 'form' }
+  | { step: 'loading' }
   | { step: 'submitting' }
-  | { step: 'done'; entries: LeaderboardEntry[]; rank: number; teamName: string }
+  | { step: 'done'; entries: LeaderboardEntry[]; rank: number; teamName?: string }
   | { step: 'error'; message: string };
 
 const MAX_TEAM_NAME = 24;
@@ -22,9 +27,36 @@ const MAX_TEAM_NAME = 24;
 // Shown at endless game over: the Coder names the team and registers the run in
 // the global leaderboard, then sees the top 10 with their own position marked.
 // The score is derived server-side from the session — the client never sends it.
-export function LeaderboardPanel({ sessionId, runSummary }: LeaderboardPanelProps) {
+export function LeaderboardPanel({ sessionId, runSummary, alreadyRegistered }: LeaderboardPanelProps) {
   const [teamName, setTeamName] = useState('');
-  const [phase, setPhase] = useState<Phase>({ step: 'form' });
+  const [phase, setPhase] = useState<Phase>(
+    alreadyRegistered ? { step: 'loading' } : { step: 'form' },
+  );
+
+  // On a reload of an already-registered run, fetch the current ranking so we
+  // can show the scoreboard instead of the form. No openedRef-style guard here:
+  // each mount runs its own fetch with its own `cancelled` flag, so React's
+  // StrictMode double-mount (dev) resolves cleanly — the second mount's fetch is
+  // the one that lands. (A shared ref would let the first mount's cleanup cancel
+  // the only in-flight request and leave the panel stuck on "loading".)
+  useEffect(() => {
+    if (!alreadyRegistered) return;
+    let cancelled = false;
+    fetch('/api/game/leaderboard')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('http'))))
+      .then((data: { entries: LeaderboardEntry[] }) => {
+        if (cancelled) return;
+        // Read-only ranking: no own rank to highlight on a cold reload, but the
+        // player still sees the global top 10 rather than a dead form.
+        setPhase({ step: 'done', entries: data.entries, rank: 0 });
+      })
+      .catch(() => {
+        if (!cancelled) setPhase({ step: 'error', message: 'No se pudo cargar el ranking.' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [alreadyRegistered]);
 
   async function submit() {
     const trimmed = teamName.trim();
@@ -64,11 +96,19 @@ export function LeaderboardPanel({ sessionId, runSummary }: LeaderboardPanelProp
     }
   }
 
+  if (phase.step === 'loading') {
+    return (
+      <div className="mt-6 rounded-lg border border-emerald-500/20 bg-zinc-950 px-5 py-6 font-mono text-sm text-emerald-300/70">
+        <span className="text-emerald-600">$</span> cargando ranking global…
+      </div>
+    );
+  }
+
   if (phase.step === 'done') {
     return (
       <div>
         <LeaderboardTable entries={phase.entries} playerRank={phase.rank} />
-        {runSummary ? (
+        {runSummary && phase.teamName ? (
           <ShareCardDownload
             teamName={phase.teamName}
             score={runSummary.score}
@@ -121,32 +161,50 @@ interface LeaderboardTableProps {
   playerRank?: number;
 }
 
-// Standalone table — also usable on its own (e.g. a public leaderboard view or
-// the Helper's spectator view at endless game over).
+// Rank badge for the podium (top 3) — a medal; everyone else gets the padded
+// position number, so the column stays monospace-aligned.
+function rankBadge(rank: number): string {
+  if (rank === 1) return '🥇';
+  if (rank === 2) return '🥈';
+  if (rank === 3) return '🥉';
+  return String(rank).padStart(2, '0');
+}
+
+// Standalone scoreboard — also usable on its own (a public leaderboard view or
+// the Helper's spectator view at endless game over). Styled as a phosphor-green
+// terminal readout to match the game's production-log / code-panel aesthetic:
+// the ranking reads like it was tailed straight out of /var/log.
 export function LeaderboardTable({ entries, playerRank }: LeaderboardTableProps) {
   const hasRank = playerRank !== undefined && playerRank > 0;
   const playerInTop = hasRank && entries.some((e) => e.rank === playerRank);
 
   return (
-    <div className="mt-6 rounded-lg border border-zinc-700 bg-zinc-900/60 p-6">
-      <div className="flex items-baseline justify-between">
-        <p className="text-lg font-semibold text-zinc-100">Ranking global</p>
+    <div className="mt-6 overflow-hidden rounded-lg border border-emerald-500/30 bg-zinc-950 font-mono shadow-[0_0_40px_-12px_rgba(16,185,129,0.35)]">
+      {/* Terminal title bar */}
+      <div className="flex items-center justify-between border-b border-emerald-500/20 bg-emerald-500/5 px-5 py-3">
+        <p className="text-sm tracking-wide text-emerald-400">
+          <span className="text-emerald-600">$</span> cat /var/log/highscores
+        </p>
         {hasRank ? (
-          <p className="text-sm text-amber-300">Tu posición: #{playerRank}</p>
+          <p className="text-xs uppercase tracking-widest text-amber-400">
+            tu posición · #{playerRank}
+          </p>
         ) : null}
       </div>
 
       {entries.length === 0 ? (
-        <p className="mt-4 text-sm text-zinc-400">Aún no hay puntajes. ¡Sé el primero!</p>
+        <p className="px-5 py-6 text-sm text-emerald-300/70">
+          <span className="text-emerald-600">&gt;</span> sin registros todavía. Sé el primero en dejar tu marca.
+        </p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto px-2 py-2">
+          <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-zinc-700 text-zinc-400">
-                <th className="py-2 pr-4 font-medium">#</th>
-                <th className="py-2 pr-4 font-medium">Equipo</th>
-                <th className="py-2 pr-4 text-right font-medium tabular-nums">Puntaje</th>
-                <th className="py-2 text-right font-medium tabular-nums">Rondas</th>
+              <tr className="text-[0.7rem] uppercase tracking-widest text-emerald-600">
+                <th className="px-3 py-2 font-normal">Pos</th>
+                <th className="px-3 py-2 font-normal">Equipo</th>
+                <th className="px-3 py-2 text-right font-normal tabular-nums">Puntaje</th>
+                <th className="px-3 py-2 text-right font-normal tabular-nums">Rondas</th>
               </tr>
             </thead>
             <tbody>
@@ -157,17 +215,30 @@ export function LeaderboardTable({ entries, playerRank }: LeaderboardTableProps)
                     key={entry.rank}
                     className={
                       isPlayer
-                        ? 'bg-amber-500/15 font-semibold text-amber-200'
-                        : 'text-zinc-200'
+                        ? 'rounded bg-amber-400/10 text-amber-200 shadow-[inset_2px_0_0_0_rgb(251,191,36)]'
+                        : 'text-emerald-300/90'
                     }
                   >
-                    <td className="py-2 pr-4 tabular-nums">{entry.rank}</td>
+                    <td className="px-3 py-2.5 text-base tabular-nums">{rankBadge(entry.rank)}</td>
                     {/* Rendered as text (JSX escapes it) — never as HTML. */}
-                    <td className="py-2 pr-4">{entry.teamName}</td>
-                    <td className="py-2 pr-4 text-right tabular-nums">
+                    <td className="px-3 py-2.5 font-semibold">
+                      {entry.teamName}
+                      {isPlayer ? (
+                        <span className="ml-2 text-[0.65rem] uppercase tracking-widest text-amber-400/80">
+                          ◄ tú
+                        </span>
+                      ) : null}
+                    </td>
+                    <td
+                      className={`px-3 py-2.5 text-right text-base tabular-nums ${
+                        isPlayer ? 'text-amber-300' : 'text-emerald-200'
+                      }`}
+                    >
                       {entry.score.toLocaleString()}
                     </td>
-                    <td className="py-2 text-right tabular-nums">{entry.playedRounds}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-emerald-400/70">
+                      {entry.playedRounds}
+                    </td>
                   </tr>
                 );
               })}
@@ -177,8 +248,8 @@ export function LeaderboardTable({ entries, playerRank }: LeaderboardTableProps)
       )}
 
       {hasRank && !playerInTop ? (
-        <p className="mt-3 text-sm text-zinc-400">
-          Tu equipo quedó en la posición #{playerRank}, fuera del top 10.
+        <p className="border-t border-emerald-500/20 px-5 py-3 text-xs text-emerald-300/70">
+          <span className="text-emerald-600">&gt;</span> tu equipo quedó en la posición #{playerRank}, fuera del top 10.
         </p>
       ) : null}
     </div>
