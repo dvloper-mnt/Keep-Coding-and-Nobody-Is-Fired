@@ -5,6 +5,7 @@ import type {
   GameStatus,
   HelperGuideResult,
   HelperSyncView,
+  LeaderboardTop,
   PlayerRole,
   StartGameResponse,
 } from '@/src/features/game/game-types';
@@ -88,4 +89,8 @@ export function abandonGame(
 ): Promise<{ status: GameStatus }> {
   const token = readToken(sessionId, role);
   return postJson<{ status: GameStatus }>('/api/game/abandon', { sessionId, role, token });
+}
+
+export function getLeaderboardTop(): Promise<LeaderboardTop> {
+  return getJson<LeaderboardTop>('/api/game/leaderboard');
 }
