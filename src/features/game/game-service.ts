@@ -8,6 +8,7 @@ import { redisGenerationLockStore, tryAcquireGenerationLock } from './generation
 import { redisSessionLockStore, withSessionLock } from './session-mutex';
 import { generateOpaqueToken, generateRoomCode, tokensMatch } from './session-credentials';
 import { sanitizeTeamName, scoreFromGameOver } from './leaderboard-score';
+import { buildRunSummary } from './run-summary';
 import {
   createMemoryLeaderboardStore,
   createRedisLeaderboardStore,
@@ -40,6 +41,7 @@ import type {
   AnswerResponse,
   Challenge,
   ChallengeLanguage,
+  Difficulty,
   ClientQuestionAnswerResponse,
   CoderStepView,
   GameMode,
@@ -374,25 +376,33 @@ async function ensureChallengeGenerated(session: GameSession): Promise<GameSessi
   };
   await setSessionToStore(claimed.id, claimed);
 
-  const generated = await generateChallenge(
-    session.language ?? 'random',
-    difficultyForSession(session),
-  );
+  const roundDifficulty = difficultyForSession(session);
+  const generated = await generateChallenge(session.language ?? 'random', roundDifficulty);
   const challenge = generated ?? pickRandomChallenge();
 
-  const playing = session.roundComplete
+  const promoted = session.roundComplete
     ? applyNextRoundChallenge(session, challenge, generated !== null)
     : promoteToFirstRound(session, challenge, generated !== null);
+  // Track the highest difficulty faced across the run, for the run summary.
+  const playing: GameSession = {
+    ...promoted,
+    maxDifficulty: highestDifficulty(session.maxDifficulty, roundDifficulty),
+  };
   await setSessionToStore(session.id, playing);
   return playing;
 }
 
 function withEndMeta<T extends { status: string }>(view: T, session: GameSession): T {
   const durationSeconds = gameDurationSeconds(session, Date.now());
-  const endlessMeta =
-    session.mode === 'endless' && session.status === 'defeat'
-      ? buildEndlessGameOverMeta(session, durationSeconds)
-      : {};
+  const isEndlessGameOver = session.mode === 'endless' && session.status === 'defeat';
+  const endlessMeta = isEndlessGameOver
+    ? buildEndlessGameOverMeta(session, durationSeconds)
+    : {};
+  // The run summary rides along at endless game over so the results screen reads
+  // it from one source instead of reassembling the fields client-side.
+  const runSummary = isEndlessGameOver
+    ? { runSummary: buildRunSummary(session, durationSeconds) }
+    : {};
 
   if (session.status !== 'abandoned' && session.status !== 'victory' && session.status !== 'defeat') {
     return view;
@@ -403,6 +413,7 @@ function withEndMeta<T extends { status: string }>(view: T, session: GameSession
     durationSeconds,
     defeatReason: session.defeatReason,
     ...endlessMeta,
+    ...runSummary,
   };
 }
 
@@ -541,6 +552,35 @@ export async function processClientQuestionAnswer(
   });
 }
 
+// Difficulty ranked low→high, for tracking the run's max difficulty.
+const DIFFICULTY_RANK: Record<Difficulty, number> = {
+  easy: 0,
+  medium: 1,
+  hard: 2,
+  expert: 3,
+};
+
+// Returns whichever difficulty is higher. `current` may be absent on the first
+// round; then the round's own difficulty is the max so far.
+function highestDifficulty(
+  current: Difficulty | undefined,
+  round: Difficulty,
+): Difficulty {
+  if (current === undefined) return round;
+  return DIFFICULTY_RANK[round] > DIFFICULTY_RANK[current] ? round : current;
+}
+
+// Returns a new failuresByLanguage map with the given language's counter bumped
+// by one. Pure: does not mutate the session's existing map.
+function incrementFailure(
+  session: GameSession,
+  language: ChallengeLanguage | undefined,
+): GameSession['failuresByLanguage'] {
+  const key: ChallengeLanguage = language ?? 'random';
+  const current = session.failuresByLanguage ?? {};
+  return { ...current, [key]: (current[key] ?? 0) + 1 };
+}
+
 export async function processAnswer(sessionId: string, answerIndex: number): Promise<AnswerResponse | null> {
   return mutateSession(sessionId, async () => {
   const session = await getSessionFromStore(sessionId);
@@ -548,7 +588,15 @@ export async function processAnswer(sessionId: string, answerIndex: number): Pro
   const challenge = resolveChallenge(session);
   if (!challenge) return null;
 
-  const updated = submitAnswer(session, challenge, answerIndex);
+  const answered = submitAnswer(session, challenge, answerIndex);
+
+  // Accumulate the run-summary metric: which language the player failed most.
+  // Keyed by the session's requested language (the concrete language per round
+  // is not tracked separately; 'random' groups honestly under 'random').
+  const updated =
+    answered.lastResult === 'incorrect'
+      ? { ...answered, failuresByLanguage: incrementFailure(answered, session.language) }
+      : answered;
 
   const sessionToStore =
     updated.roundComplete && updated.mode === 'endless' && updated.status === 'playing'
