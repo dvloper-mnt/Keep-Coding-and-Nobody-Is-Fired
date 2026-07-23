@@ -1,4 +1,15 @@
 # aws_region   = "us-east-1"
 # service_name = "keep-coding-game"
 # image_tag    = "latest"
+
+# Repo allowed to assume the deploy role via OIDC. By default the trust policy
+# is scoped to "repo:<github_repo>:*".
 # github_repo  = "MoisesCorcho/Hackacthon"
+
+# Optional: override the OIDC sub pattern. Leave unset to derive it from
+# github_repo. Set it only when the org emits a non-classic subject claim,
+# e.g. orgs that use immutable numeric IDs:
+#   repo:<org>@<orgId>/<repo>@<repoId>:*
+# Confirm the exact prefix with:
+#   gh api repos/<org>/<repo>/actions/oidc/customization/sub
+# github_oidc_sub_pattern = "repo:my-org@123/my-repo@456:*"
