@@ -1,17 +1,20 @@
 'use client';
 
 import { readToken } from '@/src/features/game/api/session-token-store';
-import type { LeaderboardEntry } from '@/src/features/game/game-types';
+import type { LeaderboardEntry, RunSummary } from '@/src/features/game/game-types';
 import { useState } from 'react';
 
 interface LeaderboardPanelProps {
   sessionId: string;
+  // Optional run summary — when present, the "done" phase adds a download link
+  // to the share-card OG image (which needs score + rounds + team).
+  runSummary?: RunSummary;
 }
 
 type Phase =
   | { step: 'form' }
   | { step: 'submitting' }
-  | { step: 'done'; entries: LeaderboardEntry[]; rank: number }
+  | { step: 'done'; entries: LeaderboardEntry[]; rank: number; teamName: string }
   | { step: 'error'; message: string };
 
 const MAX_TEAM_NAME = 24;
@@ -19,7 +22,7 @@ const MAX_TEAM_NAME = 24;
 // Shown at endless game over: the Coder names the team and registers the run in
 // the global leaderboard, then sees the top 10 with their own position marked.
 // The score is derived server-side from the session — the client never sends it.
-export function LeaderboardPanel({ sessionId }: LeaderboardPanelProps) {
+export function LeaderboardPanel({ sessionId, runSummary }: LeaderboardPanelProps) {
   const [teamName, setTeamName] = useState('');
   const [phase, setPhase] = useState<Phase>({ step: 'form' });
 
@@ -50,14 +53,30 @@ export function LeaderboardPanel({ sessionId }: LeaderboardPanelProps) {
         return;
       }
       const data = (await res.json()) as { rank: number; entries: LeaderboardEntry[] };
-      setPhase({ step: 'done', entries: data.entries, rank: data.rank });
+      setPhase({
+        step: 'done',
+        entries: data.entries,
+        rank: data.rank,
+        teamName: trimmed,
+      });
     } catch {
       setPhase({ step: 'error', message: 'Error de red al registrar el puntaje.' });
     }
   }
 
   if (phase.step === 'done') {
-    return <LeaderboardTable entries={phase.entries} playerRank={phase.rank} />;
+    return (
+      <div>
+        <LeaderboardTable entries={phase.entries} playerRank={phase.rank} />
+        {runSummary ? (
+          <ShareCardDownload
+            teamName={phase.teamName}
+            score={runSummary.score}
+            rounds={runSummary.roundsReached}
+          />
+        ) : null}
+      </div>
+    );
   }
 
   const submitting = phase.step === 'submitting';
@@ -162,6 +181,42 @@ export function LeaderboardTable({ entries, playerRank }: LeaderboardTableProps)
           Tu equipo quedó en la posición #{playerRank}, fuera del top 10.
         </p>
       ) : null}
+    </div>
+  );
+}
+
+interface ShareCardDownloadProps {
+  teamName: string;
+  score: number;
+  rounds: number;
+}
+
+// Small CTA rendered after successful registration: links to the OG share-card
+// endpoint so the player can download / share a PNG of their run. The link
+// opens in a new tab; the browser can download or the player can copy the URL
+// into any social network. The server sanitizes the team name again, so the
+// query string is safe to construct from the same input the user submitted.
+function ShareCardDownload({ teamName, score, rounds }: ShareCardDownloadProps) {
+  const params = new URLSearchParams({
+    score: String(score),
+    rounds: String(rounds),
+    team: teamName,
+  });
+  const href = `/api/game/share-card?${params.toString()}`;
+
+  return (
+    <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-950/10 p-4 text-center">
+      <p className="text-sm text-amber-200/80">
+        Comparte tu resultado como imagen
+      </p>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 inline-block rounded-lg border border-amber-500 bg-amber-600/20 px-6 py-2 font-semibold text-amber-100 transition-colors hover:bg-amber-600/40"
+      >
+        Descargar tarjeta
+      </a>
     </div>
   );
 }
