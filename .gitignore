@@ -51,3 +51,6 @@ next-env.d.ts
 
 # Personal notes / scratch — never commit.
 /KIRO-INVENTORY.md
+
+# Playwright MCP session artifacts (snapshots, console logs) — not source.
+/.playwright-mcp/
