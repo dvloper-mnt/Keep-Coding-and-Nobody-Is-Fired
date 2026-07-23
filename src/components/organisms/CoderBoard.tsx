@@ -7,6 +7,7 @@ import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { TypewriterCodePanel } from '@/src/components/molecules/TypewriterCodePanel';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
+import { LeaderboardPanel } from '@/src/components/organisms/LeaderboardPanel';
 import { ProductionLogTail } from '@/src/components/organisms/ProductionLogTail';
 import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
 import type { StreamingPreview } from '@/src/features/game/streaming-preview';
@@ -122,6 +123,10 @@ export function CoderBoard({
             messageClassName="mt-2 text-red-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-zinc-600 px-6 py-2 font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
           />
+        )}
+
+        {view.status === 'defeat' && view.mode === 'endless' && (
+          <LeaderboardPanel sessionId={sessionId} />
         )}
 
         {view.status === 'abandoned' && (
