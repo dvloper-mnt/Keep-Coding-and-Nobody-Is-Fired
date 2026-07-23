@@ -176,6 +176,19 @@ resource "aws_ecs_service" "app" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
+  # Deployment explícito: garantiza rolling update sin downtime durante
+  # los reemplazos de task (deploys propios y retiros de plataforma de Fargate).
+  # min 100% = nunca baja de la capacidad deseada; max 200% = levanta la
+  # task nueva y la deja sana ANTES de drenar la vieja.
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  # Rollback automático si el deploy falla los health checks del target group.
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   network_configuration {
     subnets          = aws_subnet.private[*].id
     security_groups  = [aws_security_group.ecs.id]
