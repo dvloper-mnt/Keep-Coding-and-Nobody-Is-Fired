@@ -1,5 +1,5 @@
 import { gameDurationSeconds } from '@/src/features/game/game-engine';
-import { getSession, isAuthorizedFor } from '@/src/features/game/game-service';
+import { getSession, isAuthorizedFor, persistFeedbackText } from '@/src/features/game/game-service';
 import { generateFeedbackStreaming } from '@/src/features/game/feedback-generator';
 import { buildRunSummary } from '@/src/features/game/run-summary';
 import { NextRequest } from 'next/server';
@@ -86,10 +86,29 @@ export async function GET(request: NextRequest): Promise<Response> {
         }
       }
 
+      // A finished run is immutable, so the analysis is generated at most once.
+      // Refreshing the game-over page or opening extra tabs replays the cached
+      // text (or the cached "failed" fallback) instead of firing another
+      // billable Bedrock stream for the same run.
+      if (session.feedbackText !== undefined) {
+        if (session.feedbackText === '') {
+          emit('error', 'No se pudo generar el análisis. Intenta de nuevo.');
+        } else {
+          emit('delta', session.feedbackText);
+        }
+        emit('done', '');
+        finish();
+        return;
+      }
+
       try {
         const result = await generateFeedbackStreaming(summary, (buffer) => {
           emit('delta', buffer);
         });
+
+        // Persist the outcome so subsequent requests don't regenerate: the text
+        // on success, or '' to remember a failed attempt (avoids retry storms).
+        await persistFeedbackText(sessionId, result ?? '');
 
         if (result === null || result === '') {
           emit('error', 'No se pudo generar el análisis. Intenta de nuevo.');

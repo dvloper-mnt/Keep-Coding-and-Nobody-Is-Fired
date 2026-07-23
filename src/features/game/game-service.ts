@@ -111,6 +111,12 @@ function getRedis(): Redis | null {
       lazyConnect: true,
       maxRetriesPerRequest: 2,
     });
+    // Without an 'error' listener, ioredis emits an unhandled 'error' event on
+    // connection failure that can crash the process. We log and swallow here;
+    // the per-request commands still reject, so callers surface a clean error.
+    redisClient.on('error', (err) => {
+      console.error('[redis] connection error:', err.message);
+    });
   }
   return redisClient;
 }
@@ -496,6 +502,18 @@ export async function processAbandon(
 
 export async function getSession(sessionId: string): Promise<GameSession | undefined> {
   return getSessionFromStore(sessionId);
+}
+
+// Caches the mentor feedback for a finished run so repeat requests replay it
+// instead of firing another Bedrock stream. Idempotent: the first write wins;
+// concurrent requests that already found a cached value skip the overwrite.
+// `text` is the analysis on success, or '' to record a failed attempt.
+export async function persistFeedbackText(sessionId: string, text: string): Promise<void> {
+  await mutateSession(sessionId, async () => {
+    const session = await getSessionFromStore(sessionId);
+    if (!session || session.feedbackText !== undefined) return;
+    await setSessionToStore(sessionId, { ...session, feedbackText: text });
+  });
 }
 
 export async function getSessionChallenge(sessionId: string): Promise<Challenge | undefined> {

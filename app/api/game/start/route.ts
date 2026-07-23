@@ -22,6 +22,16 @@ export async function POST(request: NextRequest) {
   const language = parseChallengeLanguageParam(payload.language);
   const mode = parseGameMode(payload.mode);
 
-  const result = await startGame(language, mode);
-  return NextResponse.json(result);
+  try {
+    const result = await startGame(language, mode);
+    return NextResponse.json(result);
+  } catch (error) {
+    // Most likely the session store (Valkey) is unreachable. Return a clean 503
+    // instead of leaking a raw 500 with an ioredis AggregateError stack.
+    console.error('[start] failed to create session:', error);
+    return NextResponse.json(
+      { error: 'No se pudo iniciar la partida. El servicio no está disponible, intenta de nuevo.' },
+      { status: 503 },
+    );
+  }
 }

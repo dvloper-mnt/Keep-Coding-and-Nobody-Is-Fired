@@ -1,10 +1,26 @@
-import { describe, expect, it } from 'vitest';
-import { formatSummaryForPrompt } from './feedback-generator';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunSummary } from './game-types';
 
-// formatSummaryForPrompt is the only pure piece of feedback-generator: it
-// turns the RunSummary object into the human-readable block the LLM sees. The
-// streaming call itself needs Bedrock so it lives outside these tests.
+// Mock the AWS SDK so the streaming generator never hits the network in tests.
+const sendMock = vi.fn();
+
+vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
+  BedrockRuntimeClient: class {
+    send = sendMock;
+  },
+  ConverseStreamCommand: class {
+    constructor(public input: unknown) {}
+  },
+}));
+
+import { formatSummaryForPrompt, generateFeedbackStreaming } from './feedback-generator';
+
+/** Mock streaming response from an array of text fragments. */
+async function* streamChunks(fragments: string[]) {
+  for (const text of fragments) {
+    yield { contentBlockDelta: { delta: { text } } };
+  }
+}
 
 function summary(overrides: Partial<RunSummary> = {}): RunSummary {
   return {
@@ -106,5 +122,58 @@ describe('formatSummaryForPrompt — absent data', () => {
     expect(text).toContain('Puntaje final: 0');
     expect(text).toContain('Tiempo sobrevivido: 0 segundos');
     expect(text).toContain('Mejor racha de aciertos consecutivos: 0');
+  });
+});
+
+describe('generateFeedbackStreaming — Bedrock streaming', () => {
+  // The generator skips Bedrock in dev unless a credential hint is present, so
+  // we set one for these tests and restore the environment afterwards.
+  const originalKey = process.env.AWS_ACCESS_KEY_ID;
+
+  beforeEach(() => {
+    sendMock.mockReset();
+    process.env.AWS_ACCESS_KEY_ID = 'test-key';
+  });
+
+  afterEach(() => {
+    if (originalKey === undefined) delete process.env.AWS_ACCESS_KEY_ID;
+    else process.env.AWS_ACCESS_KEY_ID = originalKey;
+  });
+
+  it('returns the accumulated analysis text and emits each partial buffer', async () => {
+    sendMock.mockResolvedValue({ stream: streamChunks(['Buen ', 'trabajo ', 'equipo.']) });
+    const deltas: string[] = [];
+
+    const result = await generateFeedbackStreaming(summary(), (b) => deltas.push(b));
+
+    expect(result).toBe('Buen trabajo equipo.');
+    expect(deltas).toEqual(['Buen ', 'Buen trabajo ', 'Buen trabajo equipo.']);
+  });
+
+  it('returns null when the response exceeds the buffer cap (no truncated garbage)', async () => {
+    // A single chunk larger than MAX_STREAM_BUFFER_BYTES (20_000) triggers the
+    // cap guard. The fix must return null, NOT the truncated partial buffer.
+    const runaway = 'x'.repeat(20_001);
+    sendMock.mockResolvedValue({ stream: streamChunks([runaway]) });
+
+    const result = await generateFeedbackStreaming(summary(), () => {});
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null on an empty stream', async () => {
+    sendMock.mockResolvedValue({ stream: streamChunks([]) });
+
+    const result = await generateFeedbackStreaming(summary(), () => {});
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null when Bedrock throws', async () => {
+    sendMock.mockRejectedValue(new Error('bedrock down'));
+
+    const result = await generateFeedbackStreaming(summary(), () => {});
+
+    expect(result).toBeNull();
   });
 });

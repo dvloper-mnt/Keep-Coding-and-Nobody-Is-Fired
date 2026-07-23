@@ -165,6 +165,7 @@ export async function generateFeedbackStreaming(
     }
 
     let buffer = '';
+    let capExceeded = false;
     for await (const chunk of response.stream) {
       const delta = chunk.contentBlockDelta?.delta?.text;
       if (!delta) continue;
@@ -172,11 +173,16 @@ export async function generateFeedbackStreaming(
       buffer += delta;
       if (buffer.length > MAX_STREAM_BUFFER_BYTES) {
         console.error('[bedrock-feedback] response exceeded buffer cap, cutting stream');
+        capExceeded = true;
         controller.abort();
         break;
       }
       onDelta(buffer);
     }
+
+    // A runaway response is not a valid analysis — fall back rather than render
+    // truncated garbage as if it were the mentor's answer.
+    if (capExceeded) return null;
 
     return buffer.trim() === '' ? null : buffer.trim();
   } catch (error) {
