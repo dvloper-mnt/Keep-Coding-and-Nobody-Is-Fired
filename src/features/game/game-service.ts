@@ -7,6 +7,14 @@ import { checkRateLimit, redisRateLimitStore } from './rate-limit';
 import { redisGenerationLockStore, tryAcquireGenerationLock } from './generation-lock';
 import { redisSessionLockStore, withSessionLock } from './session-mutex';
 import { generateOpaqueToken, generateRoomCode, tokensMatch } from './session-credentials';
+import { sanitizeTeamName, scoreFromGameOver } from './leaderboard-score';
+import {
+  createMemoryLeaderboardStore,
+  createRedisLeaderboardStore,
+  readTop10,
+  registerScore,
+  type LeaderboardStore,
+} from './leaderboard-store';
 import Redis from 'ioredis';
 import {
   getActiveClientQuestionView,
@@ -38,7 +46,9 @@ import type {
   GameSession,
   HelperGuideResult,
   HelperStaticGuide,
+  LeaderboardTop,
   PlayerRole,
+  RegisterScoreResult,
   StartGameResponse,
 } from './game-types';
 
@@ -93,6 +103,18 @@ function getRedis(): Redis | null {
     });
   }
   return redisClient;
+}
+
+// Leaderboard store: the Redis-backed sorted set in prod, or a single in-memory
+// store reused across requests in dev (mirrors memorySessions). Built lazily so
+// the in-memory fallback persists between requests in a single dev process.
+let memoryLeaderboard: LeaderboardStore | null = null;
+
+function getLeaderboardStore(): LeaderboardStore {
+  const redis = getRedis();
+  if (redis) return createRedisLeaderboardStore(redis);
+  if (!memoryLeaderboard) memoryLeaderboard = createMemoryLeaderboardStore();
+  return memoryLeaderboard;
 }
 
 async function getSessionFromStore(id: string): Promise<GameSession | undefined> {
@@ -219,6 +241,58 @@ export async function isAuthorizedFor(
   if (!session) return false;
   const expected = role === 'coder' ? session.coderToken : session.helperToken;
   return tokensMatch(token, expected);
+}
+
+// Discriminated result so the route handler maps each failure to the right HTTP
+// status without leaking internals. `already` = idempotent replay of a run that
+// was already registered.
+export type RegisterOutcome =
+  | { kind: 'ok'; result: RegisterScoreResult }
+  | { kind: 'invalid-name'; reason: string }
+  | { kind: 'unauthorized' }
+  | { kind: 'not-game-over'; reason: string }
+  | { kind: 'already' };
+
+/**
+ * Registers a run in the global leaderboard. The client sends only the team
+ * name + session credentials — NEVER the score. The score and rounds are read
+ * from the persisted game-over session (server-side source of truth), so a
+ * fabricated score is impossible. Idempotent per session.
+ */
+export async function registerLeaderboardScore(
+  sessionId: string,
+  token: string | undefined,
+  teamNameRaw: string,
+): Promise<RegisterOutcome> {
+  const name = sanitizeTeamName(teamNameRaw);
+  if (!name.ok) return { kind: 'invalid-name', reason: name.reason };
+
+  if (!(await isAuthorizedFor(sessionId, 'coder', token))) {
+    return { kind: 'unauthorized' };
+  }
+
+  const session = await getSessionFromStore(sessionId);
+  if (!session) return { kind: 'unauthorized' };
+
+  if (session.leaderboardRegistered) return { kind: 'already' };
+
+  const durationSeconds = gameDurationSeconds(session, Date.now());
+  const score = scoreFromGameOver(session, durationSeconds);
+  if (!score.ok) return { kind: 'not-game-over', reason: score.reason };
+
+  const store = getLeaderboardStore();
+  const { rank } = await registerScore(store, name.name, score.endlessScore, score.playedRounds);
+
+  // Mark the run registered so a client retry cannot double-register it.
+  await setSessionToStore(sessionId, { ...session, leaderboardRegistered: true });
+
+  const { entries } = await readTop10(store);
+  return { kind: 'ok', result: { rank, entries } };
+}
+
+/** Public top 10 — no token required (knowing the ranking is public). */
+export async function getLeaderboardTop(): Promise<LeaderboardTop> {
+  return readTop10(getLeaderboardStore());
 }
 
 export async function startGame(

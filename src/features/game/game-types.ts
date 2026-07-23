@@ -124,6 +124,9 @@ export interface GameSession {
   bestStreak: number;
   /** Accumulated combo bonus points (added to endlessScore at game over). */
   comboScore: number;
+  /** Set once this session's score has been registered in the leaderboard, so a
+   * client retry cannot register the same run twice. */
+  leaderboardRegistered?: boolean;
 }
 
 export interface StepResult {
@@ -131,6 +134,35 @@ export interface StepResult {
   patch?: string;
   penalty?: number;
   message?: string;
+}
+
+// A single row of the global leaderboard. `score` is the endlessScore (with
+// combos) read from the game over — the leaderboard never recomputes it.
+// `playedRounds` is persisted alongside the entry, NOT derived from the score
+// (the combo bonus would contaminate floor(score / 1000)).
+export interface LeaderboardEntry {
+  rank: number;
+  teamName: string;
+  score: number;
+  playedRounds: number;
+}
+
+export interface LeaderboardTop {
+  entries: LeaderboardEntry[];
+}
+
+// The client sends only these three fields — never the score. The server reads
+// the score from the persisted game-over session, so a fabricated score is not
+// possible.
+export interface RegisterScoreInput {
+  sessionId: string;
+  token: string;
+  teamName: string;
+}
+
+export interface RegisterScoreResult {
+  rank: number;
+  entries: LeaderboardEntry[];
 }
 
 export interface CoderStepView {
