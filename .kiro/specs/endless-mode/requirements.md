@@ -26,7 +26,8 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 
 - **Ronda**: un challenge completo dentro de la partida infinita. La ronda 1 es el primer challenge; cada challenge resuelto incrementa el número de ronda.
 - **Reloj acumulativo**: un único `remainingTime` que persiste entre rondas, sube al acertar y baja al errar / con el tick del tiempo.
-- **Game over**: el reloj llega a 0 → `status: 'defeat'`. Es el único fin del modo infinito (ya no hay `victory` de "completaste el juego").
+- **Game over**: la partida pasa a `status: 'defeat'` por CUALQUIERA de dos condiciones — el reloj acumulativo llega a 0 (`defeatReason: 'timeout'`) O un jugador se queda sin vidas (`coder_lives`/`helper_lives`, ver spec `lives-system`). Lo que ocurra primero. Ya no hay `victory` de "completaste el juego".
+- **Doble presión (decisión de producto, 2026-06-27):** en endless conviven el reloj acumulativo Y las vidas. Errar cuesta tiempo Y una vida. Se pierde por lo que llegue primero a 0. Ver R2 y `lives-system`.
 - **Modo de juego**: `endless` (esta spec) vs el modo clásico de 3 steps. Ver R5 sobre coexistencia.
 
 ---
@@ -37,7 +38,9 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 
 ### Acceptance Criteria
 
-1. WHEN el Coder resuelve el último step de un challenge THE SYSTEM SHALL incrementar el número de ronda y cargar un challenge nuevo (generado por Bedrock, fallback al curado) en lugar de pasar a `victory`.
+1. WHEN el Coder resuelve el último step de un challenge en modo `endless` THE SYSTEM SHALL incrementar el número de ronda y cargar un challenge nuevo (generado por Bedrock, fallback al curado) en lugar de pasar a `victory`.
+1b. WHEN se completa una ronda en modo `endless` THE SYSTEM SHALL NO mostrar la pantalla de "Nivel completado" (la UI de `victory`): pasa directo a la transición de la ronda siguiente. La pantalla de `victory` queda SOLO para el modo `classic`.
+1c. THE SYSTEM SHALL mantener `status: 'victory'` y su pantalla intactos en modo `classic` (el comportamiento actual no cambia).
 2. THE SYSTEM SHALL mantener el `status` en `playing` al pasar de una ronda a la siguiente, sin interrupción del juego.
 3. THE SYSTEM SHALL conservar el número de ronda en la sesión (`round`, empezando en 1) y persistirlo en Valkey.
 4. WHEN se carga la siguiente ronda THE SYSTEM SHALL reiniciar `currentStep` a 1 y `currentCode` al código del primer step del nuevo challenge.
@@ -52,9 +55,11 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 1. THE SYSTEM SHALL usar un único reloj (`remainingTime`) que persiste a través de todas las rondas de la partida.
 2. THE SYSTEM SHALL inicializar el reloj en un tiempo base configurable (`ENDLESS_BASE_SECONDS`, default 120).
 3. WHEN el Coder resuelve un challenge (todos sus steps) THE SYSTEM SHALL sumar al reloj un bono configurable (`ENDLESS_REWARD_SECONDS`, default 30).
-4. WHEN el Coder responde incorrectamente THE SYSTEM SHALL restar `PENALTY_SECONDS` (10) del reloj, igual que hoy.
-5. WHEN el reloj llega a 0 o menos THE SYSTEM SHALL pasar la sesión a `defeat` (game over) y detener el juego.
-6. THE SYSTEM SHALL nunca permitir un `remainingTime` negativo en la vista (clamp a 0).
+4. WHEN el Coder responde incorrectamente THE SYSTEM SHALL restar `PENALTY_SECONDS` (10) del reloj **Y** quitar una vida al Coder (vía `loseLife`, spec `lives-system`), igual que en el modo clásico.
+5. WHEN el reloj llega a 0 o menos THE SYSTEM SHALL pasar la sesión a `defeat` con `defeatReason: 'timeout'`.
+6. WHEN un jugador se queda sin vidas THE SYSTEM SHALL pasar la sesión a `defeat` con `defeatReason: 'coder_lives'`/`'helper_lives'`, aunque el reloj no haya llegado a 0.
+7. THE SYSTEM SHALL terminar la partida por la PRIMERA condición que se cumpla (reloj a 0 o vidas a 0). El `defeatReason` refleja la causa real.
+8. THE SYSTEM SHALL nunca permitir un `remainingTime` negativo en la vista (clamp a 0).
 
 ## Requirement 3 — Puntaje del modo infinito
 
@@ -62,8 +67,8 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 
 ### Acceptance Criteria
 
-1. THE SYSTEM SHALL calcular el puntaje como `(rondas resueltas × 1000) + segundos totales sobrevividos`.
-2. THE SYSTEM SHALL contar como "rondas resueltas" la cantidad de challenges completados (no la ronda en curso al morir).
+1. THE SYSTEM SHALL calcular el puntaje como `(playedRounds × 1000) + segundos totales sobrevividos`.
+2. THE SYSTEM SHALL incrementar `playedRounds` SOLO cuando se completa una ronda (todos sus steps resueltos), NO al cargar la ronda nueva. La ronda en curso al morir NO cuenta. (Distinto de `round`, que es el número de la ronda actual e incluye la que estás jugando.)
 3. THE SYSTEM SHALL medir "segundos sobrevividos" como el tiempo real transcurrido desde el inicio de la partida hasta el game over.
 4. THE SYSTEM SHALL exponer el puntaje y las rondas resueltas al game over, para consumo de la spec `leaderboard`.
 5. THE SYSTEM SHALL implementar el cálculo del puntaje como una función pura y unit-testeada.
@@ -84,10 +89,11 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 
 ### Acceptance Criteria
 
-1. THE SYSTEM SHALL introducir el modo infinito como el modo por defecto del juego, O como un modo seleccionable, según se decida en `design.md` — sin dejar el modo clásico en un estado roto.
-2. THE SYSTEM SHALL mantener verdes los tests existentes que cubren `submitAnswer` y el flujo de partida; si cambia el comportamiento de fin de challenge, los tests se actualizan acompañando el cambio.
-3. THE SYSTEM SHALL mantener intacto el contrato del `Challenge` (la forma de los datos de Bedrock no cambia).
-4. THE SYSTEM SHALL respetar las reglas del proyecto: cero `any`, sin `as` casts (salvo `as const`/`satisfies`), TDD en la lógica de dominio nueva.
+1. THE SYSTEM SHALL usar `endless` como modo por defecto (`mode` default `'endless'` en la sesión), dejando `classic` como modo seleccionable que NO queda roto.
+2. THE SYSTEM SHALL conservar las vidas (spec `lives-system`) en AMBOS modos: en `classic` siguen como hoy; en `endless` operan junto al reloj acumulativo (ver R2). Implementar endless NO debe quitar las vidas del modo clásico.
+3. THE SYSTEM SHALL mantener verdes los tests existentes que cubren `submitAnswer` y el flujo de partida; si cambia el comportamiento de fin de challenge, los tests se actualizan acompañando el cambio.
+4. THE SYSTEM SHALL mantener intacto el contrato del `Challenge` (la forma de los datos de Bedrock no cambia).
+5. THE SYSTEM SHALL respetar las reglas del proyecto: cero `any`, sin `as` casts (salvo `as const`/`satisfies`), TDD en la lógica de dominio nueva.
 
 ## Out of scope
 

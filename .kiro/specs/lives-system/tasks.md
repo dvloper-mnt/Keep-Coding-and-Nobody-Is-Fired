@@ -37,10 +37,10 @@
 
 - [x] 6.1 `defeat` por `timeout` sigue funcionando junto a la derrota por vidas. (R6.1)
 
-## Pendiente (NO de esta feature — decisión de producto)
+## Decisión de producto (RESUELTA)
 
-- [ ] DECIDIR con Moises cómo interactúan vidas + reloj acumulativo cuando se implemente `endless-mode`. (R6.2) — Esto NO es deuda de lives-system; es un punto a resolver al diseñar/implementar endless-mode.
+- [x] Interacción vidas + reloj en `endless-mode`: **DECIDIDO (2026-06-27)** — conviven. En endless, errar resta tiempo Y una vida; la partida termina por lo que llegue primero a 0 (reloj → `timeout`, vidas → `coder_lives`/`helper_lives`). Implementación: en la spec `endless-mode` (R2.4/R2.6/R2.7, tasks 2.2b/2.4).
 
 ## Notas
 
-- Feature completa y en producción. La única casilla abierta es una decisión de producto que pertenece a `endless-mode`, no a esta spec.
+- Feature completa y en producción. La decisión de coexistencia con endless-mode quedó resuelta y trasladada a esa spec.
