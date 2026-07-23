@@ -9,6 +9,7 @@ import { RoundModifierBanner } from '@/src/components/molecules/RoundModifierBan
 import { TypewriterCodePanel } from '@/src/components/molecules/TypewriterCodePanel';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { BOSS_PRESSURE_CONFIG_INTENSE } from '@/src/lib/constants';
+import { AiFeedbackPanel } from '@/src/components/organisms/AiFeedbackPanel';
 import { LeaderboardPanel } from '@/src/components/organisms/LeaderboardPanel';
 import { ProductionLogTail } from '@/src/components/organisms/ProductionLogTail';
 import { RunSummaryPanel } from '@/src/components/organisms/RunSummaryPanel';
@@ -137,6 +138,10 @@ export function CoderBoard({
 
         {view.status === 'defeat' && view.mode === 'endless' && view.runSummary && (
           <RunSummaryPanel summary={view.runSummary} />
+        )}
+
+        {view.status === 'defeat' && view.mode === 'endless' && (
+          <AiFeedbackPanel sessionId={sessionId} />
         )}
 
         {view.status === 'defeat' && view.mode === 'endless' && (
