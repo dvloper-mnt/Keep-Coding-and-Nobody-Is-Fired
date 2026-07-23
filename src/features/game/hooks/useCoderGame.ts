@@ -4,7 +4,7 @@ import { getCoderState, submitAnswer, tick } from '@/src/features/game/api/game-
 import type { CoderStepView, GameStatus } from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
-import { LIFE_LOST_MESSAGE } from '@/src/lib/constants';
+import { LIFE_LOST_MESSAGE, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
 import { useCallback, useState } from 'react';
 import { usePolling } from './usePolling';
 
@@ -77,7 +77,7 @@ export function useCoderGame(
           playWrong();
           setShake(true);
           setLivesPulse(true);
-          const baseMessage = data.message ?? 'El sistema sigue fallando…';
+          const baseMessage = data.message ?? WRONG_ANSWER_MESSAGE;
           setFeedback(data.lifeLost ? `${baseMessage} ${LIFE_LOST_MESSAGE}` : baseMessage);
           setTimeout(() => setShake(false), 500);
           setTimeout(() => setLivesPulse(false), 600);

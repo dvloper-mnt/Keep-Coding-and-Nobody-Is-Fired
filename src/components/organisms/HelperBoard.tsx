@@ -102,8 +102,10 @@ export function HelperBoard({
         {sync.status === 'victory' && sync.mode !== 'endless' && (
           <GameResultBanner
             containerClassName="mb-6 rounded-lg border border-green-500/30 bg-green-950/20 p-4 text-center"
-            title="Crisis resuelta. Buen trabajo en equipo."
+            title="Crisis contenida"
             titleClassName="text-green-400"
+            message="El jefe respira. El cliente firma. Se pueden ir a almorzar."
+            messageClassName="mt-2 text-sm text-green-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg bg-green-600 px-6 py-2 font-semibold text-white transition-colors hover:bg-green-500"
           />
         )}
@@ -138,9 +140,9 @@ export function HelperBoard({
         {sync.status === 'abandoned' && (
           <GameResultBanner
             containerClassName="mb-6 rounded-lg border border-amber-700/40 bg-amber-900/30 p-4 text-center"
-            title="Partida abandonada"
+            title="Alguien tiró la toalla"
             titleClassName="font-bold text-amber-300"
-            message={`Finalizada por ${sync.abandonedBy === 'coder' ? 'el Coder' : 'el Helper'} · Duró ${formatDuration(sync.durationSeconds ?? 0)}`}
+            message={`Se retiró ${sync.abandonedBy === 'coder' ? 'el Coder' : 'el Helper'} · La demo duró ${formatDuration(sync.durationSeconds ?? 0)}`}
             messageClassName="mt-2 text-amber-400/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
           />
