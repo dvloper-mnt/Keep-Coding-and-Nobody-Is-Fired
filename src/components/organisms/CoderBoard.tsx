@@ -5,8 +5,10 @@ import { GameTimer } from '@/src/components/atoms/GameTimer';
 import { LivesIndicator } from '@/src/components/atoms/LivesIndicator';
 import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
+import { RoundModifierBanner } from '@/src/components/molecules/RoundModifierBanner';
 import { TypewriterCodePanel } from '@/src/components/molecules/TypewriterCodePanel';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
+import { BOSS_PRESSURE_CONFIG_INTENSE } from '@/src/lib/constants';
 import { LeaderboardPanel } from '@/src/components/organisms/LeaderboardPanel';
 import { ProductionLogTail } from '@/src/components/organisms/ProductionLogTail';
 import { RunSummaryPanel } from '@/src/components/organisms/RunSummaryPanel';
@@ -55,7 +57,14 @@ export function CoderBoard({
     <div
       className={`min-h-screen bg-zinc-950 text-zinc-100 ${shake ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}
     >
-      <BossOverlay active={view.status === 'playing'} />
+      <BossOverlay
+        active={view.status === 'playing'}
+        config={
+          view.roundModifier && view.roundModifier !== 'none'
+            ? BOSS_PRESSURE_CONFIG_INTENSE
+            : undefined
+        }
+      />
 
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
@@ -174,6 +183,8 @@ export function CoderBoard({
             {feedback}
           </p>
         )}
+
+        {view.status === 'playing' && <RoundModifierBanner modifier={view.roundModifier} />}
 
         {view.status === 'playing' && (
           <div className="mt-6 space-y-2">

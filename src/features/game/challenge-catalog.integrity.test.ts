@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadChallenges } from '@/src/data/challenges';
 import { isValidChallenge } from './challenge-schema';
 import { checkCooperativeIntegrity } from './cooperative-integrity';
+import { isBossFormat } from './boss-encounters';
 
 // ---------------------------------------------------------------------------
 // The curated challenges are the fallback when Bedrock fails or leaks. If a
@@ -16,6 +17,13 @@ describe('curated challenge catalog — cooperative integrity guardrail', () => 
 
   it('has at least one curated challenge', () => {
     expect(challenges.length).toBeGreaterThan(0);
+  });
+
+  it('has at least one curated BOSS challenge (multi-step) for the boss fallback', () => {
+    // pickBossChallenge relies on there being a curated >3-step challenge so a
+    // boss round is never downgraded to a plain 3-step fallback.
+    const bossChallenges = challenges.filter((c) => isBossFormat(c));
+    expect(bossChallenges.length).toBeGreaterThan(0);
   });
 
   it.each(challenges.map((c) => ({ id: c.id, challenge: c })))(

@@ -3,12 +3,12 @@ import {
   CLIENT_QUESTION_CONFIG,
   COMBO_BASE_PER_HIT,
   ENDLESS_BASE_SECONDS,
-  ENDLESS_REWARD_SECONDS,
   PENALTY_SECONDS,
   STREAK_TIERS,
   WRONG_ANSWER_MESSAGE,
 } from '@/src/lib/constants';
 import { createInitialLives, loseLife } from './lives-engine';
+import { penaltyFor, rewardSecondsFor } from './boss-encounters';
 import type {
   Challenge,
   ChallengeLanguage,
@@ -19,6 +19,7 @@ import type {
   GameStatus,
   HelperSyncView,
   PlayerRole,
+  RoundModifier,
   StepResult,
 } from './game-types';
 
@@ -248,12 +249,15 @@ export function gameDurationSeconds(session: GameSession, now: number): number {
   return Math.max(0, Math.round((now - session.startedAt) / 1000));
 }
 
-function viewMeta(session: GameSession): Pick<CoderStepView, 'round' | 'mode' | 'streak' | 'multiplier'> {
+function viewMeta(
+  session: GameSession,
+): Pick<CoderStepView, 'round' | 'mode' | 'streak' | 'multiplier' | 'roundModifier'> {
   return {
     round: session.round,
     mode: session.mode,
     streak: session.streak,
     multiplier: streakMultiplier(session.streak),
+    roundModifier: session.roundModifier,
   };
 }
 
@@ -306,6 +310,7 @@ export function getHelperSyncView(
     defeatReason: session.defeatReason,
     round: session.round,
     mode: session.mode,
+    roundModifier: session.roundModifier,
   };
 }
 
@@ -313,6 +318,7 @@ export function submitAnswer(
   session: GameSession,
   challenge: Challenge,
   answerIndex: number,
+  modifier: RoundModifier = 'none',
 ): GameSession {
   if (session.status !== 'playing') {
     return session;
@@ -325,7 +331,9 @@ export function submitAnswer(
     const isLastStep = session.currentStep >= challenge.steps.length;
 
     if (isLastStep && session.mode === 'endless') {
-      const withReward = applyTimeDelta(session, ENDLESS_REWARD_SECONDS);
+      // Time bonus depends on the round modifier: bigger for a boss round, half
+      // for an audit event, normal otherwise.
+      const withReward = applyTimeDelta(session, rewardSecondsFor(modifier));
       return {
         ...withReward,
         ...comboFieldsOnCorrect(session),
@@ -347,9 +355,10 @@ export function submitAnswer(
     };
   }
 
+  // Penalty depends on the modifier: doubled during a watching event.
   const afterLifeLoss = loseLife(session, 'coder');
   return {
-    ...applyTimeDelta(afterLifeLoss, -(result.penalty ?? PENALTY_SECONDS)),
+    ...applyTimeDelta(afterLifeLoss, -penaltyFor(modifier)),
     streak: 0,
     lastResult: 'incorrect',
   };
