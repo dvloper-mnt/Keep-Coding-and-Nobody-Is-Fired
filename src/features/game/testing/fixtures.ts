@@ -44,6 +44,9 @@ export function makeSession(overrides: Partial<GameSession> = {}): GameSession {
     clientQuestions: makeClientQuestionState(),
     coderLives: MAX_LIVES,
     helperLives: MAX_LIVES,
+    round: 1,
+    playedRounds: 0,
+    mode: 'classic',
     ...overrides,
   };
 }

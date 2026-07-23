@@ -28,7 +28,7 @@ afterEach(() => {
 
 describe('game-client', () => {
   it('startGame posts to /api/game/start and returns the parsed response', async () => {
-    const response = { sessionId: 'X7K2', coderView: { code: 'c' } };
+    const response = { sessionId: 'X7K2', coderToken: 'tok' };
     const fetchMock = mockFetch(response);
 
     const result = await startGame();
@@ -37,7 +37,27 @@ describe('game-client', () => {
       '/api/game/start',
       expect.objectContaining({ method: 'POST' }),
     );
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({});
     expect(result).toEqual(response);
+  });
+
+  it('startGame sends language and mode in the request body', async () => {
+    const fetchMock = mockFetch({ sessionId: 'AB12', coderToken: 'tok' });
+
+    await startGame('python', 'classic');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({ language: 'python', mode: 'classic' });
+  });
+
+  it('startGame sends endless mode explicitly', async () => {
+    const fetchMock = mockFetch({ sessionId: 'CD34', coderToken: 'tok' });
+
+    await startGame('sql', 'endless');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({ language: 'sql', mode: 'endless' });
   });
 
   it('getCoderState GETs the state endpoint with the sessionId', async () => {

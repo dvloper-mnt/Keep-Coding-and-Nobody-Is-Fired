@@ -29,6 +29,15 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 - **Game over**: la partida pasa a `status: 'defeat'` por CUALQUIERA de dos condiciones — el reloj acumulativo llega a 0 (`defeatReason: 'timeout'`) O un jugador se queda sin vidas (`coder_lives`/`helper_lives`, ver spec `lives-system`). Lo que ocurra primero. Ya no hay `victory` de "completaste el juego".
 - **Doble presión (decisión de producto, 2026-06-27):** en endless conviven el reloj acumulativo Y las vidas. Errar cuesta tiempo Y una vida. Se pierde por lo que llegue primero a 0. Ver R2 y `lives-system`.
 - **Modo de juego**: `endless` (esta spec) vs el modo clásico de 3 steps. Ver R5 sobre coexistencia.
+- **Partida normal (`classic`)**: un incidente de 3 steps; al resolverlo, `victory` y fin. Reloj por challenge (`time_limit`).
+- **Selector de modo**: control de UI en el modal pre-partida del Coder; el Helper no elige modo.
+
+### Contexto de implementación (2026-06-30)
+
+- Núcleo endless **implementado**: dominio, servicio, sync Helper, UI in-game (ronda, game over con score, streaming entre rondas).
+- `/start` y `game-client.startGame` ya aceptan `mode`; default API = `endless`.
+- **Selector de modo:** implementado en `StartGameButton` + propagación vía query params (ver R6, D7).
+- **Parsing compartido:** `game-mode.ts` (`parseGameMode`, `resolveCoderStartParams`, `buildCoderStartPath`) — testeado en `game-mode.test.ts`.
 
 ---
 
@@ -95,9 +104,28 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 4. THE SYSTEM SHALL mantener intacto el contrato del `Challenge` (la forma de los datos de Bedrock no cambia).
 5. THE SYSTEM SHALL respetar las reglas del proyecto: cero `any`, sin `as` casts (salvo `as const`/`satisfies`), TDD en la lógica de dominio nueva.
 
+## Requirement 6 — Selector de modo (pre-partida, solo Coder)
+
+**User Story:** Como jugador que inicia como Coder, quiero elegir si juego una partida normal o el modo infinito antes de arrancar, para entender qué tipo de experiencia voy a tener sin depender del default del backend.
+
+**Decisión de UX (2026-06-30):** el selector vive en el **modal de confirmación** de `StartGameButton` (mismo flujo que la elección de idioma), con el **modo encima del idioma** — primero decidís el tipo de partida, después el lenguaje del incidente. El Helper no ve este selector: el modo queda fijado al crear la sala.
+
+### Acceptance Criteria
+
+1. WHEN el Coder abre el modal de confirmación antes de iniciar THE SYSTEM SHALL mostrar un control para elegir entre `classic` (partida normal) y `endless` (modo infinito).
+2. THE SYSTEM SHALL mostrar una descripción breve por opción:
+   - **Partida normal** — Un incidente; lo resolvés y ganás.
+   - **Modo infinito** — Rondas seguidas; sobrevivís lo más que puedas (puntaje al game over).
+3. WHEN el Coder confirma el inicio THE SYSTEM SHALL propagar `lang` y `mode` en la URL (`buildCoderStartPath`) y enviar el `mode` elegido a `POST /api/game/start` (vía `resolveCoderStartParams` + `startGame` en `app/coder/page.tsx`).
+4. THE SYSTEM SHALL ubicar el selector de modo **antes** del selector de idioma en el modal.
+5. *(Opcional)* THE SYSTEM MAY recordar el último modo elegido en `localStorage` y preseleccionarlo en la próxima partida.
+6. THE SYSTEM SHALL centralizar el parsing de `mode` y `lang` en funciones puras (`game-mode.ts`) reutilizadas por la route `/start`, el bootstrap del Coder y los tests — sin duplicar lógica.
+7. THE SYSTEM SHALL cubrir el flujo con tests automatizados: parsing puro (`game-mode.test.ts`), cliente HTTP (`game-client.test.ts`), persistencia de sesión (`game-service.start.test.ts`). Smoke manual: classic → victoria; endless → loop.
+
 ## Out of scope
 
 - El escalado de dificultad por ronda → spec `adaptive-difficulty`.
 - El registro y la vista del ranking → spec `leaderboard`.
 - El feedback de recompensa al acertar (quitar toasts del jefe, confetti) → spec futura `victory-feedback`.
 - Persistir partidas entre sesiones / historial del jugador.
+- Selector de modo en la home o en la pantalla del Helper (el modo se fija al crear la sala, solo el Coder elige).

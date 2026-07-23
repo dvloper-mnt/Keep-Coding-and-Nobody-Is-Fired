@@ -12,6 +12,7 @@ import { MAX_LIVES } from '@/src/lib/constants';
 interface HelperBoardProps {
   sessionId: string;
   guide: HelperStaticGuide;
+  guideLoading?: boolean;
   sync: HelperSyncView;
   submittingQuestion: boolean;
   questionFeedback: string | null;
@@ -24,6 +25,7 @@ interface HelperBoardProps {
 export function HelperBoard({
   sessionId,
   guide,
+  guideLoading = false,
   sync,
   submittingQuestion,
   questionFeedback,
@@ -55,6 +57,11 @@ export function HelperBoard({
               Helper — Soporte
             </p>
             <p className="text-sm text-amber-400/60">
+              {sync.mode === 'endless' && sync.round != null && (
+                <span className="mr-2 font-semibold text-amber-300/90">
+                  Ronda {sync.round}
+                </span>
+              )}
               Progreso Coder: ejercicio {sync.currentStep}/{sync.totalSteps} · Sala {sessionId}
             </p>
           </div>
@@ -74,7 +81,15 @@ export function HelperBoard({
           </div>
         </div>
 
-        {sync.status === 'victory' && (
+        {sync.status === 'idle' && (
+          <div className="mb-6 rounded-lg border border-amber-600/30 bg-amber-900/20 p-4 text-center text-sm text-amber-200/80">
+            {guideLoading
+              ? 'Actualizando manual para el próximo incidente…'
+              : 'Preparando el próximo incidente…'}
+          </div>
+        )}
+
+        {sync.status === 'victory' && sync.mode !== 'endless' && (
           <GameResultBanner
             containerClassName="mb-6 rounded-lg border border-green-500/30 bg-green-950/20 p-4 text-center"
             title="Crisis resuelta. Buen trabajo en equipo."
@@ -88,7 +103,11 @@ export function HelperBoard({
             containerClassName="mb-6 rounded-lg border border-red-500/30 bg-red-950/20 p-4 text-center"
             title={defeatCopy.title}
             titleClassName="text-red-400"
-            message={defeatCopy.message}
+            message={
+              sync.mode === 'endless' && sync.endlessScore != null
+                ? `${defeatCopy.message} Llegaron a ${sync.playedRounds ?? 0} rondas · ${sync.endlessScore.toLocaleString()} pts.`
+                : defeatCopy.message
+            }
             messageClassName="mt-2 text-red-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
           />

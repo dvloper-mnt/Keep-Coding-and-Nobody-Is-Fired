@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PENALTY_SECONDS, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
+import { ENDLESS_REWARD_SECONDS } from '@/src/lib/constants';
 import {
   abandonGame,
   applyTimeDelta,
   clearLastResult,
   createPendingSession,
+  endlessScore,
   gameDurationSeconds,
   isTerminalStatus,
   resolveMultipleChoice,
@@ -360,10 +362,90 @@ describe('createPendingSession', () => {
     expect(session.generatedChallenge).toBeUndefined();
     expect(session.generating).toBe(false);
     expect(session.startedAt).toBe(1_000_000);
+    expect(session.mode).toBe('endless');
+    expect(session.round).toBe(1);
+    expect(session.playedRounds).toBe(0);
   });
 
   it('defaults to random when no language is given', () => {
     const session = createPendingSession('WXYZ', undefined, 1_000_000);
     expect(session.language).toBe('random');
+  });
+
+  it('accepts classic mode explicitly', () => {
+    const session = createPendingSession('WXYZ', 'php', 1_000_000, undefined, 'classic');
+    expect(session.mode).toBe('classic');
+  });
+});
+
+describe('endlessScore', () => {
+  it.each([
+    { playedRounds: 0, seconds: 0, expected: 0 },
+    { playedRounds: 1, seconds: 45, expected: 1045 },
+    { playedRounds: 12, seconds: 300, expected: 12300 },
+    { playedRounds: 5, seconds: 999, expected: 5999 },
+  ])('returns playedRounds * 1000 + seconds ($playedRounds, $seconds → $expected)', ({
+    playedRounds,
+    seconds,
+    expected,
+  }) => {
+    expect(endlessScore(playedRounds, seconds)).toBe(expected);
+  });
+});
+
+describe('submitAnswer — endless mode', () => {
+  it('marks roundComplete, increments playedRounds, and adds time bonus on last step', () => {
+    const step1 = makeStep({ step: 1, correct_answer: 0, success_state: { code_patch: 'p1' } });
+    const step2 = makeStep({ step: 2, correct_answer: 0, success_state: { code_patch: 'p-final' } });
+    const challenge = makeChallenge([step1, step2]);
+    const session = makeSession({
+      mode: 'endless',
+      currentStep: 2,
+      remainingTime: 80,
+      playedRounds: 2,
+    });
+
+    const result = submitAnswer(session, challenge, 0);
+
+    expect(result.status).toBe('playing');
+    expect(result.roundComplete).toBe(true);
+    expect(result.playedRounds).toBe(3);
+    expect(result.remainingTime).toBe(80 + ENDLESS_REWARD_SECONDS);
+    expect(result.currentCode).toBe('p-final');
+    expect(result.currentStep).toBe(2);
+  });
+
+  it('does not show victory in endless mode on last step', () => {
+    const step = makeStep({ correct_answer: 0, success_state: { code_patch: 'done' } });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({ mode: 'endless', currentStep: 1 });
+
+    const result = submitAnswer(session, challenge, 0);
+
+    expect(result.status).not.toBe('victory');
+    expect(result.roundComplete).toBe(true);
+  });
+
+  it('still applies life loss and time penalty on wrong answer', () => {
+    const step = makeStep({ correct_answer: 0 });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({ mode: 'endless', remainingTime: 60, coderLives: 2 });
+
+    const result = submitAnswer(session, challenge, 3);
+
+    expect(result.coderLives).toBe(1);
+    expect(result.remainingTime).toBe(60 - PENALTY_SECONDS);
+    expect(result.lastResult).toBe('incorrect');
+  });
+
+  it('defeats by coder_lives in endless even when time remains', () => {
+    const step = makeStep({ correct_answer: 0 });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({ mode: 'endless', remainingTime: 200, coderLives: 1 });
+
+    const result = submitAnswer(session, challenge, 3);
+
+    expect(result.status).toBe('defeat');
+    expect(result.defeatReason).toBe('coder_lives');
   });
 });

@@ -2,6 +2,9 @@ export const PENALTY_SECONDS = 10;
 export const DEFAULT_TIME_LIMIT = 180;
 export const MAX_LIVES = 3;
 
+export const ENDLESS_BASE_SECONDS = Number(process.env.ENDLESS_BASE_SECONDS ?? '120');
+export const ENDLESS_REWARD_SECONDS = Number(process.env.ENDLESS_REWARD_SECONDS ?? '30');
+
 export const CLIENT_QUESTION_CONFIG = {
   spawnIntervalSeconds: 40,
   spawnChance: 0.45,

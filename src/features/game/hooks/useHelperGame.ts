@@ -1,39 +1,46 @@
 'use client';
 
-import { getHelperSync, submitClientQuestionAnswer } from '@/src/features/game/api/game-client';
+import { getHelperGuide, getHelperSync, submitClientQuestionAnswer } from '@/src/features/game/api/game-client';
 import type { GameStatus, HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
 import { LIFE_LOST_MESSAGE, MAX_LIVES } from '@/src/lib/constants';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePolling } from './usePolling';
 
 interface UseHelperGameResult {
   sync: HelperSyncView;
+  guide: HelperStaticGuide;
   submittingQuestion: boolean;
   questionFeedback: string | null;
   questionResult: 'correct' | 'incorrect' | null;
   livesPulse: boolean;
+  guideLoading: boolean;
   handleClientQuestionAnswer: (answerIndex: number) => Promise<void>;
   handleAbandoned: (status: GameStatus) => void;
 }
 
 export function useHelperGame(
   sessionId: string,
-  guide: HelperStaticGuide,
+  initialGuide: HelperStaticGuide,
 ): UseHelperGameResult {
+  const [guide, setGuide] = useState<HelperStaticGuide>(initialGuide);
   const [sync, setSync] = useState<HelperSyncView>({
     remainingTime: 180,
     currentStep: 1,
-    totalSteps: guide.totalExercises,
+    totalSteps: initialGuide.totalExercises,
     status: 'playing',
     activeClientQuestion: null,
     helperLives: MAX_LIVES,
+    round: 1,
+    mode: 'endless',
   });
   const [submittingQuestion, setSubmittingQuestion] = useState(false);
   const [livesPulse, setLivesPulse] = useState(false);
   const [questionFeedback, setQuestionFeedback] = useState<string | null>(null);
   const [questionResult, setQuestionResult] = useState<'correct' | 'incorrect' | null>(null);
+  const [guideLoading, setGuideLoading] = useState(false);
+  const lastSyncedRound = useRef<number | undefined>(undefined);
 
   const [lastQuestionId, setLastQuestionId] = useState<string | null>(null);
   const activeQuestionId = sync.activeClientQuestion?.id ?? null;
@@ -59,15 +66,47 @@ export function useHelperGame(
     };
   }, []);
 
-  const fetchSync = useCallback(async () => {
+  const refreshGuide = useCallback(async () => {
+    setGuideLoading(true);
     try {
-      setSync(await getHelperSync(sessionId));
+      for (;;) {
+        const result = await getHelperGuide(sessionId);
+        if ('occupied' in result) break;
+        if (!('pending' in result)) {
+          setGuide(result);
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
     } catch {
-      // Transient poll failure: keep the last known sync, retry next tick.
+      // Keep the previous guide on transient failure; sync poll will retry.
+    } finally {
+      setGuideLoading(false);
     }
   }, [sessionId]);
 
-  usePolling(() => void fetchSync(), 1000, sync.status === 'playing');
+  const fetchSync = useCallback(async () => {
+    try {
+      const next = await getHelperSync(sessionId);
+      setSync(next);
+
+      const roundChanged =
+        lastSyncedRound.current !== undefined && next.round !== lastSyncedRound.current;
+      lastSyncedRound.current = next.round;
+
+      if (roundChanged && next.status === 'playing') {
+        void refreshGuide();
+      }
+    } catch {
+      // Transient poll failure: keep the last known sync, retry next tick.
+    }
+  }, [sessionId, refreshGuide]);
+
+  usePolling(
+    () => void fetchSync(),
+    1000,
+    sync.status === 'playing' || sync.status === 'idle',
+  );
 
   const handleClientQuestionAnswer = useCallback(
     async (answerIndex: number) => {
@@ -126,10 +165,12 @@ export function useHelperGame(
 
   return {
     sync,
+    guide,
     submittingQuestion,
     questionFeedback,
     questionResult,
     livesPulse,
+    guideLoading,
     handleClientQuestionAnswer,
     handleAbandoned,
   };

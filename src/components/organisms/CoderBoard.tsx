@@ -58,6 +58,11 @@ export function CoderBoard({
               Coder — Producción en vivo
             </p>
             <p className="text-sm text-zinc-500">
+              {view.mode === 'endless' && view.round != null && (
+                <span className="mr-2 font-semibold text-amber-400/90">
+                  Ronda {view.round}
+                </span>
+              )}
               Ejercicio {view.currentStep}/{view.totalSteps}
             </p>
             <p className="mt-1 font-mono text-lg font-bold tracking-widest text-zinc-300">
@@ -81,7 +86,7 @@ export function CoderBoard({
           </div>
         </div>
 
-        {view.status === 'victory' && (
+        {view.status === 'victory' && view.mode !== 'endless' && (
           <GameResultBanner
             containerClassName="mb-6 rounded-lg border border-green-500/50 bg-green-950/30 p-6 text-center"
             title="Nivel completado"
@@ -97,7 +102,11 @@ export function CoderBoard({
             containerClassName="mb-6 rounded-lg border border-red-500/50 bg-red-950/30 p-6 text-center"
             title={defeatCopy.title}
             titleClassName="text-2xl font-bold text-red-400"
-            message={defeatCopy.message}
+            message={
+              view.mode === 'endless' && view.endlessScore != null
+                ? `${defeatCopy.message} Llegaste a ${view.playedRounds ?? 0} rondas · ${view.endlessScore.toLocaleString()} pts.`
+                : defeatCopy.message
+            }
             messageClassName="mt-2 text-red-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-zinc-600 px-6 py-2 font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
           />

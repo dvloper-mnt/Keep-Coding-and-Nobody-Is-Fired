@@ -1,4 +1,5 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
+export type GameMode = 'classic' | 'endless';
 export type GameStatus = 'idle' | 'playing' | 'victory' | 'defeat' | 'abandoned';
 export type PlayerRole = 'coder' | 'helper';
 export type DefeatReason = 'timeout' | 'coder_lives' | 'helper_lives';
@@ -110,6 +111,13 @@ export interface GameSession {
   coderLives: number;
   helperLives: number;
   defeatReason?: DefeatReason;
+  /** Current round (1-based). Persists across the endless loop. */
+  round: number;
+  /** Rounds fully completed — increments only when all steps of a challenge are solved. */
+  playedRounds: number;
+  mode: GameMode;
+  /** Transient: last step solved in endless mode; service loads the next challenge. */
+  roundComplete?: boolean;
 }
 
 export interface StepResult {
@@ -135,6 +143,10 @@ export interface CoderStepView {
   // Set only on the 'idle' view: the language being generated, so the Coder's
   // waiting screen can tail a production log in that language.
   language?: ChallengeLanguage;
+  round?: number;
+  mode?: GameMode;
+  playedRounds?: number;
+  endlessScore?: number;
 }
 
 export interface HelperGuideSection {
@@ -180,6 +192,10 @@ export interface HelperSyncView {
   durationSeconds?: number;
   helperLives: number;
   defeatReason?: DefeatReason;
+  round?: number;
+  mode?: GameMode;
+  playedRounds?: number;
+  endlessScore?: number;
 }
 
 export interface ClientQuestionAnswerResponse {
