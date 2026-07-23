@@ -4,12 +4,12 @@ Implementación de dominio hacia afuera. TDD en la lógica pura. NADA implementa
 
 ## 1. Modelo de sesión
 
-- [ ] 1.1 Agregar a `GameSession` (game-types.ts): `round: number` (default 1), `mode: 'classic' | 'endless'` (default 'endless'), y un flag transitorio `roundComplete?: boolean`. (R1.3, R5.1)
+- [ ] 1.1 Agregar a `GameSession` (game-types.ts): `round: number` (default 1, ronda actual), `playedRounds: number` (default 0, rondas completadas — sube SOLO al completar una ronda), `mode: 'classic' | 'endless'` (default 'endless'), y un flag transitorio `roundComplete?: boolean`. (R1.3, R3.2, R5.1)
 - [ ] 1.2 Agregar constantes en `constants.ts`: `ENDLESS_BASE_SECONDS = 120`, `ENDLESS_REWARD_SECONDS = 30` (o env vars con esos defaults). (R2.2, R2.3)
 
 ## 2. Lógica de dominio (game-engine.ts, pura + tests)
 
-- [ ] 2.1 `submitAnswer`: en modo `endless`, cuando se resuelve el último step, NO marcar `victory` — marcar `roundComplete: true` y sumar `ENDLESS_REWARD_SECONDS` al reloj. En modo `classic`, comportamiento actual (`victory`). (R1.1, R2.3, R5.1)
+- [ ] 2.1 `submitAnswer`: en modo `endless`, cuando se resuelve el último step, NO marcar `victory` — marcar `roundComplete: true`, sumar `ENDLESS_REWARD_SECONDS` al reloj e incrementar `playedRounds`. En modo `classic`, comportamiento actual (`victory`). La pantalla de "Nivel completado" (victory) NO se muestra en endless; solo en classic. (R1.1, R1b, R1c, R2.3, R3.2, R5.1)
 - [ ] 2.2 Confirmar que el tick a 0 → `defeat` con `defeatReason: 'timeout'` aplica igual en endless. (R2.5)
 - [ ] 2.2b Doble presión vidas+reloj: en endless, el error del Coder SIGUE llamando a `loseLife` (resta vida además del tiempo); perder por vidas a 0 (`coder_lives`/`helper_lives`) también termina la partida aunque el reloj no esté en 0. Termina por lo que llegue primero. (R2.4, R2.6, R2.7 — usa `lives-system`)
 - [ ] 2.3 `endlessScore(playedRounds, secondsSurvived)`: función pura `playedRounds * 1000 + secondsSurvived`. (R3.1, R3.5)

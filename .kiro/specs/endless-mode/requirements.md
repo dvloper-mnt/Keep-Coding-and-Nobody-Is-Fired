@@ -38,7 +38,9 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 
 ### Acceptance Criteria
 
-1. WHEN el Coder resuelve el último step de un challenge THE SYSTEM SHALL incrementar el número de ronda y cargar un challenge nuevo (generado por Bedrock, fallback al curado) en lugar de pasar a `victory`.
+1. WHEN el Coder resuelve el último step de un challenge en modo `endless` THE SYSTEM SHALL incrementar el número de ronda y cargar un challenge nuevo (generado por Bedrock, fallback al curado) en lugar de pasar a `victory`.
+1b. WHEN se completa una ronda en modo `endless` THE SYSTEM SHALL NO mostrar la pantalla de "Nivel completado" (la UI de `victory`): pasa directo a la transición de la ronda siguiente. La pantalla de `victory` queda SOLO para el modo `classic`.
+1c. THE SYSTEM SHALL mantener `status: 'victory'` y su pantalla intactos en modo `classic` (el comportamiento actual no cambia).
 2. THE SYSTEM SHALL mantener el `status` en `playing` al pasar de una ronda a la siguiente, sin interrupción del juego.
 3. THE SYSTEM SHALL conservar el número de ronda en la sesión (`round`, empezando en 1) y persistirlo en Valkey.
 4. WHEN se carga la siguiente ronda THE SYSTEM SHALL reiniciar `currentStep` a 1 y `currentCode` al código del primer step del nuevo challenge.
@@ -65,8 +67,8 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 
 ### Acceptance Criteria
 
-1. THE SYSTEM SHALL calcular el puntaje como `(rondas resueltas × 1000) + segundos totales sobrevividos`.
-2. THE SYSTEM SHALL contar como "rondas resueltas" la cantidad de challenges completados (no la ronda en curso al morir).
+1. THE SYSTEM SHALL calcular el puntaje como `(playedRounds × 1000) + segundos totales sobrevividos`.
+2. THE SYSTEM SHALL incrementar `playedRounds` SOLO cuando se completa una ronda (todos sus steps resueltos), NO al cargar la ronda nueva. La ronda en curso al morir NO cuenta. (Distinto de `round`, que es el número de la ronda actual e incluye la que estás jugando.)
 3. THE SYSTEM SHALL medir "segundos sobrevividos" como el tiempo real transcurrido desde el inicio de la partida hasta el game over.
 4. THE SYSTEM SHALL exponer el puntaje y las rondas resueltas al game over, para consumo de la spec `leaderboard`.
 5. THE SYSTEM SHALL implementar el cálculo del puntaje como una función pura y unit-testeada.
@@ -87,10 +89,11 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 
 ### Acceptance Criteria
 
-1. THE SYSTEM SHALL introducir el modo infinito como el modo por defecto del juego, O como un modo seleccionable, según se decida en `design.md` — sin dejar el modo clásico en un estado roto.
-2. THE SYSTEM SHALL mantener verdes los tests existentes que cubren `submitAnswer` y el flujo de partida; si cambia el comportamiento de fin de challenge, los tests se actualizan acompañando el cambio.
-3. THE SYSTEM SHALL mantener intacto el contrato del `Challenge` (la forma de los datos de Bedrock no cambia).
-4. THE SYSTEM SHALL respetar las reglas del proyecto: cero `any`, sin `as` casts (salvo `as const`/`satisfies`), TDD en la lógica de dominio nueva.
+1. THE SYSTEM SHALL usar `endless` como modo por defecto (`mode` default `'endless'` en la sesión), dejando `classic` como modo seleccionable que NO queda roto.
+2. THE SYSTEM SHALL conservar las vidas (spec `lives-system`) en AMBOS modos: en `classic` siguen como hoy; en `endless` operan junto al reloj acumulativo (ver R2). Implementar endless NO debe quitar las vidas del modo clásico.
+3. THE SYSTEM SHALL mantener verdes los tests existentes que cubren `submitAnswer` y el flujo de partida; si cambia el comportamiento de fin de challenge, los tests se actualizan acompañando el cambio.
+4. THE SYSTEM SHALL mantener intacto el contrato del `Challenge` (la forma de los datos de Bedrock no cambia).
+5. THE SYSTEM SHALL respetar las reglas del proyecto: cero `any`, sin `as` casts (salvo `as const`/`satisfies`), TDD en la lógica de dominio nueva.
 
 ## Out of scope
 
