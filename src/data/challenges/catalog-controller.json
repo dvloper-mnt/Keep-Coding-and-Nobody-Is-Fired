@@ -13,15 +13,13 @@
       },
       "helper_view": {
         "rules": [
-          "ProductController debe recibir ProductRepository para lectura de catálogo",
-          "InventoryService es solo para movimientos de stock, no para consultar productos",
-          "Una dependencia incorrecta en el constructor puede causar error 500 en runtime",
-          "La demo en vivo está probando GET /api/products/{id}"
+          "En Laravel, si el constructor de un controlador type-hintea una dependencia que no puede resolver la operación pedida, el contenedor la inyecta igual pero falla al usarla: error 500 en runtime.",
+          "Cada capa tiene su responsabilidad: la lectura de un catálogo se hace contra la capa de acceso a datos de ese dominio, no contra una capa de otro dominio.",
+          "Preguntale al Coder qué clase se inyecta en el constructor y qué método invoca al leer: si la clase inyectada no pertenece a la capa de lectura del catálogo, ese es el desajuste."
         ],
         "knowledge": [
-          "ProductRepository vive en App\\Repositories\\Catalog",
-          "InventoryService vive en App\\Services\\Inventory",
-          "El método de lectura del repositorio es find(string $id)"
+          "El proyecto separa la lógica de inventario (movimientos de stock) de la de catálogo (consulta de productos); son capas distintas con responsabilidades distintas.",
+          "La demo está leyendo un producto por su id en este momento, así que la dependencia correcta es la de la capa de lectura del catálogo."
         ]
       },
       "options": [
@@ -44,15 +42,13 @@
       },
       "helper_view": {
         "rules": [
-          "Los endpoints de escritura del catálogo usan Form Requests del módulo Catalog",
-          "Para crear productos se usa StoreProductRequest, no CreateProductRequest",
-          "Type-hintear un Form Request inexistente produce error 500 al resolver la dependencia",
-          "La demo en vivo está probando POST /api/products"
+          "En Laravel, type-hintear en un método un Form Request que no existe hace que el contenedor falle al resolver la dependencia: error 500 al invocar esa acción.",
+          "Los Form Requests siguen una convención de nombre según la acción REST que validan; el nombre del que valida una creación no es arbitrario.",
+          "Preguntale al Coder qué Form Request type-hintea el método de creación y si ese nombre sigue la convención del proyecto: un nombre inventado no se resuelve."
         ],
         "knowledge": [
-          "StoreProductRequest → crear producto (store)",
-          "UpdateProductRequest → editar producto (update)",
-          "CreateProductRequest no existe en este proyecto"
+          "En este proyecto los Form Requests de escritura viven en el módulo del dominio y su nombre deriva de la acción REST canónica que validan (crear, editar, etc.).",
+          "La demo está creando un producto en este momento, así que el Form Request en juego es el de la acción de creación."
         ]
       },
       "options": [
@@ -75,16 +71,13 @@
       },
       "helper_view": {
         "rules": [
-          "401 Unauthorized → la petición no pasó la autenticación del middleware",
-          "index y show son públicos en la spec de la API del catálogo",
-          "Solo store, update y destroy requieren auth:sanctum",
-          "Middleware en el constructor sin only() se aplica a todas las acciones",
-          "La demo en vivo está probando GET /api/products"
+          "Un 401 Unauthorized significa que la petición no pasó la capa de autenticación: el middleware la exigió donde quizás no correspondía.",
+          "Un middleware aplicado en el constructor sin acotar su alcance cubre TODAS las acciones del controlador, incluidas las que deberían ser públicas.",
+          "Preguntale al Coder qué acción está fallando y si esa acción debería requerir autenticación: si es de solo lectura pública, el middleware la está cubriendo de más."
         ],
         "knowledge": [
-          "El listado de productos debe ser accesible sin token",
-          "Usar $this->middleware('auth:sanctum')->only([...]) para limitar el alcance",
-          "No confundir con falta de token cuando la ruta es pública por diseño"
+          "En la spec de esta API, las operaciones de lectura del catálogo son públicas y solo las de escritura requieren autenticación.",
+          "El middleware de autenticación se puede limitar a un subconjunto de acciones en vez de aplicarse a todo el controlador."
         ]
       },
       "options": [

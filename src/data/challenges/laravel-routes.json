@@ -14,11 +14,12 @@
       "helper_view": {
         "rules": [
           "En Laravel, una ruta que apunta a un método inexistente en el controlador lanza un error 500 en runtime, no al arrancar.",
-          "Por convención REST, crear un recurso (POST) se mapea al método store del controlador, no a create ni index."
+          "Por convención REST, cada verbo HTTP se mapea a un método canónico del controlador: la creación de un recurso tiene un nombre convencional distinto al de listar o mostrar.",
+          "Cuando hay varias rutas al mismo controlador, el 500 apunta a UNA: hay que preguntarle al Coder qué método invoca cada ruta y cuál coincide con el verbo de la petición que falla."
         ],
         "knowledge": [
-          "En este proyecto, OrderController expone los métodos: store, show.",
-          "La demo está enviando un POST a /orders para crear un pedido en este momento."
+          "El controlador de un recurso solo expone los métodos que declara; invocar uno que no existe es la causa típica de este 500.",
+          "La demo está creando un recurso en este momento (no listándolo ni mostrándolo), así que la ruta que importa es la de creación."
         ]
       },
       "options": [
@@ -42,11 +43,12 @@
       "helper_view": {
         "rules": [
           "En Laravel, importar un controlador desde un namespace que no coincide con su ubicación real produce un error 500 en runtime, aunque la línea use exista.",
-          "El namespace de un controlador debe reflejar la carpeta física donde vive dentro de app/Http/Controllers."
+          "El namespace de un controlador debe reflejar la carpeta física donde vive dentro de app/Http/Controllers.",
+          "Cuando el 500 aparece justo tras agregar una ruta, sospechá del import más nuevo: preguntale al Coder qué controlador atiende la ruta recién agregada y desde qué namespace se importa."
         ],
         "knowledge": [
-          "En este proyecto, ProfileController vive en la carpeta User (App\\Http\\Controllers\\User), no en la raíz de Controllers.",
-          "La ruta nueva /profile es la que se agregó al grupo y la que está rompiendo."
+          "En este proyecto los controladores están agrupados por dominio en subcarpetas; no todos viven en la raíz de Controllers, así que un import a la raíz puede no coincidir con la ubicación real.",
+          "La ruta que rompe es la que se acaba de sumar al grupo: conviene mirar su import antes que el resto."
         ]
       },
       "options": [
@@ -70,11 +72,12 @@
       "helper_view": {
         "rules": [
           "Un error 405 Method Not Allowed significa que el verbo HTTP de la petición no coincide con el verbo registrado en la ruta.",
-          "Por convención REST, una acción que modifica estado (cancelar un pedido) se registra como POST, no como GET."
+          "Por convención REST, las acciones que modifican estado usan un verbo distinto al de las de solo lectura: preguntale al Coder qué hace cada ruta nueva y con qué verbo está registrada.",
+          "Un 405 no es un método inexistente ni un namespace mal importado: el método existe y la ruta resuelve, pero el verbo no encaja con el de la petición."
         ],
         "knowledge": [
-          "En este proyecto, cancelar un pedido (cancel) es una acción de escritura: el front la invoca con POST.",
-          "Las acciones de lectura del proyecto (show, summary, daily) sí usan GET correctamente."
+          "En este proyecto, las acciones que cambian el estado de un pedido son operaciones de escritura y el front las invoca con un verbo de escritura, no de lectura.",
+          "Las rutas de solo lectura del proyecto ya usan su verbo correcto; el desajuste está en una acción que modifica algo."
         ]
       },
       "options": [
