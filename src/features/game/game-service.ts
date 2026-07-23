@@ -4,6 +4,7 @@ import { getClientQuestionById } from '@/src/data/client-questions';
 import { generateChallenge } from './runtime-generator';
 import { checkRateLimit, redisRateLimitStore } from './rate-limit';
 import { redisGenerationLockStore, tryAcquireGenerationLock } from './generation-lock';
+import { redisSessionLockStore, withSessionLock } from './session-mutex';
 import { generateOpaqueToken, generateRoomCode, tokensMatch } from './session-credentials';
 import Redis from 'ioredis';
 import {
@@ -108,6 +109,15 @@ async function setSessionToStore(id: string, session: GameSession): Promise<void
     return;
   }
   memorySessions.set(id, session);
+}
+
+// Wraps a read-modify-write on a session so two concurrent requests serialize
+// instead of clobbering each other (last-write-wins). Without Redis (single-
+// process dev) there is no cross-request race, so it runs the mutation directly.
+async function mutateSession<T>(sessionId: string, critical: () => Promise<T>): Promise<T> {
+  const redis = getRedis();
+  if (!redis) return critical();
+  return withSessionLock(redisSessionLockStore(redis), sessionId, critical);
 }
 
 const GENERATION_LOCK_TTL_SECONDS = Math.ceil(GENERATION_CLAIM_TTL_MS / 1000);
@@ -312,12 +322,14 @@ export async function processAbandon(
   sessionId: string,
   role: PlayerRole,
 ): Promise<{ status: GameSession['status'] } | null> {
-  const session = await getSessionFromStore(sessionId);
-  if (!session) return null;
+  return mutateSession(sessionId, async () => {
+    const session = await getSessionFromStore(sessionId);
+    if (!session) return null;
 
-  const updated = abandonGame(session, role);
-  await setSessionToStore(sessionId, updated);
-  return { status: updated.status };
+    const updated = abandonGame(session, role);
+    await setSessionToStore(sessionId, updated);
+    return { status: updated.status };
+  });
 }
 
 export async function getSession(sessionId: string): Promise<GameSession | undefined> {
@@ -340,6 +352,7 @@ export async function getHelperGuide(
   sessionId: string,
   presentedToken?: string,
 ): Promise<HelperJoinResult | null> {
+  return mutateSession(sessionId, async () => {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
   // Room exists but the Coder's challenge isn't ready yet → tell the Helper to
@@ -358,6 +371,7 @@ export async function getHelperGuide(
   const helperToken = generateOpaqueToken();
   await setSessionToStore(sessionId, { ...session, helperToken });
   return buildHelperGuide(challenge, helperToken);
+  });
 }
 
 export async function getCoderState(sessionId: string) {
@@ -402,25 +416,28 @@ export async function processClientQuestionAnswer(
   sessionId: string,
   answerIndex: number,
 ): Promise<ClientQuestionAnswerResponse | null> {
-  const session = await getSessionFromStore(sessionId);
-  if (!session) return null;
+  return mutateSession(sessionId, async () => {
+    const session = await getSessionFromStore(sessionId);
+    if (!session) return null;
 
-  const activeQuestionId = session.clientQuestions.activeQuestionId;
-  if (!activeQuestionId) return null;
+    const activeQuestionId = session.clientQuestions.activeQuestionId;
+    if (!activeQuestionId) return null;
 
-  const question = getClientQuestionById(activeQuestionId);
-  if (!question) return null;
+    const question = getClientQuestionById(activeQuestionId);
+    if (!question) return null;
 
-  const { session: updated, response } = submitClientQuestionAnswer(
-    session,
-    question,
-    answerIndex,
-  );
-  await setSessionToStore(sessionId, updated);
-  return response;
+    const { session: updated, response } = submitClientQuestionAnswer(
+      session,
+      question,
+      answerIndex,
+    );
+    await setSessionToStore(sessionId, updated);
+    return response;
+  });
 }
 
 export async function processAnswer(sessionId: string, answerIndex: number): Promise<AnswerResponse | null> {
+  return mutateSession(sessionId, async () => {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
   const challenge = resolveChallenge(session);
@@ -449,14 +466,17 @@ export async function processAnswer(sessionId: string, answerIndex: number): Pro
   }
 
   return response;
+  });
 }
 
 export async function processTimerTick(sessionId: string): Promise<GameSession | null> {
-  const session = await getSessionFromStore(sessionId);
-  if (!session) return null;
+  return mutateSession(sessionId, async () => {
+    const session = await getSessionFromStore(sessionId);
+    if (!session) return null;
 
-  const ticked = tickTimer(session);
-  const updated = processClientQuestionSpawnTick(ticked);
-  await setSessionToStore(sessionId, updated);
-  return updated;
+    const ticked = tickTimer(session);
+    const updated = processClientQuestionSpawnTick(ticked);
+    await setSessionToStore(sessionId, updated);
+    return updated;
+  });
 }
