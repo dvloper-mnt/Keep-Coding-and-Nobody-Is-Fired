@@ -21,8 +21,9 @@ El nivel resultante se **inyecta en el prompt** de Bedrock (en `runtime-generato
 
 - `src/features/game/game-types.ts`: `type Difficulty = 'easy' | 'medium' | 'hard'` — falta `'expert'`.
 - `src/features/game/challenge-schema.ts`: `VALID_DIFFICULTIES = ['easy', 'medium', 'hard'] as const` — `isValidChallenge` rechazaría un challenge con `difficulty: 'expert'`. Hay que sumar `'expert'`.
-- `src/features/game/runtime-generator.ts`: el `SYSTEM_PROMPT` hardcodea `"difficulty": "medium"` en el ejemplo de forma. `generateChallenge(language)` y `generateChallengeStreaming(language, onDelta)` arman el mensaje de usuario con `` `Genera un desafío nuevo. ${languageInstruction(resolved)} Devuelve solo el JSON del objeto challenge.` ``. La dificultad se inyectaría de forma análoga, con una `difficultyInstruction(difficulty)`.
-- `src/features/game/challenge-language.ts` es el patrón a calcar: `SELECTABLE_LANGUAGES`, `resolveLanguage`, `languageInstruction` — funciones puras, sin estado, fáciles de testear.
+- `src/features/game/runtime-generator.ts`: el `SYSTEM_PROMPT` (reescrito en inglés con técnica few-shot en el PR #42) tiene `"difficulty": "medium"` hardcodeado en el bloque OUTPUT FORMAT y la regla `EXACTLY 3 chained steps`. `generateChallenge(language)` y `generateChallengeStreaming(language, onDelta)` arman el mensaje de usuario con `` `Genera un desafío nuevo. ${languageInstruction(resolved)} Devuelve solo el JSON del objeto challenge.` ``. La dificultad se inyecta de forma análoga, con una `difficultyInstruction(difficulty)` que se concatena al mensaje de usuario (NO se reescribe el SYSTEM_PROMPT).
+- `src/features/game/challenge-language.ts` es el patrón a calcar: `SELECTABLE_LANGUAGES`, `resolveLanguage`, `languageInstruction` — funciones puras, sin estado, fáciles de testear. `languageInstruction` ya advierte que el contenido del juego va en español y el código en el lenguaje pedido; `difficultyInstruction` sigue la misma forma.
+- IMPORTANTE (post-PR #49): `isValidChallenge` ahora exige rules/knowledge NO vacíos y sin placeholders. La instrucción de dificultad NO debe inducir al modelo a dejar campos vacíos en niveles altos.
 - El número de ronda es aportado por la spec hermana **endless-mode** (esta spec NO define cómo se cuenta ni se persiste la ronda; solo la consume).
 
 ## Glossary
@@ -66,8 +67,9 @@ El nivel resultante se **inyecta en el prompt** de Bedrock (en `runtime-generato
 
 1. THE SYSTEM SHALL exponer una función pura `difficultyInstruction(difficulty: Difficulty): string` que devuelva una instrucción en español describiendo el nivel pedido (qué tan sutiles y encadenados deben ser los bugs), análoga a `languageInstruction`.
 2. THE SYSTEM SHALL aceptar un parámetro de dificultad en `generateChallenge` y `generateChallengeStreaming` e inyectar `difficultyInstruction(difficulty)` en el mensaje de usuario, junto a `languageInstruction(resolved)`.
-3. THE SYSTEM SHALL pedir explícitamente en el prompt que el campo `"difficulty"` del JSON devuelto coincida con el nivel solicitado, en vez del `"medium"` hardcodeado de hoy.
+3. THE SYSTEM SHALL pedir explícitamente en el prompt que el campo `"difficulty"` del JSON devuelto coincida con el nivel solicitado, en vez del `"medium"` hardcodeado en el ejemplo del `SYSTEM_PROMPT` (hoy en la línea `"difficulty": "medium"` del bloque OUTPUT FORMAT).
 4. WHEN no se provee dificultad THE SYSTEM SHALL usar `'easy'` por defecto, de modo que cualquier llamador previo (sin modo infinito) siga funcionando con el nivel más bajo.
+5. THE SYSTEM SHALL mantener la estructura de **EXACTAMENTE 3 steps** en todos los niveles, incluido `'expert'`. "Bugs más encadenados/sutiles" en dificultad alta significa bugs más difíciles de diagnosticar DENTRO de los 3 steps (causas menos obvias, distractores más creíbles), NO más de 3 steps — la UI, la validación (`isValidChallenge`) y el contrato del `Challenge` esperan 3 steps y NO cambian.
 
 ## Requirement 4 — La ronda activa determina la dificultad de la generación
 
