@@ -4,7 +4,11 @@ import { getHelperGuide, getHelperSync, submitClientQuestionAnswer } from '@/src
 import type { GameStatus, HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
-import { LIFE_LOST_MESSAGE, MAX_LIVES } from '@/src/lib/constants';
+import {
+  CLIENT_QUESTION_WRONG_MESSAGE,
+  LIFE_LOST_MESSAGE,
+  MAX_LIVES,
+} from '@/src/lib/constants';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePolling } from './usePolling';
 
@@ -136,7 +140,7 @@ export function useHelperGame(
         playWrong();
         setQuestionResult('incorrect');
         setLivesPulse(true);
-        const baseMessage = data.message ?? 'Respuesta incorrecta.';
+        const baseMessage = data.message ?? CLIENT_QUESTION_WRONG_MESSAGE;
         setQuestionFeedback(data.lifeLost ? `${baseMessage} ${LIFE_LOST_MESSAGE}` : baseMessage);
         setTimeout(() => setLivesPulse(false), 600);
         setSync((prev) => ({

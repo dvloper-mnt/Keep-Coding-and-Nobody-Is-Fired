@@ -113,9 +113,9 @@ export function CoderBoard({
         {view.status === 'victory' && view.mode !== 'endless' && (
           <GameResultBanner
             containerClassName="mb-6 rounded-lg border border-green-500/50 bg-green-950/30 p-6 text-center"
-            title="Nivel completado"
+            title="Crisis contenida"
             titleClassName="text-2xl font-bold text-green-400"
-            message="Sistema funcionando. El cliente sigue viendo la demo."
+            message="El sistema volvió a la vida antes de que el jefe entrara al Slack. El cliente cerró la demo satisfecho."
             messageClassName="mt-2 text-green-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg bg-green-600 px-6 py-2 font-semibold text-white transition-colors hover:bg-green-500"
           />
@@ -155,9 +155,9 @@ export function CoderBoard({
         {view.status === 'abandoned' && (
           <GameResultBanner
             containerClassName="mb-6 rounded-lg border border-zinc-600 bg-zinc-900/60 p-6 text-center"
-            title="Partida abandonada"
+            title="Alguien tiró la toalla"
             titleClassName="text-2xl font-bold text-zinc-300"
-            message={`Finalizada por ${view.abandonedBy === 'coder' ? 'el Coder' : 'el Helper'} · Duró ${formatDuration(view.durationSeconds ?? 0)}`}
+            message={`Se retiró ${view.abandonedBy === 'coder' ? 'el Coder' : 'el Helper'} · La demo duró ${formatDuration(view.durationSeconds ?? 0)}`}
             messageClassName="mt-2 text-zinc-400"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-zinc-600 px-6 py-2 font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
           />

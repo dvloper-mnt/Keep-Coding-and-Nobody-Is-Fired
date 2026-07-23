@@ -36,9 +36,9 @@ export const CLIENT_QUESTION_CONFIG = {
 } as const;
 
 export const CLIENT_QUESTION_WRONG_MESSAGE =
-  'El cliente no quedó conforme con la respuesta…';
+  'El cliente frunce el ceño. Eso te va a costar.';
 export const CLIENT_QUESTION_CORRECT_MESSAGE =
-  'Buena respuesta. El cliente queda tranquilo por ahora.';
+  'El cliente respira. Volviste a comprarte unos segundos.';
 
 export const BOSS_MESSAGES = [
   '¿QUÉ ESTÁ PASANDO EN PRODUCCIÓN?',
@@ -79,8 +79,8 @@ export const BOSS_PRESSURE_CONFIG_INTENSE = {
   maxVisibleMessages: 10,
 } as const;
 
-export const WRONG_ANSWER_MESSAGE = 'El sistema sigue fallando…';
-export const LIFE_LOST_MESSAGE = 'Perdiste 1 vida.';
+export const WRONG_ANSWER_MESSAGE = 'El sistema sigue en llamas. El cliente lo está viendo.';
+export const LIFE_LOST_MESSAGE = 'Una menos. El jefe apuntó eso.';
 
 /** Combo tiers — highest minStreak first; edit here to tune balance without touching engine logic. */
 export const STREAK_TIERS = [
