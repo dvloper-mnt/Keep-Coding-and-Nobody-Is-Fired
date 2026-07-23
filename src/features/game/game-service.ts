@@ -19,7 +19,7 @@ import { resolveRoundForGeneration } from './challenge-difficulty';
 import {
   createMemoryLeaderboardStore,
   createRedisLeaderboardStore,
-  rankOfTeam,
+  rankOf,
   readTop10,
   registerScore,
   type LeaderboardStore,
@@ -303,11 +303,12 @@ export async function registerLeaderboardScore(
 
   // Already registered: don't double-register. Replay the current ranking with
   // the team's rank so the client can show the scoreboard instead of the form.
+  // Rank the EXACT stored member — rebuilding it from the name would mint a new
+  // opaque suffix that never matches the sorted-set entry (rank would be 0).
   if (session.leaderboardRegistered) {
     const store = getLeaderboardStore();
     const { entries } = await readTop10(store);
-    const registeredName = session.leaderboardTeamName ?? name.name;
-    const rank = await rankOfTeam(store, registeredName);
+    const rank = session.leaderboardMember ? await rankOf(store, session.leaderboardMember) : 0;
     return { kind: 'ok', result: { rank, entries } };
   }
 
@@ -316,14 +317,19 @@ export async function registerLeaderboardScore(
   if (!score.ok) return { kind: 'not-game-over', reason: score.reason };
 
   const store = getLeaderboardStore();
-  const { rank } = await registerScore(store, name.name, score.endlessScore, score.playedRounds);
+  const { member, rank } = await registerScore(
+    store,
+    name.name,
+    score.endlessScore,
+    score.playedRounds,
+  );
 
-  // Mark the run registered (and remember the name) so a client retry cannot
-  // double-register it and a reload can re-show the ranking.
+  // Mark the run registered (and remember the exact member key) so a client
+  // retry cannot double-register it and a reload can re-derive the same rank.
   await setSessionToStore(sessionId, {
     ...session,
     leaderboardRegistered: true,
-    leaderboardTeamName: name.name,
+    leaderboardMember: member,
   });
 
   const { entries } = await readTop10(store);
