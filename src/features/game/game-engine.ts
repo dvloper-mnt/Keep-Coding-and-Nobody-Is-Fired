@@ -150,11 +150,13 @@ export function createSession(
   };
 }
 
-/** Promotes an idle room to playing with the first challenge of the session. */
+// Promotes an idle room to playing with the first challenge of the session.
+// The caller is responsible for shuffling the challenge's option order before
+// promoting (see challenge-shuffle.ts) — the challenge is stored verbatim so
+// the shuffled order is what the player sees and answers against.
 export function promoteToFirstRound(
   session: GameSession,
   challenge: Challenge,
-  wasGenerated: boolean,
 ): GameSession {
   const firstStep = challenge.steps[0];
   const mode = session.mode ?? 'endless';
@@ -162,7 +164,10 @@ export function promoteToFirstRound(
   return {
     ...session,
     challengeId: challenge.id,
-    generatedChallenge: wasGenerated ? challenge : undefined,
+    // Always store the runtime version of the challenge (shuffled by the caller)
+    // so resolveChallenge returns the same options the player sees, regardless
+    // of whether it came from Bedrock or the curated catalog.
+    generatedChallenge: challenge,
     currentStep: 1,
     remainingTime: initialRemainingTime(mode, challenge),
     currentCode: firstStep.coder_view.code,
@@ -177,11 +182,12 @@ export function promoteToFirstRound(
   };
 }
 
-/** Applies a newly generated challenge as the next endless round. */
+// Applies a newly resolved challenge as the next endless round.
+// As with promoteToFirstRound, the caller shuffles the challenge before
+// calling this; the shuffled version is what gets persisted and played.
 export function applyNextRoundChallenge(
   session: GameSession,
   challenge: Challenge,
-  wasGenerated: boolean,
 ): GameSession {
   const firstStep = challenge.steps[0];
 
@@ -189,7 +195,7 @@ export function applyNextRoundChallenge(
     ...session,
     round: session.round + 1,
     challengeId: challenge.id,
-    generatedChallenge: wasGenerated ? challenge : undefined,
+    generatedChallenge: challenge,
     currentStep: 1,
     currentCode: firstStep.coder_view.code,
     status: 'playing',

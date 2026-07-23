@@ -105,12 +105,13 @@ export async function GET(request: NextRequest): Promise<Response> {
 
         // Resolve final challenge: generated or curated fallback (boss-aware).
         const challenge = generated ?? (isBoss ? pickBossChallenge() : pickRandomChallenge());
-        const wasGenerated = generated !== null;
 
         // Persist the room as playing so subsequent getCoderState polls see it.
         // This MUST happen even if the client already disconnected, so the game
         // still starts — so it runs before any emit/close guard short-circuits.
-        await promoteSessionWithChallenge(session, challenge, wasGenerated);
+        // The service shuffles the challenge's options to neutralize the
+        // Bedrock "option-A" bias (see challenge-shuffle.ts).
+        await promoteSessionWithChallenge(session, challenge);
 
         emit('done', '');
         finish();
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest): Promise<Response> {
           const session = await claimGeneratingSlot(sessionId);
           if (session) {
             const fallback = pickRandomChallenge();
-            await promoteSessionWithChallenge(session, fallback, false);
+            await promoteSessionWithChallenge(session, fallback);
           }
         } catch {
           // Best-effort — if the session is gone or already promoted, ignore.

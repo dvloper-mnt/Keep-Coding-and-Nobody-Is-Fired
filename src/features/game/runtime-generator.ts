@@ -135,6 +135,7 @@ STRUCTURE RULES:
 - EXACTLY 3 chained steps: each step's code starts from the previous step's code_patch, and each fix reveals the next bug.
 - Each step: EXACTLY 4 options, only one correct. correct_answer is the index (0-3) of the correct one.
 - rules: 2 or 3 real theory entries. knowledge: 2 or 3 real domain facts. Nothing empty.
+- VARY the correct_answer index across the 3 steps: do NOT put the correct option at index 0 every time (that copies the example, it doesn't design a challenge). Distribute correct answers roughly evenly across 0, 1, 2, 3 — a good challenge feels different at each step. The runtime shuffles options as a safety net, but you must still design each step with the correct answer in a deliberately chosen position.
 
 LANGUAGE OF THE OUTPUT (critical):
 - All player-facing text — title, story_context, options, rules, knowledge and hint — MUST be written in Spanish, exactly like the example above.
