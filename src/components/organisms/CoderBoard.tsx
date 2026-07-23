@@ -163,12 +163,18 @@ export function CoderBoard({
           />
         )}
 
-        {view.status === 'idle' ? (
+        {view.status === 'idle' && (
           <ProductionLogTail
             language={view.language ?? 'random'}
             streamingPreview={streamingPreview}
           />
-        ) : (
+        )}
+
+        {/* Code + error only while the incident is live (playing) or on the
+            classic victory screen. On defeat/abandoned the results panels take
+            over — showing the last broken snippet there just dangles orphaned
+            below the summary. */}
+        {(view.status === 'playing' || view.status === 'victory') && (
           <>
             <TypewriterCodePanel
               code={view.code}
