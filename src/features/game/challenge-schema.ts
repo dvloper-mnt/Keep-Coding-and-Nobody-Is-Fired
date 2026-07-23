@@ -10,23 +10,41 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
+const PLACEHOLDER_ENTRIES = new Set(['n/a', 'na', 'none', 'ninguna', 'tbd']);
+
+// A non-empty array whose every entry is real text (not blank, not a placeholder
+// like "N/A"). Used for the Helper's rules/knowledge — empty or placeholder
+// entries make the challenge unplayable.
+function isMeaningfulStringArray(value: unknown): value is string[] {
+  if (!isStringArray(value) || value.length === 0) return false;
+  return value.every((item) => {
+    const trimmed = item.trim();
+    return trimmed.length > 0 && !PLACEHOLDER_ENTRIES.has(trimmed.toLowerCase());
+  });
+}
+
 function isValidStep(x: unknown): x is ChallengeStep {
   if (typeof x !== 'object' || x === null) return false;
   const s = x as Record<string, unknown>;
 
   if (typeof s['step'] !== 'number' || !Number.isInteger(s['step'])) return false;
 
-  // coder_view: { code, error } both non-empty strings
+  // coder_view: { code, error } both non-empty — an empty error gives the Coder
+  // no symptom to diagnose.
   const coder = s['coder_view'];
   if (typeof coder !== 'object' || coder === null) return false;
   const cv = coder as Record<string, unknown>;
-  if (!isNonEmptyString(cv['code']) || typeof cv['error'] !== 'string') return false;
+  if (!isNonEmptyString(cv['code']) || !isNonEmptyString(cv['error'])) return false;
 
-  // helper_view: { rules: string[], knowledge: string[] }
+  // helper_view: rules and knowledge must be NON-EMPTY arrays of non-blank,
+  // non-placeholder strings — otherwise the Helper has nothing to guide with and
+  // the challenge is unplayable even though it is structurally valid.
   const helper = s['helper_view'];
   if (typeof helper !== 'object' || helper === null) return false;
   const hv = helper as Record<string, unknown>;
-  if (!isStringArray(hv['rules']) || !isStringArray(hv['knowledge'])) return false;
+  if (!isMeaningfulStringArray(hv['rules']) || !isMeaningfulStringArray(hv['knowledge'])) {
+    return false;
+  }
 
   // options: exactly 4 non-empty strings
   if (!Array.isArray(s['options']) || s['options'].length !== 4) return false;

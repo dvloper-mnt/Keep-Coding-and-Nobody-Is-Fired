@@ -75,4 +75,28 @@ describe('isValidChallenge', () => {
     c.steps[0].helper_view = { rules: 'not-an-array' as unknown as string[], knowledge: [] };
     expect(isValidChallenge(c)).toBe(false);
   });
+
+  it('rejects an empty rules array (Helper would have nothing to guide with)', () => {
+    const c = validChallenge();
+    c.steps[0].helper_view = { rules: [], knowledge: ['fact a'] };
+    expect(isValidChallenge(c)).toBe(false);
+  });
+
+  it('rejects an empty knowledge array', () => {
+    const c = validChallenge();
+    c.steps[0].helper_view = { rules: ['rule a'], knowledge: [] };
+    expect(isValidChallenge(c)).toBe(false);
+  });
+
+  it('rejects blank or placeholder entries in rules/knowledge', () => {
+    const c = validChallenge();
+    c.steps[0].helper_view = { rules: ['  '], knowledge: ['N/A'] };
+    expect(isValidChallenge(c)).toBe(false);
+  });
+
+  it('rejects an empty coder_view error (no symptom to diagnose)', () => {
+    const c = validChallenge();
+    c.steps[0].coder_view = { code: 'x', error: '' };
+    expect(isValidChallenge(c)).toBe(false);
+  });
 });
