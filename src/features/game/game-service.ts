@@ -34,6 +34,7 @@ import {
 import {
   abandonGame,
   applyNextRoundChallenge,
+  applyTimeDelta,
   buildEndlessGameOverMeta,
   clearLastResult,
   createPendingSession,
@@ -45,6 +46,12 @@ import {
   submitAnswer,
   tickTimer,
 } from './game-engine';
+import {
+  isHintRevealed,
+  lockedKnowledgeIndicesFor,
+  markHelperItemRevealed,
+  validateReveal,
+} from './helper-reveal-engine';
 import { normalizeSessionLives } from './lives-engine';
 import type {
   AnswerResponse,
@@ -56,6 +63,7 @@ import type {
   GameMode,
   GameSession,
   HelperGuideResult,
+  HelperRevealTarget,
   HelperStaticGuide,
   LeaderboardTop,
   PlayerRole,
@@ -63,6 +71,10 @@ import type {
   RoundModifier,
   StartGameResponse,
 } from './game-types';
+import {
+  HELPER_HINT_REVEAL_COST_SECONDS,
+  HELPER_KNOWLEDGE_REVEAL_COST_SECONDS,
+} from '@/src/lib/constants';
 
 // ---------------------------------------------------------------------------
 // Session persistence abstraction
@@ -230,7 +242,11 @@ function pendingCoderView(session: GameSession): CoderStepView {
   };
 }
 
-export function buildHelperGuide(challenge: Challenge, helperToken: string): HelperStaticGuide {
+export function buildHelperGuide(
+  challenge: Challenge,
+  helperToken: string,
+  session?: GameSession,
+): HelperStaticGuide {
   return {
     title: challenge.title,
     storyContext: challenge.story_context,
@@ -240,9 +256,70 @@ export function buildHelperGuide(challenge: Challenge, helperToken: string): Hel
       rules: step.helper_view.rules,
       knowledge: step.helper_view.knowledge,
       hint: step.hint,
+      // Locked lists reflect the session's revealedHelperItems. Without a
+      // session (older callers, tests) everything shows unlocked — backwards
+      // compatible: the client just doesn't render reveal buttons.
+      lockedKnowledgeIndices: session
+        ? lockedKnowledgeIndicesFor(session, step.step, step.helper_view.knowledge.length)
+        : [],
+      hintLocked: session && step.hint ? !isHintRevealed(session, step.step) : false,
     })),
     helperToken,
   };
+}
+
+// Reveal a Helper knowledge/hint item at a time cost. See helper-reveal-engine
+// for the pure state math. This is the only place time is deducted; the client
+// never sends the cost, and cannot cheat by revealing without paying (the
+// server applies the cost, then updates the session).
+export type HelperRevealOutcome =
+  | { kind: 'ok'; guide: HelperStaticGuide; remainingTime: number }
+  | { kind: 'unauthorized' }
+  | { kind: 'not-found' }
+  | { kind: 'not-playing' }
+  | { kind: 'out-of-range' }
+  | { kind: 'already-revealed' };
+
+export async function processHelperReveal(
+  sessionId: string,
+  presentedToken: string | undefined,
+  target: HelperRevealTarget,
+): Promise<HelperRevealOutcome> {
+  return mutateSession(sessionId, async () => {
+    const session = await getSessionFromStore(sessionId);
+    if (!session) return { kind: 'not-found' as const };
+    if (!tokensMatch(presentedToken, session.helperToken)) {
+      return { kind: 'unauthorized' as const };
+    }
+    if (session.status !== 'playing') {
+      return { kind: 'not-playing' as const };
+    }
+
+    const challenge = resolveChallenge(session);
+    if (!challenge) return { kind: 'not-found' as const };
+
+    const validation = validateReveal(session, challenge, target);
+    if (!validation.ok) return { kind: validation.reason };
+
+    const cost =
+      target.type === 'knowledge'
+        ? HELPER_KNOWLEDGE_REVEAL_COST_SECONDS
+        : HELPER_HINT_REVEAL_COST_SECONDS;
+
+    const revealed = markHelperItemRevealed(session, target);
+    // applyTimeDelta clamps to 0 and flips status to defeat/timeout when the
+    // clock hits zero — same rule as a wrong answer. A reveal that runs the
+    // clock down ends the game (rare edge case, but consistent).
+    const withCost = applyTimeDelta(revealed, -cost);
+
+    await setSessionToStore(sessionId, withCost);
+
+    return {
+      kind: 'ok' as const,
+      guide: buildHelperGuide(challenge, withCost.helperToken ?? '', withCost),
+      remainingTime: withCost.remainingTime,
+    };
+  });
 }
 
 // Rate limit for /start: each game start fires a billable Bedrock call, so this
@@ -575,13 +652,14 @@ export async function getHelperGuide(
   if (session.helperToken) {
     // Seat already taken: only the same Helper (matching token) may return.
     if (!tokensMatch(presentedToken, session.helperToken)) return { occupied: true };
-    return buildHelperGuide(challenge, session.helperToken);
+    return buildHelperGuide(challenge, session.helperToken, session);
   }
 
   // First Helper: claim the seat.
   const helperToken = generateOpaqueToken();
-  await setSessionToStore(sessionId, { ...session, helperToken });
-  return buildHelperGuide(challenge, helperToken);
+  const claimed: GameSession = { ...session, helperToken };
+  await setSessionToStore(sessionId, claimed);
+  return buildHelperGuide(challenge, helperToken, claimed);
   });
 }
 

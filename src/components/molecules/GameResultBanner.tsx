@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 type GameOutcome = 'victory' | 'defeat';
 
 interface GameResultBannerProps {
@@ -9,6 +11,10 @@ interface GameResultBannerProps {
   message?: string;
   messageClassName?: string;
   homeButtonClassName: string;
+  /** Optional pixel-art scene rendered above the title. Used to punch the
+   * victory / defeat screens visually in the demo video without adding new
+   * assets (see PixelVictoryScene / PixelDefeatScene). */
+  scene?: ReactNode;
 }
 
 export function GameResultBanner({
@@ -18,6 +24,7 @@ export function GameResultBanner({
   message,
   messageClassName,
   homeButtonClassName,
+  scene,
 }: GameResultBannerProps) {
   // Hard navigation (not a soft <Link>): the game is over, so we want a clean
   // document load that drops all in-memory session state and bfcache, otherwise
@@ -28,6 +35,7 @@ export function GameResultBanner({
 
   return (
     <div className={containerClassName}>
+      {scene ? <div className="mb-3 flex justify-center">{scene}</div> : null}
       <p className={titleClassName}>{title}</p>
       {message ? <p className={messageClassName}>{message}</p> : null}
       <button type="button" onClick={goHome} className={homeButtonClassName}>
