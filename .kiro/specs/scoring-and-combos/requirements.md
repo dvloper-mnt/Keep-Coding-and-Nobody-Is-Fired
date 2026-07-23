@@ -22,7 +22,7 @@ Esta spec agrega una capa de **combos por racha**: los aciertos **consecutivos s
 - **Racha (streak)**: cantidad de aciertos consecutivos sin un error de por medio. Empieza en 0; cada acierto la incrementa en 1; un error la resetea a 0.
 - **Multiplicador de combo**: factor (`×1`, `×1.5`, `×2`, `×3`) que depende del tamaño de la racha actual, según la tabla de R1. Aplica al puntaje base de `endless-mode`.
 - **Romper la racha**: efecto de un error — la racha vuelve a 0 y el multiplicador a ×1.
-- **Mejor racha (best streak)**: la racha más larta alcanzada durante la partida; se conserva aunque la racha actual se rompa. Métrica de game over.
+- **Mejor racha (best streak)**: la racha más larga alcanzada durante la partida; se conserva aunque la racha actual se rompa. Métrica de game over.
 - **Acierto**: resolución correcta de un step (`lastResult: 'correct'`). El combo cuenta por step resuelto, no por challenge/ronda completa.
 
 ---
@@ -54,7 +54,7 @@ Esta spec agrega una capa de **combos por racha**: los aciertos **consecutivos s
 ### Acceptance Criteria
 
 1. WHEN el Coder responde correctamente un step THE SYSTEM SHALL incrementar `streak` en 1.
-2. WHEN el Coder responde incorrectamente un step THE SYSTEM SHALL resetear `streak` a 0 (romper la racha), además de la penalización de tiempo que ya aplica `endless-mode`.
+2. WHEN el Coder responde incorrectamente un step THE SYSTEM SHALL resetear `streak` a 0 (romper la racha). El mismo error ya aplica la penalización de tiempo (`endless-mode`) y la pérdida de vida (`lives-system`): son tres efectos del mismo error incorrecto, no eventos separados.
 3. THE SYSTEM SHALL actualizar `bestStreak` con el máximo entre `bestStreak` y la `streak` resultante tras cada acierto.
 4. THE SYSTEM SHALL conservar `streak` y `bestStreak` en la `GameSession` y persistirlos junto al resto del estado.
 5. WHEN la racha se rompe por un error THE SYSTEM SHALL conservar `bestStreak` intacto (no se resetea con la racha actual).
@@ -67,7 +67,7 @@ Esta spec agrega una capa de **combos por racha**: los aciertos **consecutivos s
 ### Acceptance Criteria
 
 1. THE SYSTEM SHALL aplicar el multiplicador de combo sobre el puntaje base que define `endless-mode` (`endlessScore`), sin reemplazar dicho cálculo.
-2. THE SYSTEM SHALL implementar el puntaje con combo como una función pura y unit-testeada que componga `endlessScore` con `streakMultiplier`, según el modelo de acumulación definido en `design.md`.
+2. THE SYSTEM SHALL implementar el puntaje con combo como una función pura y unit-testeada que componga `endlessScore` con `streakMultiplier`, según el **modelo de acumulación por acierto (B)** definido en `design.md` D4: se acumula un `comboScore` en el momento de cada acierto aplicando el multiplicador vigente en ese instante, y el puntaje final es `endlessScore + comboScore` (NO se multiplica el `endlessScore` final por un multiplicador único). El bono solo se acumula cuando el multiplicador es > ×1, de modo que una partida sin combos da `comboScore = 0` y el puntaje queda idéntico al de `endless-mode` (R3.3).
 3. WHEN no hubo ningún combo durante la partida (toda la partida con multiplicador ×1) THE SYSTEM SHALL producir un puntaje igual al de `endless-mode` sin esta spec (compatibilidad hacia atrás).
 4. THE SYSTEM SHALL exponer al game over, además del puntaje, la `bestStreak` alcanzada, para consumo de la spec `leaderboard`.
 5. THE SYSTEM SHALL producir un puntaje entero (redondeado) cuando el multiplicador genere fracciones (ej. ×1.5).
