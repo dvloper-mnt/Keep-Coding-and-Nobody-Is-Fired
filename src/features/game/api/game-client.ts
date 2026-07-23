@@ -51,7 +51,8 @@ export function getCoderState(sessionId: string): Promise<CoderStepView> {
 }
 
 export function tick(sessionId: string): Promise<void> {
-  return postJson<void>('/api/game/tick', { sessionId });
+  const token = readToken(sessionId, 'coder');
+  return postJson<void>('/api/game/tick', { sessionId, token });
 }
 
 export function submitAnswer(sessionId: string, answerIndex: number): Promise<AnswerResponse> {
