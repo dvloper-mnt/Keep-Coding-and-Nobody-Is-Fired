@@ -44,7 +44,7 @@
         "rules": [
           "En Laravel, un use con un namespace que no coincide con la ubicación real de la clase produce un error en runtime aunque la línea de import exista.",
           "El namespace de un controlador debe reflejar la subcarpeta física donde vive dentro de app/Http/Controllers.",
-          "Preguntale al Coder desde qué namespace se importa cada controlador y contrastalo con el dominio al que pertenece: uno importado desde la raíz cuando vive en una subcarpeta no resuelve."
+          "Pregúntale al Coder desde qué namespace se importa cada controlador y contrástalo con el dominio al que pertenece: uno importado desde la raíz cuando vive en una subcarpeta no resuelve."
         ],
         "knowledge": [
           "En este proyecto los controladores están agrupados por dominio en subcarpetas (autenticación, perfil, etc.), no en la raíz de Controllers.",
@@ -61,7 +61,7 @@
       "success_state": {
         "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::get('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n});"
       },
-      "hint": "Revisá si cada controlador está importado desde la carpeta que le corresponde"
+      "hint": "Revisa si cada controlador está importado desde la carpeta que le corresponde"
     },
     {
       "step": 3,
@@ -73,7 +73,7 @@
         "rules": [
           "Un 405 Method Not Allowed significa que el verbo HTTP de la petición no coincide con el verbo registrado en la ruta.",
           "No confundir un 405 con un error de namespace o de método inexistente: esos suelen ser 500 en runtime; en el 405 la ruta resuelve pero el verbo no encaja.",
-          "Preguntale al Coder con qué verbo está registrada cada ruta y con qué verbo la invoca la demo: la que difiere es la culpable."
+          "Pregúntale al Coder con qué verbo está registrada cada ruta y con qué verbo la invoca la demo: la que difiere es la culpable."
         ],
         "knowledge": [
           "Las acciones que invalidan o modifican estado (como cerrar sesión) se invocan por convención con un verbo de escritura, no de lectura.",
@@ -90,7 +90,7 @@
       "success_state": {
         "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Auth\\LoginController;\nuse App\\Http\\Controllers\\Auth\\RegisterController;\nuse App\\Http\\Controllers\\Auth\\LogoutController;\nuse App\\Http\\Controllers\\User\\ProfileController;\n\nRoute::middleware('api')->group(function () {\n    Route::post('/login', [LoginController::class, 'login']);\n    Route::post('/register', [RegisterController::class, 'store']);\n    Route::post('/logout', [LogoutController::class, 'logout']);\n    Route::get('/profile', [ProfileController::class, 'show']);\n    Route::patch('/profile', [ProfileController::class, 'update']);\n});"
       },
-      "hint": "Revisá qué verbo HTTP usa la ruta de logout y qué verbo envía la demo"
+      "hint": "Revisa qué verbo HTTP usa la ruta de logout y qué verbo envía la demo"
     }
   ]
 }

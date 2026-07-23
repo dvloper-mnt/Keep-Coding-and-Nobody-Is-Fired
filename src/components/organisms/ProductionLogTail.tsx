@@ -69,7 +69,7 @@ export function ProductionLogTail({ language, streamingPreview }: ProductionLogT
       </div>
 
       <p className="border-t border-zinc-800 px-4 py-2 text-xs text-zinc-600">
-        <span className="text-zinc-700">{'//'}</span> pasá el código de sala al Helper
+        <span className="text-zinc-700">{'//'}</span> pasa el código de sala al Helper
       </p>
     </div>
   );

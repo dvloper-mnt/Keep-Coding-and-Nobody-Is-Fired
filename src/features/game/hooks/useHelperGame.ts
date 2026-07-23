@@ -147,7 +147,7 @@ export function useHelperGame(
           activeClientQuestion: data.activeClientQuestion ?? prev.activeClientQuestion,
         }));
       } catch {
-        setQuestionFeedback('Error de conexión. Reintentá.');
+        setQuestionFeedback('Error de conexión. Reintenta.');
       } finally {
         setSubmittingQuestion(false);
       }

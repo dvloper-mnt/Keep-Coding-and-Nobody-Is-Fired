@@ -15,7 +15,7 @@
         "rules": [
           "En Laravel, si el constructor de un controlador type-hintea una dependencia que no puede resolver la operación pedida, el contenedor la inyecta igual pero falla al usarla: error 500 en runtime.",
           "Cada capa tiene su responsabilidad: la lectura de un catálogo se hace contra la capa de acceso a datos de ese dominio, no contra una capa de otro dominio.",
-          "Preguntale al Coder qué clase se inyecta en el constructor y qué método invoca al leer: si la clase inyectada no pertenece a la capa de lectura del catálogo, ese es el desajuste."
+          "Pregúntale al Coder qué clase se inyecta en el constructor y qué método invoca al leer: si la clase inyectada no pertenece a la capa de lectura del catálogo, ese es el desajuste."
         ],
         "knowledge": [
           "El proyecto separa la lógica de inventario (movimientos de stock) de la de catálogo (consulta de productos); son capas distintas con responsabilidades distintas.",
@@ -32,7 +32,7 @@
       "success_state": {
         "code_patch": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Repositories\\Catalog\\ProductRepository;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected ProductRepository $products,\n    ) {}\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->products->find($id);\n        return response()->json($product);\n    }\n}"
       },
-      "hint": "Revisá qué clase debe inyectarse en el constructor según la capa de lectura del catálogo"
+      "hint": "Revisa qué clase debe inyectarse en el constructor según la capa de lectura del catálogo"
     },
     {
       "step": 2,
@@ -44,7 +44,7 @@
         "rules": [
           "En Laravel, type-hintear en un método un Form Request que no existe hace que el contenedor falle al resolver la dependencia: error 500 al invocar esa acción.",
           "Los Form Requests siguen una convención de nombre según la acción REST que validan; el nombre del que valida una creación no es arbitrario.",
-          "Preguntale al Coder qué Form Request type-hintea el método de creación y si ese nombre sigue la convención del proyecto: un nombre inventado no se resuelve."
+          "Pregúntale al Coder qué Form Request type-hintea el método de creación y si ese nombre sigue la convención del proyecto: un nombre inventado no se resuelve."
         ],
         "knowledge": [
           "En este proyecto los Form Requests de escritura viven en el módulo del dominio y su nombre deriva de la acción REST canónica que validan (crear, editar, etc.).",
@@ -61,7 +61,7 @@
       "success_state": {
         "code_patch": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Http\\Requests\\Catalog\\StoreProductRequest;\nuse App\\Repositories\\Catalog\\ProductRepository;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected ProductRepository $products,\n    ) {}\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->products->find($id);\n        return response()->json($product);\n    }\n\n    public function store(StoreProductRequest $request): JsonResponse\n    {\n        $product = $this->products->create($request->validated());\n        return response()->json($product, 201);\n    }\n}"
       },
-      "hint": "Consultá qué Form Request corresponde al método store en el módulo Catalog"
+      "hint": "Consulta qué Form Request corresponde al método store en el módulo Catalog"
     },
     {
       "step": 3,
@@ -73,7 +73,7 @@
         "rules": [
           "Un 401 Unauthorized significa que la petición no pasó la capa de autenticación: el middleware la exigió donde quizás no correspondía.",
           "Un middleware aplicado en el constructor sin acotar su alcance cubre TODAS las acciones del controlador, incluidas las que deberían ser públicas.",
-          "Preguntale al Coder qué acción está fallando y si esa acción debería requerir autenticación: si es de solo lectura pública, el middleware la está cubriendo de más."
+          "Pregúntale al Coder qué acción está fallando y si esa acción debería requerir autenticación: si es de solo lectura pública, el middleware la está cubriendo de más."
         ],
         "knowledge": [
           "En la spec de esta API, las operaciones de lectura del catálogo son públicas y solo las de escritura requieren autenticación.",
@@ -90,7 +90,7 @@
       "success_state": {
         "code_patch": "<?php\n\nnamespace App\\Http\\Controllers\\Api;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Http\\Requests\\Catalog\\StoreProductRequest;\nuse App\\Repositories\\Catalog\\ProductRepository;\nuse Illuminate\\Http\\JsonResponse;\n\nclass ProductController extends Controller\n{\n    public function __construct(\n        protected ProductRepository $products,\n    ) {\n        $this->middleware('auth:sanctum')->only(['store', 'update', 'destroy']);\n    }\n\n    public function index(): JsonResponse\n    {\n        return response()->json($this->products->all());\n    }\n\n    public function show(string $id): JsonResponse\n    {\n        $product = $this->products->find($id);\n        return response()->json($product);\n    }\n\n    public function store(StoreProductRequest $request): JsonResponse\n    {\n        $product = $this->products->create($request->validated());\n        return response()->json($product, 201);\n    }\n}"
       },
-      "hint": "Revisá qué acciones deben ser públicas y cómo limitar el middleware en el constructor"
+      "hint": "Revisa qué acciones deben ser públicas y cómo limitar el middleware en el constructor"
     }
   ]
 }
