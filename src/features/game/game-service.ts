@@ -1,6 +1,7 @@
 import { getChallengeById, loadChallenges } from '@/src/data/challenges';
 
 import { getClientQuestionById } from '@/src/data/client-questions';
+import { difficultyForSession } from './challenge-difficulty';
 import { generateChallenge } from './runtime-generator';
 import { checkRateLimit, redisRateLimitStore } from './rate-limit';
 import { redisGenerationLockStore, tryAcquireGenerationLock } from './generation-lock';
@@ -296,7 +297,10 @@ async function ensureChallengeGenerated(session: GameSession): Promise<GameSessi
   };
   await setSessionToStore(claimed.id, claimed);
 
-  const generated = await generateChallenge(session.language ?? 'random');
+  const generated = await generateChallenge(
+    session.language ?? 'random',
+    difficultyForSession(session),
+  );
   const challenge = generated ?? pickRandomChallenge();
 
   const playing = session.roundComplete

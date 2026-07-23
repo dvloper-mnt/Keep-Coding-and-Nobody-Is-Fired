@@ -1,16 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { difficultyInstruction } from './challenge-difficulty';
+import type { Difficulty } from './game-types';
 
 // Mock the AWS SDK so the generator never hits the network in tests.
 const sendMock = vi.fn();
+let lastConverseInput: unknown;
+let lastStreamInput: unknown;
+
 vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
   BedrockRuntimeClient: class {
     send = sendMock;
   },
   ConverseCommand: class {
-    constructor(public input: unknown) {}
+    constructor(public input: unknown) {
+      lastConverseInput = input;
+    }
   },
   ConverseStreamCommand: class {
-    constructor(public input: unknown) {}
+    constructor(public input: unknown) {
+      lastStreamInput = input;
+    }
   },
 }));
 
@@ -41,26 +50,44 @@ function bedrockReply(text: string) {
   return { output: { message: { content: [{ text }] } } };
 }
 
-const VALID_CHALLENGE_JSON = JSON.stringify({
-  id: 'lvl_gen_001',
-  title: 'Generado',
-  difficulty: 'medium',
-  story_context: 'Demo en vivo',
-  time_limit: 180,
-  steps: [
-    {
-      step: 1,
-      coder_view: { code: 'echo 1;', error: '500' },
-      helper_view: { rules: ['r'], knowledge: ['k'] },
-      options: ['a', 'b', 'c', 'd'],
-      correct_answer: 0,
-      success_state: { code_patch: 'echo 2;' },
-    },
-  ],
-});
+function userPromptFromInput(input: unknown): string {
+  const record = input as {
+    messages?: Array<{ content?: Array<{ text?: string }> }>;
+  };
+  return record.messages?.[0]?.content?.[0]?.text ?? '';
+}
+
+function systemPromptFromInput(input: unknown): string {
+  const record = input as { system?: Array<{ text?: string }> };
+  return record.system?.[0]?.text ?? '';
+}
+
+function challengeJson(difficulty: Difficulty) {
+  return JSON.stringify({
+    id: 'lvl_gen_001',
+    title: 'Generado',
+    difficulty,
+    story_context: 'Demo en vivo',
+    time_limit: 180,
+    steps: [
+      {
+        step: 1,
+        coder_view: { code: 'echo 1;', error: '500' },
+        helper_view: { rules: ['r'], knowledge: ['k'] },
+        options: ['a', 'b', 'c', 'd'],
+        correct_answer: 0,
+        success_state: { code_patch: 'echo 2;' },
+      },
+    ],
+  });
+}
+
+const VALID_CHALLENGE_JSON = challengeJson('medium');
 
 afterEach(() => {
   vi.clearAllMocks();
+  lastConverseInput = undefined;
+  lastStreamInput = undefined;
 });
 
 describe('generateChallenge', () => {
@@ -96,6 +123,43 @@ describe('generateChallenge', () => {
   it('returns null on an empty response', async () => {
     sendMock.mockResolvedValue({ output: { message: { content: [{ text: '' }] } } });
     expect(await generateChallenge()).toBeNull();
+  });
+
+  it('defaults to easy difficulty in the prompt when none is provided', async () => {
+    sendMock.mockResolvedValue(bedrockReply(VALID_CHALLENGE_JSON));
+    await generateChallenge('php');
+    const prompt = userPromptFromInput(lastConverseInput);
+    expect(prompt).toContain(difficultyInstruction('easy'));
+  });
+
+  it.each(['easy', 'medium', 'hard', 'expert'] as const)(
+    'injects difficultyInstruction(%s) into the user prompt',
+    async (difficulty) => {
+      sendMock.mockResolvedValue(bedrockReply(challengeJson(difficulty)));
+      const result = await generateChallenge('php', difficulty);
+      expect(result?.difficulty).toBe(difficulty);
+      const prompt = userPromptFromInput(lastConverseInput);
+      expect(prompt).toContain(difficultyInstruction(difficulty));
+    },
+  );
+
+  it('accepts an expert challenge returned by Bedrock', async () => {
+    sendMock.mockResolvedValue(bedrockReply(challengeJson('expert')));
+    const result = await generateChallenge('php', 'expert');
+    expect(result?.difficulty).toBe('expert');
+  });
+
+  it('system prompt no longer hardcodes medium difficulty', async () => {
+    sendMock.mockResolvedValue(bedrockReply(VALID_CHALLENGE_JSON));
+    await generateChallenge('php', 'hard');
+    const systemPrompt = systemPromptFromInput(lastConverseInput);
+    expect(systemPrompt).not.toContain('"difficulty": "medium"');
+    expect(systemPrompt).toMatch(/difficulty.*user message/i);
+  });
+
+  it('returns null on stream failure at expert level so caller can fall back to curated', async () => {
+    sendMock.mockRejectedValue(new Error('throttled'));
+    expect(await generateChallenge('php', 'expert')).toBeNull();
   });
 });
 
@@ -178,5 +242,26 @@ describe('generateChallengeStreaming', () => {
     const onDelta = vi.fn();
     await generateChallengeStreaming('random', onDelta);
     expect(onDelta).not.toHaveBeenCalled();
+  });
+
+  it('defaults to easy difficulty in the streaming prompt when none is provided', async () => {
+    sendMock.mockResolvedValue(streamingReply([VALID_CHALLENGE_JSON]));
+    await generateChallengeStreaming('php', () => {});
+    const prompt = userPromptFromInput(lastStreamInput);
+    expect(prompt).toContain(difficultyInstruction('easy'));
+  });
+
+  it('injects difficultyInstruction into the streaming user prompt', async () => {
+    const expertJson = challengeJson('expert');
+    sendMock.mockResolvedValue(streamingReply([expertJson]));
+    const result = await generateChallengeStreaming('php', () => {}, 'expert');
+    expect(result?.difficulty).toBe('expert');
+    const prompt = userPromptFromInput(lastStreamInput);
+    expect(prompt).toContain(difficultyInstruction('expert'));
+  });
+
+  it('returns null on streaming failure at expert level so caller can fall back to curated', async () => {
+    sendMock.mockRejectedValue(new Error('stream down'));
+    expect(await generateChallengeStreaming('php', () => {}, 'expert')).toBeNull();
   });
 });

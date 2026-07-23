@@ -42,6 +42,13 @@ describe('isValidChallenge', () => {
     expect(isValidChallenge({ ...validChallenge(), difficulty: 'extreme' })).toBe(false);
   });
 
+  it.each(['easy', 'medium', 'hard', 'expert'] as const)(
+    'accepts difficulty %s',
+    (difficulty) => {
+      expect(isValidChallenge({ ...validChallenge(), difficulty })).toBe(true);
+    },
+  );
+
   it('rejects an empty steps array', () => {
     expect(isValidChallenge({ ...validChallenge(), steps: [] })).toBe(false);
   });
