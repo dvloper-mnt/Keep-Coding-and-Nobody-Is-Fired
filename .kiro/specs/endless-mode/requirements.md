@@ -26,7 +26,8 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 
 - **Ronda**: un challenge completo dentro de la partida infinita. La ronda 1 es el primer challenge; cada challenge resuelto incrementa el número de ronda.
 - **Reloj acumulativo**: un único `remainingTime` que persiste entre rondas, sube al acertar y baja al errar / con el tick del tiempo.
-- **Game over**: el reloj llega a 0 → `status: 'defeat'`. Es el único fin del modo infinito (ya no hay `victory` de "completaste el juego").
+- **Game over**: la partida pasa a `status: 'defeat'` por CUALQUIERA de dos condiciones — el reloj acumulativo llega a 0 (`defeatReason: 'timeout'`) O un jugador se queda sin vidas (`coder_lives`/`helper_lives`, ver spec `lives-system`). Lo que ocurra primero. Ya no hay `victory` de "completaste el juego".
+- **Doble presión (decisión de producto, 2026-06-27):** en endless conviven el reloj acumulativo Y las vidas. Errar cuesta tiempo Y una vida. Se pierde por lo que llegue primero a 0. Ver R2 y `lives-system`.
 - **Modo de juego**: `endless` (esta spec) vs el modo clásico de 3 steps. Ver R5 sobre coexistencia.
 
 ---
@@ -52,9 +53,11 @@ Hoy una partida es finita: un `Challenge` con **3 steps fijos**; cuando el Coder
 1. THE SYSTEM SHALL usar un único reloj (`remainingTime`) que persiste a través de todas las rondas de la partida.
 2. THE SYSTEM SHALL inicializar el reloj en un tiempo base configurable (`ENDLESS_BASE_SECONDS`, default 120).
 3. WHEN el Coder resuelve un challenge (todos sus steps) THE SYSTEM SHALL sumar al reloj un bono configurable (`ENDLESS_REWARD_SECONDS`, default 30).
-4. WHEN el Coder responde incorrectamente THE SYSTEM SHALL restar `PENALTY_SECONDS` (10) del reloj, igual que hoy.
-5. WHEN el reloj llega a 0 o menos THE SYSTEM SHALL pasar la sesión a `defeat` (game over) y detener el juego.
-6. THE SYSTEM SHALL nunca permitir un `remainingTime` negativo en la vista (clamp a 0).
+4. WHEN el Coder responde incorrectamente THE SYSTEM SHALL restar `PENALTY_SECONDS` (10) del reloj **Y** quitar una vida al Coder (vía `loseLife`, spec `lives-system`), igual que en el modo clásico.
+5. WHEN el reloj llega a 0 o menos THE SYSTEM SHALL pasar la sesión a `defeat` con `defeatReason: 'timeout'`.
+6. WHEN un jugador se queda sin vidas THE SYSTEM SHALL pasar la sesión a `defeat` con `defeatReason: 'coder_lives'`/`'helper_lives'`, aunque el reloj no haya llegado a 0.
+7. THE SYSTEM SHALL terminar la partida por la PRIMERA condición que se cumpla (reloj a 0 o vidas a 0). El `defeatReason` refleja la causa real.
+8. THE SYSTEM SHALL nunca permitir un `remainingTime` negativo en la vista (clamp a 0).
 
 ## Requirement 3 — Puntaje del modo infinito
 
