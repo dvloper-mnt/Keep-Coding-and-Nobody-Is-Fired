@@ -199,8 +199,6 @@ Kiro IDE fue el motor del proceso de desarrollo, no solo un editor. Concretament
 - **Agent Hooks** — hooks locales (`.kiro/hooks/`) que corren tests, lint y verificaciones al guardar/commitear archivos críticos.
 - **Trabajo colaborativo con Kiro** — la mayoría de las features fueron producidas en pares humano + Kiro (specs y decisiones arquitectónicas humanas, implementación asistida). El repo muestra el patrón: PRs pequeños encadenados, commits por unidad de trabajo, tests que nacen con el código.
 
-Ver `KIRO-INVENTORY.md` en la raíz para un inventario completo de cómo se usó Kiro en el proyecto.
-
 ### Decisiones de diseño clave
 
 - **Lógica pura vs. I/O separadas por diseño.** `src/features/game/game-engine.ts` es 100% función pura: recibe estado, devuelve estado, sin Bedrock, sin Redis, sin red. Toda la I/O vive en `game-service.ts` y `runtime-generator.ts`. Esto hace que el motor sea trivial de testear — 379 tests, todos ejecutan en <1 segundo.
