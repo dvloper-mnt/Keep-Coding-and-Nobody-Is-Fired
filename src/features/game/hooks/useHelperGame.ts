@@ -1,7 +1,17 @@
 'use client';
 
-import { getHelperGuide, getHelperSync, submitClientQuestionAnswer } from '@/src/features/game/api/game-client';
-import type { GameStatus, HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import {
+  getHelperGuide,
+  getHelperSync,
+  revealHelperItem,
+  submitClientQuestionAnswer,
+} from '@/src/features/game/api/game-client';
+import type {
+  GameStatus,
+  HelperRevealTarget,
+  HelperStaticGuide,
+  HelperSyncView,
+} from '@/src/features/game/game-types';
 import { useClockTickSound } from '@/src/hooks/useClockTickSound';
 import { playCorrect, playWrong, unlockAudio } from '@/src/lib/game-audio';
 import {
@@ -20,7 +30,9 @@ interface UseHelperGameResult {
   questionResult: 'correct' | 'incorrect' | null;
   livesPulse: boolean;
   guideLoading: boolean;
+  revealing: boolean;
   handleClientQuestionAnswer: (answerIndex: number) => Promise<void>;
+  handleReveal: (target: HelperRevealTarget) => Promise<void>;
   handleAbandoned: (status: GameStatus) => void;
 }
 
@@ -44,6 +56,7 @@ export function useHelperGame(
   const [questionFeedback, setQuestionFeedback] = useState<string | null>(null);
   const [questionResult, setQuestionResult] = useState<'correct' | 'incorrect' | null>(null);
   const [guideLoading, setGuideLoading] = useState(false);
+  const [revealing, setRevealing] = useState(false);
   const lastSyncedRound = useRef<number | undefined>(undefined);
 
   const [lastQuestionId, setLastQuestionId] = useState<string | null>(null);
@@ -159,6 +172,29 @@ export function useHelperGame(
     [submittingQuestion, sync.activeClientQuestion, sessionId],
   );
 
+  const handleReveal = useCallback(
+    async (target: HelperRevealTarget) => {
+      if (revealing) return;
+      setRevealing(true);
+      try {
+        const response = await revealHelperItem(sessionId, target);
+        // Replace the local guide with the server's authoritative version — it
+        // reflects the new locked lists after the reveal.
+        setGuide(response.guide);
+        // Reflect the time cost immediately instead of waiting for the next
+        // poll (~1s); status is left to the sync poll to preserve consistency
+        // with the rest of the tick/answer flow.
+        setSync((prev) => ({ ...prev, remainingTime: response.remainingTime }));
+      } catch {
+        // Silently ignore — the next sync poll will heal any missed state,
+        // and the button becomes clickable again below.
+      } finally {
+        setRevealing(false);
+      }
+    },
+    [sessionId, revealing],
+  );
+
   const handleAbandoned = useCallback(
     (status: GameStatus) => {
       setSync((prev) => ({ ...prev, status }));
@@ -175,7 +211,9 @@ export function useHelperGame(
     questionResult,
     livesPulse,
     guideLoading,
+    revealing,
     handleClientQuestionAnswer,
+    handleReveal,
     handleAbandoned,
   };
 }

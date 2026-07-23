@@ -9,7 +9,12 @@ import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { ClientQuestionModal } from '@/src/components/organisms/ClientQuestionModal';
 import { LeaderboardTable } from '@/src/components/organisms/LeaderboardPanel';
 import { RunSummaryPanel } from '@/src/components/organisms/RunSummaryPanel';
-import type { GameStatus, HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import type {
+  GameStatus,
+  HelperRevealTarget,
+  HelperStaticGuide,
+  HelperSyncView,
+} from '@/src/features/game/game-types';
 import { useLeaderboardTop } from '@/src/features/game/hooks/useLeaderboardTop';
 import { getDefeatCopy } from '@/src/lib/defeat-messages';
 import { MAX_LIVES } from '@/src/lib/constants';
@@ -23,7 +28,9 @@ interface HelperBoardProps {
   questionFeedback: string | null;
   questionResult: 'correct' | 'incorrect' | null;
   livesPulse: boolean;
+  revealing?: boolean;
   onClientQuestionAnswer: (answerIndex: number) => void;
+  onReveal?: (target: HelperRevealTarget) => void;
   onAbandoned: (status: GameStatus) => void;
 }
 
@@ -36,7 +43,9 @@ export function HelperBoard({
   questionFeedback,
   questionResult,
   livesPulse,
+  revealing = false,
   onClientQuestionAnswer,
+  onReveal,
   onAbandoned,
 }: HelperBoardProps) {
   const defeatCopy = getDefeatCopy('helper', sync.defeatReason);
@@ -152,6 +161,8 @@ export function HelperBoard({
           title={guide.title}
           storyContext={guide.storyContext}
           sections={guide.sections}
+          onReveal={onReveal}
+          revealing={revealing}
         />
       </div>
     </div>

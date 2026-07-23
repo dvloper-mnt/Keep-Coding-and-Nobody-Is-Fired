@@ -82,6 +82,12 @@ export const BOSS_PRESSURE_CONFIG_INTENSE = {
 export const WRONG_ANSWER_MESSAGE = 'El sistema sigue en llamas. El cliente lo está viendo.';
 export const LIFE_LOST_MESSAGE = 'Una menos. El jefe apuntó eso.';
 
+// Helper "reveal on demand" — knowledge items and the hint start locked and
+// cost time to unlock. Rules stay free (the Helper still needs theory to guide
+// the Coder). See .kiro/notes on the anti-lecture mechanic (#2 backlog).
+export const HELPER_KNOWLEDGE_REVEAL_COST_SECONDS = 5;
+export const HELPER_HINT_REVEAL_COST_SECONDS = 10;
+
 /** Combo tiers — highest minStreak first; edit here to tune balance without touching engine logic. */
 export const STREAK_TIERS = [
   { minStreak: 7, multiplier: 3 },
