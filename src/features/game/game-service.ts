@@ -9,6 +9,7 @@ import { redisSessionLockStore, withSessionLock } from './session-mutex';
 import { generateOpaqueToken, generateRoomCode, tokensMatch } from './session-credentials';
 import { sanitizeTeamName, scoreFromGameOver } from './leaderboard-score';
 import { buildRunSummary } from './run-summary';
+import { shuffleChallengeOptions } from './challenge-shuffle';
 import {
   bossFormatInstruction,
   isBossFormat,
@@ -403,7 +404,6 @@ export async function claimGeneratingSlot(
 export async function promoteSessionWithChallenge(
   session: GameSession,
   challenge: Challenge,
-  wasGenerated: boolean,
 ): Promise<void> {
   // On a boss round the challenge MUST be multi-step; if the streamed one is not
   // (Bedrock failed or returned ≤3 steps), swap in the curated boss challenge so
@@ -411,11 +411,17 @@ export async function promoteSessionWithChallenge(
   const isBoss = session.roundModifier === 'boss';
   const usableChallenge =
     isBoss && !isBossFormat(challenge) ? pickBossChallenge() : challenge;
-  const usableGenerated = wasGenerated && (!isBoss || isBossFormat(challenge));
+
+  // Neutralize the "option-A bias" (see challenge-shuffle.ts): both the Bedrock
+  // prompt example and 3/4 curated fallbacks fix correct_answer at 0, so the
+  // model learns to always put the right answer first. Shuffle the options here
+  // — the promoted challenge is persisted, so the shuffled order is stable for
+  // this session and used consistently for rendering and answer validation.
+  const shuffled = shuffleChallengeOptions(usableChallenge);
 
   const promoted = session.roundComplete
-    ? applyNextRoundChallenge(session, usableChallenge, usableGenerated)
-    : promoteToFirstRound(session, usableChallenge, usableGenerated);
+    ? applyNextRoundChallenge(session, shuffled)
+    : promoteToFirstRound(session, shuffled);
   // Preserve the round modifier decided at claim time (promotion helpers don't
   // carry it), so the engine and UI see the boss/event context.
   await setSessionToStore(session.id, { ...promoted, roundModifier: session.roundModifier });
@@ -467,9 +473,12 @@ async function ensureChallengeGenerated(session: GameSession): Promise<GameSessi
       ? pickBossChallenge()
       : pickRandomChallenge();
 
+  // Same anti-bias shuffle as the streaming path (see promoteSessionWithChallenge).
+  const shuffled = shuffleChallengeOptions(challenge);
+
   const promoted = session.roundComplete
-    ? applyNextRoundChallenge(session, challenge, generatedIsUsable)
-    : promoteToFirstRound(session, challenge, generatedIsUsable);
+    ? applyNextRoundChallenge(session, shuffled)
+    : promoteToFirstRound(session, shuffled);
   // Track the highest difficulty faced across the run (run summary) and the
   // active round modifier (boss / event), for the engine and the UI.
   const playing: GameSession = {
