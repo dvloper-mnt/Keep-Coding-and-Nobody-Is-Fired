@@ -140,7 +140,7 @@ export function CoderBoard({
         )}
 
         {view.status === 'defeat' && view.mode === 'endless' && (
-          <LeaderboardPanel sessionId={sessionId} />
+          <LeaderboardPanel sessionId={sessionId} runSummary={view.runSummary} />
         )}
 
         {view.status === 'abandoned' && (
