@@ -6,39 +6,52 @@ El juego "Keep Coding and Nobody Is Fired" es **anónimo**: no hay login ni cuen
 
 **Decisión de arquitectura clave:** el ranking vive en un **Redis Sorted Set** del Valkey que YA está conectado (AWS ElastiCache, mismo cliente `ioredis` singleton que usan las sesiones). `ZADD` para guardar, `ZREVRANGE` para leer el top 10. Los sorted sets de Redis están hechos exactamente para rankings: mantienen el orden por score sin que la app tenga que ordenar nada. La clave es `leaderboard:global`.
 
-**El puntaje cuenta una sola historia:** qué tan lejos llegaste manda; el tiempo solo desempata. `puntaje = (rondas resueltas × 1000) + segundos totales sobrevividos`. Ejemplo: 12 rondas resueltas y 300 s sobrevividos → `12 × 1000 + 300 = 12300` pts. Así, un equipo que llegó a la ronda 12 SIEMPRE queda por encima de uno que llegó a la 11, sin importar el tiempo; y entre dos equipos de la misma ronda, gana el que sobrevivió más segundos.
+**FUENTE ÚNICA DE PUNTAJE (decisión clave, actualizada 2026-07-03):** el leaderboard **NO recalcula** el puntaje. Usa como score el `endlessScore` que el juego **ya calculó** al game over. Cuando esta spec se escribió (24-jun) el puntaje del modo infinito no existía en el código y se planeaba definir la fórmula aquí; pero las specs hermanas mergeadas después (`endless-mode`, `scoring-and-combos`) ya lo materializaron: hoy el score real es
+
+```
+endlessScore = (playedRounds × 1000 + segundosSobrevividos) + comboScore
+```
+
+calculado por `finalScore(base, comboScore)` en `game-engine.ts` (base = `playedRounds × 1000 + segundos`; `comboScore` = bonus de rachas). Ese número — **con combos incluidos** — es el que el jugador VE en su pantalla de game over. Si el leaderboard rankeara con una fórmula propia sin combos, el ranking mostraría un puntaje **distinto** al que el jugador acaba de ver: inconsistencia inaceptable en la demo en vivo. Por eso el leaderboard **lee `endlessScore` de la fuente de verdad del servidor** (el estado de sesión persistido del game over) y lo usa tal cual como score del sorted set. Se mantiene la regla "más lejos manda, el tiempo desempata" porque el término base ya la implementa; los combos solo suman skill por encima.
 
 **Relato de hackathon:** el leaderboard convierte cada partida en un reto social ("¿quién llega más lejos?") y demuestra otro uso del Valkey de AWS más allá de las sesiones — un ranking en tiempo real, sin base de datos relacional, con la estructura de datos correcta para el problema.
 
 ### Contexto verificado
 
-- `src/features/game/game-service.ts` ya tiene `getRedis()` (singleton `ioredis`, `lazyConnect`) y el patrón `getSessionFromStore`/`setSessionToStore` (uso de `get`/`set`/`incr`/`expire`). El leaderboard usaría el mismo `getRedis()` con `zadd`/`zrevrange`.
-- **Gotcha de dev confirmado:** sin `REDIS_HOST`, `getRedis()` devuelve `null` y las sesiones caen a un `Map` en memoria (solo dev). El leaderboard necesita un **fallback en memoria análogo** (un sorted set simulado en proceso) para que el dev funcione sin Valkey, igual que hacen hoy las sesiones.
-- En **producción** `getRedis()` lanza si falta `REDIS_HOST` (no degrada en silencio). El leaderboard hereda esa garantía: en producción siempre habrá Valkey real.
+- **El puntaje YA existe y ya incluye combos.** `src/features/game/game-engine.ts`: `endlessScore(playedRounds, seconds) = playedRounds * 1000 + seconds` (base), y `finalScore(base, comboScore) = base + comboScore` es el puntaje real. `buildEndlessGameOverMeta(session, durationSeconds)` devuelve `{ playedRounds, endlessScore, bestStreak }` con `endlessScore` = base + combos. El leaderboard NO reimplementa esto: lo consume.
+- **Las métricas del game over YA viajan al cliente y ya están atadas al servidor.** `game-service.ts` (`withEndMeta`, ~líneas 316-333) inyecta `durationSeconds`, `playedRounds`, `endlessScore`, `bestStreak` en las vistas cuando `mode === 'endless' && status === 'defeat'`. Todo derivado del estado de sesión persistido (fuente de verdad), no del cliente.
+- **`isAuthorizedFor(sessionId, role, token)` YA existe** en `game-service.ts` (~línea 213, usa `tokensMatch`) y ya es el guard de todos los route handlers (`answer`, `abandon`, `tick`, `client-question`, `sync`). El "atado al token" que la v1 de esta spec pintaba como IDEAL es hoy trivial y debe ser el camino POR DEFECTO (ver R6).
+- `game-service.ts` ya tiene `getRedis()` (singleton `ioredis`, `lazyConnect`) y el patrón `getSessionFromStore`/`setSessionToStore` (`get`/`set`/`incr`/`expire`). El leaderboard usa el mismo `getRedis()` con `zadd`/`zrevrange`/`zrevrank`.
+- **Gotcha de dev confirmado:** sin `REDIS_HOST`, `getRedis()` devuelve `null` y las sesiones caen a un `Map` en memoria (solo dev). El leaderboard necesita un **fallback en memoria análogo** (un sorted set simulado en proceso), igual que hacen hoy las sesiones.
+- En **producción** `getRedis()` lanza si falta `REDIS_HOST` (no degrada en silencio). El leaderboard hereda esa garantía.
+- CSPRNG para el sufijo opaco del miembro: `session-credentials.ts` ya usa `randomBytes(32).toString('hex')` (`generateOpaqueToken`) — patrón a reutilizar.
 - Los endpoints siguen el patrón `app/api/game/*/route.ts` (ver `answer/route.ts`, `start/route.ts`): handlers finos que validan el cuerpo, llaman al servicio y traducen el resultado a `NextResponse`.
 - El proyecto mantiene **cero `any`**, **sin `as` casts** (salvo `as const`/`satisfies`), **TDD en la lógica pura** y la **UI en español neutro** (sin voseo).
 
 ## Glossary
 
-- **Modo infinito (endless mode)**: modo de juego donde el jugador resuelve rondas sucesivas hasta perder (game over). Aporta dos métricas para el puntaje: **rondas resueltas** y **segundos totales sobrevividos**. Su mecánica se especifica en la spec hermana `endless-mode`.
+- **Modo infinito (endless mode)**: modo de juego donde el jugador resuelve rondas sucesivas hasta perder (game over). Su mecánica se especifica en la spec hermana `endless-mode`.
+- **`playedRounds`**: rondas COMPLETADAS (todos los steps de un challenge resueltos). Es la métrica de "rondas" que entra al puntaje. Distinta de `round` (la ronda EN CURSO, 1-based). Vocabulario del código real (`game-types.ts`): esta spec usa `playedRounds`, no "rondas resueltas" a secas, para no confundir con `round`.
+- **`endlessScore` (score)**: el puntaje final que el juego calcula al game over = `(playedRounds × 1000 + segundosSobrevividos) + comboScore`. **Fuente única**: lo calcula el engine (`finalScore`), viaja en las vistas del game over, y el leaderboard lo usa tal cual como score del sorted set. El leaderboard NO lo recalcula.
+- **`comboScore`**: bonus de puntaje por rachas (streaks) que `scoring-and-combos` acumula en la sesión y suma a `endlessScore`. El leaderboard no lo maneja directamente: ya viene incluido en `endlessScore`.
 - **Nombre de equipo (team name)**: cadena que el jugador escribe al terminar la partida del modo infinito para identificar su entrada en el ranking. No es una cuenta ni un login: es solo una etiqueta para esa entrada.
-- **Puntaje (score)**: entero `(rondas × 1000) + segundos sobrevividos`. Es el *score* del sorted set.
 - **Sorted set**: estructura de Redis/Valkey que mantiene miembros ordenados por un score numérico. `ZADD` inserta/actualiza; `ZREVRANGE ... WITHSCORES` lee de mayor a menor.
 - **Top 10**: las 10 entradas de mayor puntaje del sorted set `leaderboard:global`, leídas con `ZREVRANGE leaderboard:global 0 9 WITHSCORES`.
 - **Posición (rank)**: el lugar 1-based de una entrada dentro del ranking global, obtenido con `ZREVRANK`.
 
 ---
 
-## Requirement 1 — Cálculo del puntaje (lógica pura)
+## Requirement 1 — Puntaje: fuente única (leer, no recalcular)
 
-**User Story:** Como jugador del modo infinito, quiero que mi puntaje refleje primero qué tan lejos llegué y use el tiempo solo como desempate, para que avanzar una ronda más siempre valga más que cualquier diferencia de segundos.
+**User Story:** Como jugador del modo infinito, quiero que el puntaje del ranking sea EXACTAMENTE el que vi en mi pantalla de game over, para que no haya dos números distintos para la misma partida.
 
 ### Acceptance Criteria
 
-1. THE SYSTEM SHALL calcular el puntaje como `(rondasResueltas × 1000) + segundosSobrevividos`, devolviendo un entero.
-2. THE SYSTEM SHALL tratar `rondasResueltas` y `segundosSobrevividos` como enteros no negativos; WHEN cualquiera de los dos es negativo, no entero o no numérico THE SYSTEM SHALL rechazar la entrada (no producir un puntaje).
-3. THE SYSTEM SHALL garantizar que un equipo con MÁS rondas resueltas obtiene SIEMPRE mayor puntaje que uno con menos rondas, sin importar los segundos, asumiendo `segundosSobrevividos < 1000` por ronda (el tiempo solo desempata dentro de la misma ronda).
-4. THE SYSTEM SHALL exponer este cálculo como una función pura, sin dependencias de Redis ni de la red, para poder testearla en aislamiento (TDD).
+1. THE SYSTEM SHALL usar como score del sorted set el `endlessScore` que el juego ya calculó al game over (`finalScore` en `game-engine.ts` = `playedRounds × 1000 + segundos + comboScore`), SIN recalcularlo con una fórmula propia. El leaderboard NO define la fórmula de puntaje: la consume.
+2. THE SYSTEM SHALL derivar `endlessScore` (y `playedRounds`, `durationSeconds`) del **estado de sesión persistido del game over**, no de valores enviados por el cliente (ver R6).
+3. THE SYSTEM SHALL validar que el `endlessScore` derivado sea un entero no negativo antes de registrarlo; WHEN no lo es (sesión corrupta o inexistente) THE SYSTEM SHALL rechazar el registro sin escribir en el sorted set.
+4. THE SYSTEM SHALL preservar la regla "más lejos manda, el tiempo desempata": ya la garantiza el término base (`playedRounds × 1000 + segundos`, con `segundos < 1000` por ronda); el `comboScore` suma skill por encima sin invertir el orden por rondas dentro de rangos normales de juego.
+5. THE SYSTEM SHALL exponer la lógica de derivación/validación del score como función pura (recibe el estado de game over, devuelve el score validado o un rechazo), testeable sin Redis (TDD). NOTA: `sanitizeTeamName` sigue siendo la otra pieza de lógica pura de esta spec (R2); lo que se elimina es una `computeScore` que RECALCULE la fórmula — porque duplicaría e invalidaría la fuente de verdad.
 
 ## Requirement 2 — Identidad anónima: nombre de equipo validado
 
@@ -58,12 +71,13 @@ El juego "Keep Coding and Nobody Is Fired" es **anónimo**: no hay login ni cuen
 
 ### Acceptance Criteria
 
-1. THE SYSTEM SHALL exponer `POST /api/game/leaderboard` que reciba el nombre de equipo y las métricas del modo infinito (rondas resueltas, segundos sobrevividos), valide ambos (R1, R2) y registre la entrada.
-2. THE SYSTEM SHALL escribir la entrada con `ZADD leaderboard:global <puntaje> <miembro>`, usando el `getRedis()` existente (mismo cliente `ioredis` singleton que las sesiones).
-3. THE SYSTEM SHALL construir un miembro **único por entrada** (p. ej. nombre de equipo + un sufijo opaco corto), para que dos equipos con el mismo nombre, o el mismo equipo jugando dos veces, NO se pisen en el sorted set (donde el miembro es la clave única).
+1. THE SYSTEM SHALL exponer `POST /api/game/leaderboard` que reciba `{ sessionId, token, teamName }`, valide el nombre (R2), verifique el token contra la sesión (R6.1) y derive el `endlessScore`/`playedRounds` del estado de game over persistido (R1.2) — NO recibe métricas crudas del cliente.
+2. THE SYSTEM SHALL escribir la entrada con `ZADD leaderboard:global <endlessScore> <miembro>`, usando el `getRedis()` existente (mismo cliente `ioredis` singleton que las sesiones).
+3. THE SYSTEM SHALL construir un miembro **único por entrada** (p. ej. nombre de equipo + un sufijo opaco corto de `randomBytes`), para que dos equipos con el mismo nombre, o el mismo equipo jugando dos veces, NO se pisen en el sorted set (donde el miembro es la clave única).
 4. WHEN el registro tiene éxito THE SYSTEM SHALL devolver la posición (rank, 1-based, vía `ZREVRANK`) de la entrada recién creada y el top 10 actualizado, en una sola respuesta.
-5. WHEN la validación de nombre o métricas falla THE SYSTEM SHALL responder `400` con el mensaje en español correspondiente y NO tocar el sorted set.
-6. WHERE no hay Redis configurado (dev local) THE SYSTEM SHALL usar un sorted set en memoria análogo al `Map` de sesiones, de modo que el flujo completo funcione en dev sin Valkey.
+5. WHEN la validación de nombre falla THE SYSTEM SHALL responder `400`; WHEN el token no autoriza la sesión THE SYSTEM SHALL responder `403`; WHEN la sesión no está en game over válido THE SYSTEM SHALL rechazar el registro. En todos los casos NO tocar el sorted set.
+6. THE SYSTEM SHALL evitar el registro duplicado de la MISMA partida: una sesión de game over ya registrada no debe poder registrarse dos veces (p. ej. marcar la sesión como `leaderboardRegistered` tras el primer registro, o derivar el miembro de forma idempotente por sesión). Un reintento del cliente no debe inflar el ranking con la misma partida.
+7. WHERE no hay Redis configurado (dev local) THE SYSTEM SHALL usar un sorted set en memoria análogo al `Map` de sesiones, de modo que el flujo completo funcione en dev sin Valkey.
 
 ## Requirement 4 — Lectura del top 10
 
@@ -72,7 +86,7 @@ El juego "Keep Coding and Nobody Is Fired" es **anónimo**: no hay login ni cuen
 ### Acceptance Criteria
 
 1. THE SYSTEM SHALL exponer `GET /api/game/leaderboard` que devuelva el top 10 leyendo `ZREVRANGE leaderboard:global 0 9 WITHSCORES`.
-2. THE SYSTEM SHALL devolver, por cada entrada, su posición (1-based), nombre de equipo, puntaje y rondas alcanzadas; las rondas se derivan del puntaje (`floor(puntaje / 1000)`) o se persisten junto a la entrada.
+2. THE SYSTEM SHALL devolver, por cada entrada, su posición (1-based), nombre de equipo, puntaje (`endlessScore`) y rondas alcanzadas (`playedRounds`). IMPORTANTE: como `endlessScore` ahora incluye `comboScore`, las rondas YA NO se pueden derivar con `floor(score / 1000)` (el combo contamina ese cálculo). Las rondas SE PERSISTEN junto a la entrada (hash paralelo `leaderboard:meta:<miembro>` con `{ playedRounds }`, o miembro que codifique el dato) — NO se derivan aritméticamente del score.
 3. WHEN el sorted set tiene menos de 10 entradas THE SYSTEM SHALL devolver solo las existentes, en orden de mayor a menor puntaje.
 4. WHEN el sorted set está vacío THE SYSTEM SHALL devolver una lista vacía (no un error), para que la vista muestre un estado «aún no hay puntajes».
 5. THE SYSTEM SHALL ordenar de mayor a menor puntaje delegando el orden en el sorted set (NO ordenar en la app), porque esa es la razón de usar esta estructura.
@@ -95,10 +109,11 @@ El juego "Keep Coding and Nobody Is Fired" es **anónimo**: no hay login ni cuen
 
 ### Acceptance Criteria
 
-1. THE SYSTEM SHALL validar en el servidor los rangos de las métricas recibidas (rondas y segundos no negativos, dentro de topes razonables) antes de calcular y registrar el puntaje, de modo que un cuerpo malformado no produzca una entrada.
-2. THE SYSTEM SHALL considerar (y documentar como ideal) atar el registro al **token de sesión** existente del modo infinito (el `coderToken` que ya porta el jugador), de modo que solo se registre el puntaje de una partida real y terminada, en vez de aceptar métricas crudas de cualquier cliente.
-3. WHERE la verificación contra la sesión esté disponible, THE SYSTEM SHALL preferir derivar rondas y segundos del **estado de sesión persistido** del game over (fuente de verdad del servidor) antes que confiar en valores enviados por el cliente.
-4. THE SYSTEM SHALL mantener cero `any` y sin `as` casts (salvo `as const`/`satisfies`) en el código nuevo.
+1. THE SYSTEM SHALL atar el registro al **token de sesión** existente (el `coderToken` que el jugador ya porta) verificando `isAuthorizedFor(sessionId, 'coder', token)` — que YA existe — como camino POR DEFECTO, no como ideal opcional. Sin token válido → `403`, sin tocar el sorted set.
+2. THE SYSTEM SHALL derivar `endlessScore` y `playedRounds` del **estado de sesión persistido del game over** (fuente de verdad del servidor), que ya está disponible vía la sesión leída por `sessionId`. El cliente envía solo `{ sessionId, token, teamName }`; NUNCA el score. Esto elimina la vía de puntajes fabricados de raíz.
+3. THE SYSTEM SHALL verificar que la sesión esté efectivamente en game over del modo infinito (`mode === 'endless' && status === 'defeat'`) antes de registrar; una sesión en curso o inexistente no produce entrada.
+4. THE SYSTEM SHALL validar el `endlessScore` derivado como entero no negativo bajo un tope razonable (defensa contra estado corrupto) antes del `ZADD`.
+5. THE SYSTEM SHALL mantener cero `any` y sin `as` casts (salvo `as const`/`satisfies`) en el código nuevo.
 
 ## Out of scope
 

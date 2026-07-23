@@ -1,58 +1,61 @@
 # Tasks — Leaderboard global del modo infinito (leaderboard)
 
-> Estado: feature NUEVA, aún sin implementar. Todas las tareas están pendientes.
+> Estado: feature NUEVA, aún sin implementar. Todas las tareas pendientes.
 > Implementación de adentro hacia afuera (lógica pura → store → endpoint → vista). TDD donde hay lógica pura.
+> **Refinamiento 2026-07-03:** el leaderboard usa como score el `endlessScore` que el juego YA calcula (con combos), NO recalcula la fórmula. El registro se ata al `coderToken` y deriva el score del servidor. Ver requirements/design.
 
-- [ ] 1. Lógica pura de puntaje y nombre (TDD primero)
-  - [ ] 1.1 Crear `src/features/game/leaderboard-score.ts` con `computeScore(rounds, seconds): number` = `(rounds × 1000) + seconds`, rechazando (no produciendo puntaje) entradas negativas, no enteras o no numéricas
-    - _Requirements: 1.1, 1.2, 1.4_
-  - [ ] 1.2 En el mismo archivo, `sanitizeTeamName(raw): { ok: true; name: string } | { ok: false; reason: string }`: `trim` → eliminar control chars y saltos de línea → colapsar espacios → recortar a `MAX_TEAM_NAME` (24); discriminated union, sin `as`/`any`
+- [ ] 1. Lógica pura de nombre y derivación de score (TDD primero)
+  - [ ] 1.1 Crear `src/features/game/leaderboard-score.ts` con `sanitizeTeamName(raw): { ok: true; name: string } | { ok: false; reason: string }`: `trim` → eliminar control chars y saltos de línea → colapsar espacios → recortar a `MAX_TEAM_NAME` (24); discriminated union, sin `as`/`any`.
     - _Requirements: 2.2, 2.3, 2.4, 2.5_
-  - [ ] 1.3 Tests `leaderboard-score.test.ts` para `computeScore`: ejemplo 12 rondas + 300 s → 12300; "más rondas SIEMPRE gana" (ronda 12 > ronda 11 con cualquier tiempo, asumiendo segundos < 1000); rechazo de negativos/no-enteros
-    - _Requirements: 1.1, 1.3, 1.2_
-  - [ ] 1.4 Tests para `sanitizeTeamName`: vacío tras trim → `ok:false`; supera el máximo → recorta o rechaza según contrato; control chars / `\n` eliminados; espacios colapsados; nombre válido pasa intacto
+  - [ ] 1.2 En el mismo archivo, `scoreFromGameOver(session): { ok: true; endlessScore: number; playedRounds: number } | { ok: false; reason: string }`: exige `mode === 'endless' && status === 'defeat'`, LEE `endlessScore` y `playedRounds` del estado de game over (via `buildEndlessGameOverMeta` o campos ya expuestos), y valida `endlessScore` entero ≥ 0 bajo tope. NO recalcula la fórmula. Puro.
+    - _Requirements: 1.1, 1.2, 1.3, 1.5_
+  - [ ] 1.3 Tests para `sanitizeTeamName`: vacío tras trim → `ok:false`; supera el máximo → recorta o rechaza según contrato; control chars / `\n` eliminados; espacios colapsados; nombre válido pasa intacto.
     - _Requirements: 2.2, 2.3, 2.4_
+  - [ ] 1.4 Tests para `scoreFromGameOver`: sesión de game over endless con combos → `endlessScore` == el de la vista de game over (mismo número que ve el jugador), `playedRounds` correcto; sesión en curso o mode classic → `ok:false`; `endlessScore` negativo/corrupto → `ok:false`. NO debe existir un test que verifique una fórmula `rounds×1000+seconds` recalculada aquí.
+    - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
 - [ ] 2. Store del leaderboard (Redis + fallback en memoria)
-  - [ ] 2.1 Crear `src/features/game/leaderboard-store.ts` reutilizando el `getRedis()` existente; `registerScore(name, score)` → componer miembro único `` `${name}#${sufijoOpaco}` `` (sufijo CSPRNG, mismo enfoque que `session-credentials.ts`) y `ZADD leaderboard:global <score> <miembro>`
+  - [ ] 2.1 Crear `src/features/game/leaderboard-store.ts` reutilizando `getRedis()`; `registerScore(name, endlessScore, playedRounds)` → miembro único `` `${name}#${sufijoOpaco}` `` (sufijo CSPRNG, `randomBytes`, como `session-credentials.ts`), `ZADD leaderboard:global <endlessScore> <miembro>` y `HSET leaderboard:meta:<miembro> playedRounds <playedRounds>`.
     - _Requirements: 3.2, 3.3_
-  - [ ] 2.2 `readTop10()` → `ZREVRANGE leaderboard:global 0 9 WITHSCORES`, mapeando a `LeaderboardEntry[]` (posición 1-based, nombre legible partiendo el miembro por el último `#`, puntaje, rondas = `floor(score/1000)`); lista vacía si no hay entradas
+  - [ ] 2.2 `readTop10()` → `ZREVRANGE leaderboard:global 0 9 WITHSCORES`, mapeando a `LeaderboardEntry[]` (posición 1-based, nombre legible partiendo el miembro por el último `#`, puntaje = score, `playedRounds` LEÍDO del meta `HGET leaderboard:meta:<miembro> playedRounds` — NO `floor(score/1000)`, que con combos daría mal); lista vacía si no hay entradas.
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
-  - [ ] 2.3 `rankOf(miembro)` → `ZREVRANK` + 1 (1-based) para la posición global de una entrada, incluso fuera del top 10
+  - [ ] 2.3 `rankOf(miembro)` → `ZREVRANK` + 1 (1-based) para la posición global de una entrada, incluso fuera del top 10.
     - _Requirements: 3.4, 5.2_
-  - [ ] 2.4 Fallback en memoria análogo al `Map` de sesiones: cuando `getRedis()` devuelve `null` (dev), un sorted set simulado en proceso que implemente `zadd`/`zrevrange`/`zrevrank` lo justo para el flujo completo; en producción se usa siempre el Redis real
-    - _Requirements: 3.6_
-  - [ ] 2.5 Agregar a `game-types.ts` los tipos `LeaderboardEntry`, `LeaderboardTop`, `RegisterScoreInput`, `RegisterScoreResult` (cero `any`, sin `as`)
-    - _Requirements: 6.4_
-  - [ ] 2.6 Tests del store sobre el fallback en memoria (sin Valkey real): orden del top 10 de mayor a menor, corte en 10 entradas, `rankOf` correcto, y que dos equipos homónimos NO se pisan (miembro único)
-    - _Requirements: 3.3, 4.3, 4.5, 3.4_
+  - [ ] 2.4 Fallback en memoria análogo al `Map` de sesiones: cuando `getRedis()` devuelve `null` (dev), un sorted set + meta simulados en proceso que implementen `zadd`/`zrevrange`/`zrevrank`/`hset`/`hget` lo justo para el flujo completo; en producción se usa siempre el Redis real.
+    - _Requirements: 3.7_
+  - [ ] 2.5 Agregar a `game-types.ts` los tipos `LeaderboardEntry` (incluye `playedRounds`), `LeaderboardTop`, `RegisterScoreInput` (`{ sessionId, token, teamName }` — SIN métricas), `RegisterScoreResult` (cero `any`, sin `as`).
+    - _Requirements: 6.5_
+  - [ ] 2.6 Tests del store sobre el fallback en memoria (sin Valkey real): orden del top 10 por `endlessScore`, corte en 10, `rankOf` correcto, dos homónimos NO se pisan (miembro único), y que las rondas salen del meta persistido (test con un score de combos alto que rompería `floor(score/1000)`).
+    - _Requirements: 3.3, 4.2, 4.3, 4.5, 3.4_
 
 - [ ] 3. Endpoints `POST`/`GET /api/game/leaderboard`
-  - [ ] 3.1 Crear `app/api/game/leaderboard/route.ts` (`POST`): parsear cuerpo, validar nombre (`sanitizeTeamName`) y métricas (`computeScore` + rangos), registrar vía el store y responder `{ rank, entries }`; `400` con mensaje en español si la validación falla
-    - _Requirements: 3.1, 3.4, 3.5, 6.1_
-  - [ ] 3.2 En el mismo route, `GET` que devuelva `{ entries }` con el top 10 (lista vacía si no hay puntajes); sin token; marcar el route como dinámico / `no-store`
+  - [ ] 3.1 Crear `app/api/game/leaderboard/route.ts` (`POST`): parsear `{ sessionId, token, teamName }`, `sanitizeTeamName` (400 si inválido), `isAuthorizedFor(sessionId,'coder',token)` (403 si no), leer sesión + `scoreFromGameOver` (rechazo si no es game over válido), registrar vía el store y responder `{ rank, entries }`.
+    - _Requirements: 3.1, 3.4, 3.5, 6.1, 6.2, 6.3_
+  - [ ] 3.2 Idempotencia: marcar la sesión como registrada (flag en `GameSession` o miembro idempotente por sesión) tras el primer registro; un segundo `POST` de la misma sesión no crea otra entrada.
+    - _Requirements: 3.6_
+  - [ ] 3.3 En el mismo route, `GET` que devuelva `{ entries }` con el top 10 (lista vacía si no hay puntajes); sin token; marcar el route como dinámico / `no-store`.
     - _Requirements: 4.1, 4.4_
-  - [ ] 3.3 Seguridad del registro (R6): validar rangos en servidor SIEMPRE; donde esté disponible, verificar `isAuthorizedFor(sessionId, 'coder', token)` y derivar rondas/segundos del estado de sesión persistido del game over en vez de confiar en métricas crudas del cliente (`403` si el token no coincide)
-    - _Requirements: 6.1, 6.2, 6.3_
 
 - [ ] 4. Vista del leaderboard y posición del jugador
-  - [ ] 4.1 Componente de leaderboard (tabla del top 10): columnas posición, nombre de equipo, puntaje y rondas alcanzadas; estado vacío «aún no hay puntajes»; UI en español neutro (sin voseo)
+  - [ ] 4.1 Componente de leaderboard (tabla del top 10): columnas posición, nombre de equipo, puntaje (`endlessScore`) y rondas alcanzadas (`playedRounds` del meta); estado vacío «aún no hay puntajes»; UI en español neutro (sin voseo).
     - _Requirements: 5.1, 4.4, 5.4_
-  - [ ] 4.2 En el game over del modo infinito: pedir el nombre de equipo (con validación de UX en cliente), hacer el `POST`, y mostrar el top 10 con la posición global devuelta (`rank`), incluso si cae fuera del top 10 visible
-    - _Requirements: 2.1, 5.2_
-  - [ ] 4.3 Resaltar la fila del jugador cuando su posición está dentro del top 10; renderizar el nombre de equipo como texto plano (nunca HTML interpretado) como segunda barrera de seguridad
+  - [ ] 4.2 En el game over del modo infinito: pedir el nombre de equipo (validación de UX en cliente), hacer el `POST { sessionId, token, teamName }`, y mostrar el top 10 con la posición global devuelta (`rank`), incluso si cae fuera del top 10 visible. El puntaje mostrado DEBE coincidir con el que el jugador ya vio en su game over (mismo `endlessScore`).
+    - _Requirements: 2.1, 5.2, 1.1_
+  - [ ] 4.3 Resaltar la fila del jugador cuando su posición está dentro del top 10; renderizar el nombre de equipo como texto plano (nunca HTML interpretado) como segunda barrera de seguridad.
     - _Requirements: 5.3, 5.5_
 
 - [ ] 5. Verificación
-  - [ ] 5.1 `npm run test` verde (tests de `leaderboard-score` y del store en memoria) + suite existente sin regresión; `tsc --noEmit` 0 errores; `npm run lint` 0 warnings; cero `any` / sin `as`
-    - _Requirements: 1.4, 2.5, 6.4_
-  - [ ] 5.2 Smoke en local (sin Valkey): terminar una partida del modo infinito, registrar un nombre, ver el puntaje en el top 10 y la posición; confirmar que el fallback en memoria sostiene el flujo completo
-    - _Requirements: 3.6, 5.1, 5.2_
-  - [ ] 5.3 Verificar en producción tras deploy: registrar un puntaje real escribe en `leaderboard:global` (Valkey/ElastiCache), `ZREVRANGE` devuelve el top 10 ordenado y la posición resaltada coincide
+  - [ ] 5.1 `corepack pnpm@9.15.0 run test` verde (tests de `leaderboard-score` y del store en memoria, incluido el test de CONSISTENCIA score-registrado == score-de-game-over) + suite existente sin regresión; `tsc --noEmit` 0 errores; `corepack pnpm@9.15.0 run lint` 0 warnings; cero `any` / sin `as`. (Usar corepack pnpm@9.15.0 en esta Mac, no el pnpm del PATH — ver gotcha de entorno.)
+    - _Requirements: 1.5, 2.5, 6.5_
+  - [ ] 5.2 Smoke en local (sin Valkey): terminar una partida del modo infinito CON combos, registrar un nombre, y confirmar que el puntaje del top 10 == el puntaje que se vio en el game over (no un número recalculado sin combos), y que las rondas son correctas.
+    - _Requirements: 1.1, 3.7, 5.1, 5.2_
+  - [ ] 5.3 Verificar en producción tras deploy: registrar un puntaje real escribe en `leaderboard:global` (Valkey/ElastiCache), `ZREVRANGE` devuelve el top 10 ordenado, las rondas salen del meta, y la posición resaltada coincide.
     - _Requirements: 3.2, 4.1, 5.3_
 
 ## Notas
 
-- **Dependencia:** esta spec depende de `endless-mode`, que aporta las **rondas resueltas** y los **segundos sobrevividos** al game over. Las tareas de lógica pura (1.x) y del store (2.x) se pueden implementar y testear ANTES de que `endless-mode` esté listo; el último cable a conectar es de dónde salen las métricas reales (tarea 3.3).
-- El leaderboard NO agrega infraestructura: reutiliza el `getRedis()` (Valkey de ElastiCache) que ya usan las sesiones. Solo agrega la clave `leaderboard:global` y los comandos `ZADD`/`ZREVRANGE`/`ZREVRANK`.
-- Fuera de alcance (specs hermanas): la mecánica del modo infinito y la dificultad adaptativa.
+- **Cambio de premisa vs. v1:** la v1 planeaba una `computeScore(rounds, seconds)` propia. Tras `scoring-and-combos`, el score real del juego es `endlessScore = base + comboScore`. Recalcular aquí mostraría en el ranking un número DISTINTO al que el jugador vio → inconsistencia en la demo. El leaderboard LEE `endlessScore` de la fuente de verdad (estado de game over persistido), no lo recalcula. Ese es el guardrail del test de consistencia (5.1/5.2).
+- **Dependencia:** `endless-mode` + `scoring-and-combos` YA aportan `endlessScore`/`playedRounds` en el game over (`buildEndlessGameOverMeta`, `withEndMeta`), e `isAuthorizedFor` ya existe. Lo que la v1 marcaba como "último cable a conectar / ideal" hoy está disponible: el atado al token y la derivación del score son el camino POR DEFECTO.
+- **`game-results`** (spec hermana) DEPENDE de esta: consume el nombre de equipo y `sanitizeTeamName` para su card compartible y el email. Implementar leaderboard primero.
+- El leaderboard NO agrega infraestructura: reutiliza `getRedis()` (Valkey de ElastiCache). Agrega la clave `leaderboard:global`, el meta `leaderboard:meta:<miembro>`, y los comandos `ZADD`/`ZREVRANGE`/`ZREVRANK`/`HSET`/`HGET`.
+- Fuera de alcance (specs hermanas): la mecánica del modo infinito, la dificultad adaptativa, el cálculo de combos (ya incluido en `endlessScore`).

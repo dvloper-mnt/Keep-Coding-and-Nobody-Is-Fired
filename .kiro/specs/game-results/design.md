@@ -18,16 +18,19 @@ El principio rector: **el resumen y la validación del email son puros y testeab
 
 ```
 RunSummary  (derivado al game over, función pura)
-  roundsReached:    número (= playedRounds de endless-mode)
-  score:            número (= endlessScore, ya calculado por endless-mode)
-  secondsSurvived:  número (= gameDurationSeconds(session, now))
-  bestStreak:       número (mayor cantidad de aciertos consecutivos)
+  roundsReached:    número (= playedRounds; se LEE, no se recalcula)
+  score:            número (= endlessScore, YA incluye comboScore; se LEE tal cual)
+  secondsSurvived:  número (= durationSeconds del game over)
+  bestStreak:       número (= bestStreak de la sesión; scoring-and-combos lo mantiene)
   topFailure:       { kind: 'language' | 'topic'; label: string } | null
-  maxDifficulty:    'easy' | 'medium' | 'hard' | null
-  teamName:         string (sanitizado, reutilizado de leaderboard)
+  maxDifficulty:    'easy' | 'medium' | 'hard' | 'expert' | null   (incluye expert)
+  defeatReason:     'timeout' | 'coder_lives' | 'helper_lives' (copy vía defeat-messages.ts)
+  teamName:         string | null (sanitizado, de leaderboard; null si leaderboard aún no capturó)
 ```
 
-El resumen **no es un registro nuevo en Valkey**: se arma a demanda desde el estado de sesión persistido del game over más las métricas que `endless-mode` ya expone. Si una métrica derivada necesita acumularse a lo largo de la partida (mejor racha, fallos por lenguaje, dificultad máxima), `endless-mode`/`game-service` la acumula en la sesión durante el juego (campos como `correctStreak`/`bestStreak`, un contador de fallos por lenguaje y la dificultad de cada ronda) y `run-summary.ts` solo la **lee y la reduce** — la acumulación es del servicio, la derivación es pura. Cuando un dato no existe (no hubo fallos → sin `topFailure`), se representa con `null`, nunca con un valor inventado (R1.4).
+> **Nota de refinamiento (2026-07-03).** La v1 modelaba `score = playedRounds × 1000 + secondsSurvived`. Tras `scoring-and-combos`, el score real es `endlessScore = base + comboScore`. `buildRunSummary` LEE `endlessScore` del game over (`buildEndlessGameOverMeta`), NO lo reconstruye — reconstruirlo daría un número distinto al que el jugador vio. También: `bestStreak` YA existe en la sesión (no hay que agregarlo), la racha viva se llama `streak` (no `correctStreak`), `maxDifficulty` incluye `'expert'`, y `teamName` puede ser `null` mientras `leaderboard` no esté implementado.
+
+El resumen **no es un registro nuevo en Valkey**: se arma a demanda desde el estado de sesión persistido del game over más las métricas ya expuestas. `endlessScore`, `playedRounds`, `bestStreak` y `durationSeconds` YA los provee `withEndMeta`/`buildEndlessGameOverMeta` — se leen tal cual. Solo `failuresByLanguage` (para `topFailure`) y `maxDifficulty` necesitan acumularse en la sesión durante el juego (no existen hoy, ver R1b); `run-summary.ts` los **lee y reduce** — la acumulación es del servicio, la derivación es pura. Cuando un dato no existe (no hubo fallos → sin `topFailure`), se representa con `null`, nunca con un valor inventado (R1.4).
 
 ## Flujo de cierre, compartir y feedback
 
@@ -98,15 +101,15 @@ infra/
 
 ### El resumen se deriva, no se persiste
 
-`buildRunSummary` es una función pura que recibe el estado de sesión del game over y las métricas de `endless-mode` y devuelve un `RunSummary`. No escribe en Valkey ni agrega una clave nueva: el game over ya tiene todo lo necesario. La única condición es que las métricas que se **acumulan durante** la partida (mejor racha, fallos por lenguaje, dificultad por ronda) las junte `game-service` en la sesión mientras se juega — porque una función pura no puede reconstruir el pasado. El reparto es nítido: el **servicio acumula** (I/O, estado), la **función pura reduce** (testeable). Así toda la lógica de "qué fue la mejor racha" o "en qué lenguaje falló más" queda capturada en un test unitario, no en una vista.
+`buildRunSummary` es una función pura que recibe el estado de sesión del game over (con las métricas ya expuestas por `withEndMeta`) y devuelve un `RunSummary`. No escribe en Valkey ni agrega una clave nueva: el game over ya tiene casi todo. `endlessScore`/`playedRounds`/`bestStreak`/`durationSeconds` ya se acumulan/exponen hoy; solo `failuresByLanguage` y `maxDifficulty` son acumulaciones NUEVAS que `game-service` debe juntar mientras se juega (una función pura no reconstruye el pasado). El reparto es nítido: el **servicio acumula** (I/O, estado), la **función pura reduce** (testeable). Así "en qué lenguaje falló más" queda capturado en un test unitario, no en una vista.
 
 ### Mejor racha, fallo top y dificultad máxima
 
-- **Mejor racha:** `game-service` mantiene `correctStreak` (se incrementa al acertar, se resetea a 0 al errar) y `bestStreak = max(bestStreak, correctStreak)`. El resumen lee `bestStreak`.
-- **Lenguaje/tema con más fallos:** `game-service` mantiene un contador `failuresByLanguage: Record<ChallengeLanguage, number>` (incrementa la entrada del lenguaje de la ronda al errar). `buildRunSummary` reduce ese record a la entrada de mayor cuenta (`topFailure`), o `null` si no hubo fallos.
-- **Dificultad máxima alcanzada:** de la dificultad de cada ronda generada (`adaptive-difficulty` la escala), el servicio guarda la más alta vista; el resumen la lee como `maxDifficulty` (orden `easy < medium < hard`), o `null` si no aplica.
+- **Mejor racha:** YA resuelto por `scoring-and-combos` — la sesión tiene `streak` (racha viva, se resetea al errar) y `bestStreak = max(bestStreak, streak)` (`comboFieldsOnCorrect` en `game-engine.ts`). El resumen SOLO lee `bestStreak`. NO hay que agregar `correctStreak` (nombre de la v1): el campo real es `streak`.
+- **Lenguaje/tema con más fallos:** NUEVO — `game-service` debe mantener un contador `failuresByLanguage: Partial<Record<ChallengeLanguage, number>>` (incrementa la entrada del lenguaje de la ronda al errar). `buildRunSummary` reduce ese record a la entrada de mayor cuenta (`topFailure`), o `null` si no hubo fallos. Este campo NO existe hoy (R1b.1).
+- **Dificultad máxima alcanzada:** NUEVO — de la dificultad de cada ronda generada (`roundToDifficulty`, adaptive-difficulty), el servicio guarda la más alta vista en `maxDifficulty`; el resumen la lee (orden `easy < medium < hard < expert`, INCLUYE expert), o `null` si no aplica. Este campo NO existe hoy (R1b.2).
 
-Ninguna de estas tres se recalcula en la función pura a partir de un histórico: el servicio las mantiene baratas (O(1) por respuesta) y la función solo las expone.
+`bestStreak` ya lo mantiene el juego; `failuresByLanguage` y `maxDifficulty` son las dos acumulaciones nuevas (baratas, O(1) por respuesta). La función pura solo las expone, nunca reconstruye un histórico.
 
 ### Card compartible con `ImageResponse` (self-contained)
 
@@ -151,8 +154,8 @@ SES arranca en **sandbox**: solo envía a **direcciones verificadas** y desde un
 | `src/features/game/feedback-email.test.ts` | NUEVO — validación de email y escape del cuerpo |
 | `src/features/game/feedback-generator.ts` | NUEVO — `generateFeedback` vía Bedrock Converse (calca runtime-generator, fallback a null) |
 | `src/features/game/ses-mailer.ts` | NUEVO — `sendFeedbackEmail` (SES SendEmailCommand, degrada sin config) |
-| `src/features/game/game-service.ts` | acumular `bestStreak`, `failuresByLanguage`, `maxDifficulty` durante la partida; exponer al game over |
-| `src/features/game/game-types.ts` | + `RunSummary`, `TopFailure`, `FeedbackRequest`, `FeedbackResult`, `ShareCardParams`; campos de acumulación en `GameSession` |
+| `src/features/game/game-service.ts` | acumular `failuresByLanguage` y `maxDifficulty` durante la partida (NUEVAS); `bestStreak` YA se acumula (scoring-and-combos); exponer las dos nuevas al game over |
+| `src/features/game/game-types.ts` | + `RunSummary`, `TopFailure`, `FeedbackRequest`, `FeedbackResult`, `ShareCardParams`; `failuresByLanguage?` y `maxDifficulty?` en `GameSession` (NO `correctStreak`/`bestStreak`: ya existen) |
 | `src/lib/constants.ts` | + límites de rate de feedback, asunto del correo |
 | `app/api/game/feedback/route.ts` | NUEVO — `POST` validar+generar+enviar |
 | `app/api/game/share-card/route.ts` | NUEVO — `GET` imagen `ImageResponse` |
@@ -193,9 +196,9 @@ SES arranca en **sandbox**: solo envía a **direcciones verificadas** y desde un
 
 ## Dependencias
 
-- `endless-mode` — aporta `score`, `playedRounds` y `secondsSurvived` al game over, y acumula durante la partida `bestStreak`, `failuresByLanguage` y la dificultad por ronda que el resumen reduce.
-- `leaderboard` — aporta el **nombre de equipo** sanitizado (reutilizado, no re-pedido) y la función `sanitizeTeamName` para la card.
-- `adaptive-difficulty` — escala la dificultad por ronda, de donde sale la "dificultad máxima alcanzada".
+- `endless-mode` + `scoring-and-combos` — aportan `endlessScore` (con combos), `playedRounds`, `bestStreak` y `durationSeconds` al game over (`buildEndlessGameOverMeta`/`withEndMeta`), YA disponibles. El resumen los LEE, no los recalcula.
+- `leaderboard` — **DEPENDENCIA BLOQUEANTE** para R3 (card) y R5 (email): aporta el **nombre de equipo** y `sanitizeTeamName`. Aún NO implementado (ver leaderboard spec). Mientras tanto, el resumen (R1/R2) funciona con `teamName: null`. Implementar leaderboard primero.
+- `adaptive-difficulty` — aporta `roundToDifficulty` (de donde el servicio deriva `maxDifficulty`) y el nivel `'expert'` que `maxDifficulty` debe incluir.
 
 ## Out of scope
 
