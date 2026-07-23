@@ -3,6 +3,7 @@ import { MAX_LIVES } from '@/src/lib/constants';
 import { getClientQuestionById } from '@/src/data/client-questions';
 import { generateChallenge } from './runtime-generator';
 import { checkRateLimit, redisRateLimitStore } from './rate-limit';
+import { redisGenerationLockStore, tryAcquireGenerationLock } from './generation-lock';
 import { generateOpaqueToken, generateRoomCode, tokensMatch } from './session-credentials';
 import Redis from 'ioredis';
 import {
@@ -109,6 +110,27 @@ async function setSessionToStore(id: string, session: GameSession): Promise<void
   memorySessions.set(id, session);
 }
 
+const GENERATION_LOCK_TTL_SECONDS = Math.ceil(GENERATION_CLAIM_TTL_MS / 1000);
+
+// Without Redis (single-process dev) there is no cross-request race, so the
+// in-memory `generating` flag is enough; with Redis the atomic SET NX lock wins.
+async function acquireGenerationLock(session: GameSession): Promise<boolean> {
+  const redis = getRedis();
+  if (redis) {
+    return tryAcquireGenerationLock(
+      redisGenerationLockStore(redis),
+      `lock:gen:${session.id}`,
+      GENERATION_LOCK_TTL_SECONDS,
+    );
+  }
+
+  if (session.generating) {
+    const claimedAt = session.generatingStartedAt ?? 0;
+    if (Date.now() - claimedAt < GENERATION_CLAIM_TTL_MS) return false;
+  }
+  return true;
+}
+
 
 
 export function pickRandomChallenge(): Challenge {
@@ -207,10 +229,7 @@ export async function claimGeneratingSlot(
   if (!session) return null;
   if (session.status !== 'idle') return null;
 
-  if (session.generating) {
-    const claimedAt = session.generatingStartedAt ?? 0;
-    if (Date.now() - claimedAt < GENERATION_CLAIM_TTL_MS) return null;
-  }
+  if (!(await acquireGenerationLock(session))) return null;
 
   const claimed: GameSession = {
     ...session,
@@ -251,12 +270,10 @@ export async function promoteSessionWithChallenge(
 async function ensureChallengeGenerated(session: GameSession): Promise<GameSession> {
   if (session.status !== 'idle') return session;
 
-  // Honour an in-flight claim, but only until the generation budget elapses. If
-  // the claiming request died mid-call the flag would otherwise freeze the room.
-  if (session.generating) {
-    const claimedAt = session.generatingStartedAt ?? 0;
-    if (Date.now() - claimedAt < GENERATION_CLAIM_TTL_MS) return session;
-  }
+  // Atomic claim: only one concurrent caller (this poll or the streaming route)
+  // wins the lock and generates. Losers return the session unchanged and let the
+  // winner's promotion show up on the next poll.
+  if (!(await acquireGenerationLock(session))) return session;
 
   const claimed: GameSession = {
     ...session,
