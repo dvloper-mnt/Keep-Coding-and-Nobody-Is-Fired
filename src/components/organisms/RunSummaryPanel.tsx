@@ -1,6 +1,7 @@
 'use client';
 
 import { formatDuration } from '@/src/components/molecules/GameResultBanner';
+import { ShareScoreButtons } from '@/src/components/molecules/ShareScoreButtons';
 import type {
   ChallengeLanguage,
   Difficulty,
@@ -66,6 +67,7 @@ export function RunSummaryPanel({ summary }: RunSummaryPanelProps) {
           </div>
         ))}
       </dl>
+      <ShareScoreButtons stats={{ roundsReached: summary.roundsReached, score: summary.score }} />
     </div>
   );
 }
