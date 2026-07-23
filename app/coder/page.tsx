@@ -3,6 +3,7 @@
 import { CoderScreen } from '@/src/components/containers/CoderScreen';
 import { GameLoadingScreen } from '@/src/components/molecules/GameLoadingScreen';
 import { getCoderState, startGame } from '@/src/features/game/api/game-client';
+import { resolveCoderStartParams } from '@/src/features/game/game-mode';
 import { saveToken } from '@/src/features/game/api/session-token-store';
 import { useGameSessionBootstrap } from '@/src/features/game/hooks/useGameSessionBootstrap';
 import type { CoderStepView } from '@/src/features/game/game-types';
@@ -30,7 +31,10 @@ const GENERATING_VIEW: CoderStepView = {
 function CoderPageContent() {
   const searchParams = useSearchParams();
   const existingSession = searchParams.get('session');
-  const requestedLanguage = searchParams.get('lang') ?? undefined;
+  const { language: requestedLanguage, mode: requestedMode } = resolveCoderStartParams(
+    searchParams.get('lang'),
+    searchParams.get('mode'),
+  );
 
   const loader = useCallback(async (): Promise<CoderBootstrap> => {
     if (existingSession) {
@@ -41,11 +45,11 @@ function CoderPageContent() {
     // New game: create the room (idle) and enter the board immediately so the
     // code is visible right away; the board's polling drives idle → playing
     // while Bedrock generates.
-    const started = await startGame(requestedLanguage);
+    const started = await startGame(requestedLanguage, requestedMode);
     saveToken(started.sessionId, 'coder', started.coderToken);
     window.history.replaceState(null, '', `/coder?session=${started.sessionId}`);
     return { sessionId: started.sessionId, view: GENERATING_VIEW };
-  }, [existingSession, requestedLanguage]);
+  }, [existingSession, requestedLanguage, requestedMode]);
 
   const { data, loading, error } = useGameSessionBootstrap(
     loader,

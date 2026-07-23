@@ -1,6 +1,11 @@
 'use client';
 
-import type { ChallengeLanguage } from '@/src/features/game/game-types';
+import {
+  buildCoderStartPath,
+  DEFAULT_GAME_MODE,
+  GAME_MODE_OPTIONS,
+} from '@/src/features/game/game-mode';
+import type { ChallengeLanguage, GameMode } from '@/src/features/game/game-types';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,11 +26,12 @@ export function StartGameButton() {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [mode, setMode] = useState<GameMode>(DEFAULT_GAME_MODE);
   const [language, setLanguage] = useState<ChallengeLanguage>('random');
 
   function confirmStart() {
     setStarting(true);
-    router.push(`/coder?lang=${language}`);
+    router.push(buildCoderStartPath(language, mode));
   }
 
   return (
@@ -70,6 +76,40 @@ export function StartGameButton() {
               <p className="mt-2 text-sm text-zinc-400">
                 Generamos un incidente único con IA. Recibirás un código de sala para el Helper.
               </p>
+
+              <fieldset className="mt-4 space-y-2">
+                <legend className="font-mono text-xs tracking-wider text-zinc-500 uppercase">
+                  Modo de juego
+                </legend>
+                {GAME_MODE_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-3 transition-colors ${
+                      mode === option.value
+                        ? 'border-red-500/60 bg-red-950/30'
+                        : 'border-zinc-700 bg-zinc-900/40 hover:border-zinc-600'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="game-mode"
+                      value={option.value}
+                      checked={mode === option.value}
+                      onChange={() => setMode(option.value)}
+                      disabled={starting}
+                      className="mt-1 accent-red-500"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-zinc-100">
+                        {option.label}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-zinc-400">
+                        {option.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
 
               <div className="mt-4">
                 <label

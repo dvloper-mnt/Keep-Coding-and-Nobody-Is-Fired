@@ -42,8 +42,8 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 
 export { GameApiError };
 
-export function startGame(language?: string): Promise<StartGameResponse> {
-  return postJson<StartGameResponse>('/api/game/start', { language });
+export function startGame(language?: string, mode?: 'classic' | 'endless'): Promise<StartGameResponse> {
+  return postJson<StartGameResponse>('/api/game/start', { language, mode });
 }
 
 export function getCoderState(sessionId: string): Promise<CoderStepView> {

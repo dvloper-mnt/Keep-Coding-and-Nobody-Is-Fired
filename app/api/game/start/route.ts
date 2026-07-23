@@ -1,13 +1,6 @@
-import { SELECTABLE_LANGUAGES } from '@/src/features/game/challenge-language';
+import { parseChallengeLanguageParam, parseGameMode } from '@/src/features/game/game-mode';
 import { isStartAllowed, startGame } from '@/src/features/game/game-service';
-import type { ChallengeLanguage } from '@/src/features/game/game-types';
 import { NextRequest, NextResponse } from 'next/server';
-
-function parseLanguage(value: unknown): ChallengeLanguage {
-  return SELECTABLE_LANGUAGES.includes(value as ChallengeLanguage)
-    ? (value as ChallengeLanguage)
-    : 'random';
-}
 
 // Behind the ALB the real client IP is the first entry of x-forwarded-for.
 function clientKey(request: NextRequest): string {
@@ -25,8 +18,10 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const language = parseLanguage((body as { language?: unknown }).language);
+  const payload = body as { language?: unknown; mode?: unknown };
+  const language = parseChallengeLanguageParam(payload.language);
+  const mode = parseGameMode(payload.mode);
 
-  const result = await startGame(language);
+  const result = await startGame(language, mode);
   return NextResponse.json(result);
 }

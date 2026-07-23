@@ -12,10 +12,12 @@ interface HelperScreenProps {
 export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
   const {
     sync,
+    guide: liveGuide,
     submittingQuestion,
     questionFeedback,
     questionResult,
     livesPulse,
+    guideLoading,
     handleClientQuestionAnswer,
     handleAbandoned,
   } = useHelperGame(sessionId, guide);
@@ -23,7 +25,8 @@ export function HelperScreen({ sessionId, guide }: HelperScreenProps) {
   return (
     <HelperBoard
       sessionId={sessionId}
-      guide={guide}
+      guide={liveGuide}
+      guideLoading={guideLoading}
       sync={sync}
       submittingQuestion={submittingQuestion}
       questionFeedback={questionFeedback}

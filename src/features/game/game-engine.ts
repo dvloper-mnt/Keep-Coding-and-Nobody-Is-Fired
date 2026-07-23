@@ -1,10 +1,17 @@
-import { CLIENT_QUESTION_CONFIG, PENALTY_SECONDS, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
+import {
+  CLIENT_QUESTION_CONFIG,
+  ENDLESS_BASE_SECONDS,
+  ENDLESS_REWARD_SECONDS,
+  PENALTY_SECONDS,
+  WRONG_ANSWER_MESSAGE,
+} from '@/src/lib/constants';
 import { createInitialLives, loseLife } from './lives-engine';
 import type {
   Challenge,
   ChallengeLanguage,
   ChallengeStep,
   CoderStepView,
+  GameMode,
   GameSession,
   GameStatus,
   HelperSyncView,
@@ -54,6 +61,10 @@ export function applyTimeDelta(session: GameSession, deltaSeconds: number): Game
   };
 }
 
+export function endlessScore(playedRounds: number, secondsSurvived: number): number {
+  return playedRounds * 1000 + secondsSurvived;
+}
+
 function freshClientQuestions(): GameSession['clientQuestions'] {
   return {
     activeQuestionId: null,
@@ -63,22 +74,81 @@ function freshClientQuestions(): GameSession['clientQuestions'] {
   };
 }
 
+function initialRemainingTime(mode: GameMode, challenge: Challenge): number {
+  return mode === 'endless' ? ENDLESS_BASE_SECONDS : challenge.time_limit;
+}
+
 export function createSession(
   challenge: Challenge,
   sessionId: string,
   startedAt: number,
+  mode: GameMode = 'classic',
 ): GameSession {
   const firstStep = challenge.steps[0];
   return {
     id: sessionId,
     challengeId: challenge.id,
     currentStep: 1,
-    remainingTime: challenge.time_limit,
+    remainingTime: initialRemainingTime(mode, challenge),
     currentCode: firstStep.coder_view.code,
     status: 'playing',
     startedAt,
     clientQuestions: freshClientQuestions(),
+    round: 1,
+    playedRounds: 0,
+    mode,
     ...createInitialLives(),
+  };
+}
+
+/** Promotes an idle room to playing with the first challenge of the session. */
+export function promoteToFirstRound(
+  session: GameSession,
+  challenge: Challenge,
+  wasGenerated: boolean,
+): GameSession {
+  const firstStep = challenge.steps[0];
+  const mode = session.mode ?? 'endless';
+
+  return {
+    ...session,
+    challengeId: challenge.id,
+    generatedChallenge: wasGenerated ? challenge : undefined,
+    currentStep: 1,
+    remainingTime: initialRemainingTime(mode, challenge),
+    currentCode: firstStep.coder_view.code,
+    status: 'playing',
+    round: session.round ?? 1,
+    playedRounds: session.playedRounds ?? 0,
+    mode,
+    clientQuestions: freshClientQuestions(),
+    generating: false,
+    generatingStartedAt: undefined,
+    roundComplete: undefined,
+  };
+}
+
+/** Applies a newly generated challenge as the next endless round. */
+export function applyNextRoundChallenge(
+  session: GameSession,
+  challenge: Challenge,
+  wasGenerated: boolean,
+): GameSession {
+  const firstStep = challenge.steps[0];
+
+  return {
+    ...session,
+    round: session.round + 1,
+    challengeId: challenge.id,
+    generatedChallenge: wasGenerated ? challenge : undefined,
+    currentStep: 1,
+    currentCode: firstStep.coder_view.code,
+    status: 'playing',
+    roundComplete: undefined,
+    lastResult: undefined,
+    clientQuestions: freshClientQuestions(),
+    generating: false,
+    generatingStartedAt: undefined,
   };
 }
 
@@ -90,6 +160,7 @@ export function createPendingSession(
   language: ChallengeLanguage | undefined,
   startedAt: number,
   coderToken?: string,
+  mode: GameMode = 'endless',
 ): GameSession {
   return {
     id: sessionId,
@@ -103,6 +174,9 @@ export function createPendingSession(
     generating: false,
     coderToken,
     clientQuestions: freshClientQuestions(),
+    round: 1,
+    playedRounds: 0,
+    mode,
     ...createInitialLives(),
   };
 }
@@ -123,6 +197,13 @@ export function gameDurationSeconds(session: GameSession, now: number): number {
   return Math.max(0, Math.round((now - session.startedAt) / 1000));
 }
 
+function viewMeta(session: GameSession): Pick<CoderStepView, 'round' | 'mode'> {
+  return {
+    round: session.round,
+    mode: session.mode,
+  };
+}
+
 export function getCoderStepView(session: GameSession, challenge: Challenge): CoderStepView {
   const step = challenge.steps[session.currentStep - 1];
 
@@ -138,6 +219,7 @@ export function getCoderStepView(session: GameSession, challenge: Challenge): Co
       lastResult: session.lastResult,
       coderLives: session.coderLives,
       defeatReason: session.defeatReason,
+      ...viewMeta(session),
     };
   }
 
@@ -152,6 +234,7 @@ export function getCoderStepView(session: GameSession, challenge: Challenge): Co
     lastResult: session.lastResult,
     coderLives: session.coderLives,
     defeatReason: session.defeatReason,
+    ...viewMeta(session),
   };
 }
 
@@ -168,6 +251,8 @@ export function getHelperSyncView(
     activeClientQuestion,
     helperLives: session.helperLives,
     defeatReason: session.defeatReason,
+    round: session.round,
+    mode: session.mode,
   };
 }
 
@@ -185,6 +270,19 @@ export function submitAnswer(
 
   if (result.success) {
     const isLastStep = session.currentStep >= challenge.steps.length;
+
+    if (isLastStep && session.mode === 'endless') {
+      const withReward = applyTimeDelta(session, ENDLESS_REWARD_SECONDS);
+      return {
+        ...withReward,
+        currentCode: result.patch!,
+        status: 'playing',
+        roundComplete: true,
+        playedRounds: session.playedRounds + 1,
+        lastResult: 'correct',
+      };
+    }
+
     return {
       ...session,
       currentCode: result.patch!,
@@ -211,7 +309,7 @@ export function tickTimer(session: GameSession): GameSession {
 
   return {
     ...session,
-    remainingTime: newTime,
+    remainingTime: Math.max(0, newTime),
     status: timedOut ? 'defeat' : session.status,
     defeatReason: timedOut && !session.defeatReason ? 'timeout' : session.defeatReason,
   };

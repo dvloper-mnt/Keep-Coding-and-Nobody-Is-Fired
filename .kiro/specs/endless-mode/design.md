@@ -2,9 +2,19 @@
 
 ## Overview
 
-El cambio es de **dominio primero, presentación después**. El núcleo está en `game-engine.ts` (`submitAnswer` y el modelo de sesión) y en `game-service.ts` (cargar la siguiente ronda con Bedrock). La UI casi no cambia: el Coder ya ve un reloj y steps; lo nuevo es que al "completar" un challenge no aparece la pantalla de victoria sino la ronda siguiente, y el reloj sube.
+El cambio es de **dominio primero, presentación después**. El núcleo está en `game-engine.ts` (`submitAnswer` y el modelo de sesión) y en `game-service.ts` (cargar la siguiente ronda con Bedrock). La UI in-game ya refleja endless (ronda, game over con score, streaming entre rondas). Pendiente: **selector de modo** en el modal pre-partida del Coder (D7).
 
 Principio rector: **el `Challenge` no cambia de forma.** El modo infinito es una capa de orquestación sobre los mismos challenges de 3 steps que ya genera Bedrock.
+
+### Estado de implementación (2026-06-30)
+
+| Área | Estado |
+|---|---|
+| Dominio + servicio + sync | ✅ Implementado |
+| UI in-game (ronda, defeat score, streaming) | ✅ Implementado |
+| API `/start` con `mode` | ✅ Implementado |
+| Selector de modo en modal Coder | ✅ Implementado (§7) |
+| Tests selector (`game-mode`, client, service) | ✅ Implementado (§7.6) |
 
 ## Decisiones de arquitectura
 
@@ -63,6 +73,47 @@ Recomendación: empezar con (a) reutilizando el streaming ya hecho (el jugador v
 
 El `/start` puede recibir el modo (default `endless`). Esto evita romper los tests existentes: el modo clásico sigue disponible y testeado, y los tests nuevos cubren endless.
 
+### D7 — Selector de modo en modal del Coder (decisión UX 2026-06-30)
+
+**Dónde:** `StartGameButton.tsx` — modal de confirmación que ya pide idioma del incidente.
+
+**Orden en el modal (de arriba a abajo):**
+1. Selector de **modo de juego** (`classic` | `endless`)
+2. Selector de **idioma del incidente**
+
+**Por qué ahí y no en la home:**
+- El modo es decisión de *setup* del Coder, no del Helper (el Helper entra a una sala con modo ya fijado).
+- El usuario ya está en intención de jugar; no agrega un paso extra fuera del flujo existente.
+- Evita mezclar "elegir rol" con "elegir modo" en la landing.
+
+**Flujo de datos:**
+```
+StartGameButton (elige mode + lang)
+  → router.push(`/coder?lang=…&mode=…`)
+  → coder/page.tsx lee query params
+  → startGame(language, mode)
+  → POST /api/game/start { language, mode }
+  → createPendingSession(…, mode)
+```
+
+**Copy sugerido (español neutro):**
+
+| Valor | Etiqueta | Descripción |
+|---|---|---|
+| `classic` | Partida normal | Un incidente. Lo resolvés y ganás. |
+| `endless` | Modo infinito | Rondas seguidas. Sobrevivís lo más que puedas. |
+
+**Default en UI:** `endless` (alineado con default del API). Opcional: persistir última elección en `localStorage`.
+
+**Archivos a tocar (solo UI + bootstrap):**
+
+| Archivo | Cambio |
+|---|---|
+| `StartGameButton.tsx` | Control de modo + copy; propagar `mode` en URL |
+| `app/coder/page.tsx` | Leer `mode` de searchParams; pasar a `startGame` |
+
+No requiere cambios en `game-engine`, `game-service` ni pantallas del Helper.
+
 ## Componentes afectados
 
 | Archivo | Cambio |
@@ -72,13 +123,20 @@ El `/start` puede recibir el modo (default `endless`). Esto evita romper los tes
 | `game-service.ts` | `processAnswer`: al `roundComplete`, generar siguiente ronda (Bedrock + fallback), incrementar round |
 | `constants.ts` | `ENDLESS_BASE_SECONDS`, `ENDLESS_REWARD_SECONDS` |
 | Coder/Helper views | mostrar `round`; transición entre rondas (reusar estado idle/streaming) |
-| `/start` | aceptar `mode` (default endless) |
+| `/start` | aceptar `mode` (default endless) — ✅ hecho |
+| `game-mode.ts` | parsing puro + `buildCoderStartPath` — ✅ hecho |
+| `StartGameButton.tsx` | selector de modo en modal — ✅ hecho |
+| `app/coder/page.tsx` | `resolveCoderStartParams` + `startGame` — ✅ hecho |
 
 ## Testing
 
 - **Puro (sin I/O):** `endlessScore` (tabla de casos), `submitAnswer` en modo endless (marca roundComplete + suma tiempo en último step; no marca victory), reloj a 0 → defeat.
 - **Servicio:** `processAnswer` al completar ronda incrementa round y carga challenge (con Bedrock mockeado); fallback al curado.
 - **Sin regresión:** modo `classic` sigue marcando `victory`; tests existentes verdes.
+- **Puro (`game-mode.test.ts`):** `parseGameMode`, `resolveCoderStartParams`, `buildCoderStartPath`.
+- **Cliente (`game-client.test.ts`):** body del POST incluye `language` y `mode`.
+- **Servicio (`game-service.start.test.ts`):** `startGame` persiste el `mode` en la sesión.
+- **Selector (D7) — smoke manual (7.7):** classic → victoria; endless → loop + score en defeat.
 
 ## Riesgos y mitigaciones
 

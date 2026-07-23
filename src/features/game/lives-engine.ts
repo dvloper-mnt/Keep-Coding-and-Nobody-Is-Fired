@@ -13,6 +13,10 @@ export function normalizeSessionLives(session: GameSession): GameSession {
     ...session,
     coderLives: session.coderLives ?? MAX_LIVES,
     helperLives: session.helperLives ?? MAX_LIVES,
+    // Sessions created before endless-mode default to classic so behaviour stays intact.
+    mode: session.mode ?? 'classic',
+    round: session.round ?? 1,
+    playedRounds: session.playedRounds ?? 0,
   };
 }
 

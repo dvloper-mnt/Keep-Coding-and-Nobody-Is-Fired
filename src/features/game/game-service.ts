@@ -1,5 +1,5 @@
 import { getChallengeById, loadChallenges } from '@/src/data/challenges';
-import { MAX_LIVES } from '@/src/lib/constants';
+
 import { getClientQuestionById } from '@/src/data/client-questions';
 import { generateChallenge } from './runtime-generator';
 import { checkRateLimit, redisRateLimitStore } from './rate-limit';
@@ -14,12 +14,14 @@ import {
 } from './client-question-engine';
 import {
   abandonGame,
+  applyNextRoundChallenge,
   clearLastResult,
   createPendingSession,
-  createSession,
+  endlessScore,
   gameDurationSeconds,
   getCoderStepView,
   getHelperSyncView,
+  promoteToFirstRound,
   submitAnswer,
   tickTimer,
 } from './game-engine';
@@ -30,6 +32,7 @@ import type {
   ChallengeLanguage,
   ClientQuestionAnswerResponse,
   CoderStepView,
+  GameMode,
   GameSession,
   HelperGuideResult,
   HelperStaticGuide,
@@ -157,17 +160,19 @@ function resolveChallenge(session: GameSession): Challenge | undefined {
 
 // Shown to the Coder while the room is still 'idle' (Bedrock generating). No
 // challenge data yet — the client renders a "generating" screen on this status.
-function pendingCoderView(language: ChallengeLanguage): CoderStepView {
+function pendingCoderView(session: GameSession): CoderStepView {
   return {
     code: '',
     error: '',
     options: [],
     currentStep: 0,
     totalSteps: 0,
-    remainingTime: 0,
+    remainingTime: session.remainingTime,
     status: 'idle',
-    language,
-    coderLives: MAX_LIVES,
+    language: session.language ?? 'random',
+    coderLives: session.coderLives,
+    round: session.round,
+    mode: session.mode,
   };
 }
 
@@ -212,13 +217,16 @@ export async function isAuthorizedFor(
   return tokensMatch(token, expected);
 }
 
-export async function startGame(language: ChallengeLanguage = 'random'): Promise<StartGameResponse> {
+export async function startGame(
+  language: ChallengeLanguage = 'random',
+  mode: GameMode = 'endless',
+): Promise<StartGameResponse> {
   // Create the room in 'idle' and return its code immediately so the Coder can
   // share it with the Helper. Bedrock generates in the background (kicked off by
   // the first state poll), so nobody waits on a 14s call before getting a code.
   const sessionId = generateRoomCode();
   const coderToken = generateOpaqueToken();
-  const session = createPendingSession(sessionId, language, Date.now(), coderToken);
+  const session = createPendingSession(sessionId, language, Date.now(), coderToken, mode);
   await setSessionToStore(sessionId, session);
   return { sessionId, coderToken };
 }
@@ -264,13 +272,9 @@ export async function promoteSessionWithChallenge(
   challenge: Challenge,
   wasGenerated: boolean,
 ): Promise<void> {
-  const playing = createSession(challenge, session.id, session.startedAt);
-  if (wasGenerated) {
-    playing.generatedChallenge = challenge;
-  }
-  // Carry the credentials forward — createSession starts a fresh object.
-  playing.coderToken = session.coderToken;
-  playing.helperToken = session.helperToken;
+  const playing = session.roundComplete
+    ? applyNextRoundChallenge(session, challenge, wasGenerated)
+    : promoteToFirstRound(session, challenge, wasGenerated);
   await setSessionToStore(session.id, playing);
 }
 
@@ -295,26 +299,32 @@ async function ensureChallengeGenerated(session: GameSession): Promise<GameSessi
   const generated = await generateChallenge(session.language ?? 'random');
   const challenge = generated ?? pickRandomChallenge();
 
-  const playing = createSession(challenge, session.id, session.startedAt);
-  if (generated) {
-    playing.generatedChallenge = generated;
-  }
-  // Carry the credentials forward — createSession starts a fresh object.
-  playing.coderToken = session.coderToken;
-  playing.helperToken = session.helperToken;
+  const playing = session.roundComplete
+    ? applyNextRoundChallenge(session, challenge, generated !== null)
+    : promoteToFirstRound(session, challenge, generated !== null);
   await setSessionToStore(session.id, playing);
   return playing;
 }
 
 function withEndMeta<T extends { status: string }>(view: T, session: GameSession): T {
+  const durationSeconds = gameDurationSeconds(session, Date.now());
+  const endlessMeta =
+    session.mode === 'endless' && session.status === 'defeat'
+      ? {
+          playedRounds: session.playedRounds,
+          endlessScore: endlessScore(session.playedRounds, durationSeconds),
+        }
+      : {};
+
   if (session.status !== 'abandoned' && session.status !== 'victory' && session.status !== 'defeat') {
     return view;
   }
   return {
     ...view,
     abandonedBy: session.abandonedBy,
-    durationSeconds: gameDurationSeconds(session, Date.now()),
+    durationSeconds,
     defeatReason: session.defeatReason,
+    ...endlessMeta,
   };
 }
 
@@ -382,7 +392,7 @@ export async function getCoderState(sessionId: string) {
   // Coder sees the 'idle' (generating) view instead of an error.
   if (session.status === 'idle') {
     session = await ensureChallengeGenerated(session);
-    if (session.status === 'idle') return pendingCoderView(session.language ?? 'random');
+    if (session.status === 'idle') return pendingCoderView(session);
   }
 
   const challenge = resolveChallenge(session);
@@ -400,6 +410,23 @@ export async function getCoderState(sessionId: string) {
 export async function getHelperSync(sessionId: string) {
   const session = await getSessionFromStore(sessionId);
   if (!session) return null;
+
+  if (session.status === 'idle') {
+    return withEndMeta(
+      {
+        remainingTime: session.remainingTime,
+        currentStep: 0,
+        totalSteps: 0,
+        status: 'idle' as const,
+        activeClientQuestion: null,
+        helperLives: session.helperLives,
+        round: session.round,
+        mode: session.mode,
+      },
+      session,
+    );
+  }
+
   const challenge = resolveChallenge(session);
   if (!challenge) return null;
   return withEndMeta(
@@ -444,7 +471,12 @@ export async function processAnswer(sessionId: string, answerIndex: number): Pro
   if (!challenge) return null;
 
   const updated = submitAnswer(session, challenge, answerIndex);
-  await setSessionToStore(sessionId, updated);
+
+  const sessionToStore =
+    updated.roundComplete && updated.mode === 'endless' && updated.status === 'playing'
+      ? { ...updated, status: 'idle' as const, generating: false }
+      : updated;
+  await setSessionToStore(sessionId, sessionToStore);
 
   const result = updated.lastResult === 'correct';
   const response: AnswerResponse = {
@@ -452,8 +484,8 @@ export async function processAnswer(sessionId: string, answerIndex: number): Pro
     patch: result ? updated.currentCode : undefined,
     penalty: result ? undefined : 10,
     message: result ? undefined : 'El sistema sigue fallando…',
-    status: updated.status,
-    remainingTime: updated.remainingTime,
+    status: sessionToStore.status,
+    remainingTime: sessionToStore.remainingTime,
   };
 
   if (!result) {
@@ -461,8 +493,16 @@ export async function processAnswer(sessionId: string, answerIndex: number): Pro
     response.lifeLost = true;
   }
 
-  if (updated.status === 'playing' || updated.status === 'victory' || updated.status === 'defeat') {
-    response.coderView = getCoderStepView(updated, challenge);
+  if (
+    sessionToStore.status === 'idle' ||
+    sessionToStore.status === 'playing' ||
+    sessionToStore.status === 'victory' ||
+    sessionToStore.status === 'defeat'
+  ) {
+    response.coderView =
+      sessionToStore.status === 'idle'
+        ? pendingCoderView(sessionToStore)
+        : getCoderStepView(sessionToStore, challenge);
   }
 
   return response;
