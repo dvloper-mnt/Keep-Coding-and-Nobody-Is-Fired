@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { PENALTY_SECONDS, WRONG_ANSWER_MESSAGE } from '@/src/lib/constants';
-import { ENDLESS_REWARD_SECONDS } from '@/src/lib/constants';
+import {
+  BOSS_REWARD_SECONDS,
+  ENDLESS_REWARD_SECONDS,
+} from '@/src/lib/constants';
 import {
   abandonGame,
   applyTimeDelta,
@@ -229,6 +232,73 @@ describe('submitAnswer', () => {
     expect(result.status).toBe('defeat');
     expect(result.remainingTime).toBe(0);
     expect(result.defeatReason).toBe('coder_lives');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Boss encounters — reward / penalty parametrized by the round modifier
+// ---------------------------------------------------------------------------
+
+describe('submitAnswer with round modifier', () => {
+  it('applies the boss time bonus when completing a boss round', () => {
+    const step = makeStep({ correct_answer: 0 });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({
+      currentStep: 1,
+      mode: 'endless',
+      remainingTime: 100,
+      roundModifier: 'boss',
+    });
+
+    const result = submitAnswer(session, challenge, 0, 'boss');
+
+    expect(result.roundComplete).toBe(true);
+    expect(result.remainingTime).toBe(100 + BOSS_REWARD_SECONDS);
+  });
+
+  it('halves the time bonus during an audit event', () => {
+    const step = makeStep({ correct_answer: 0 });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({ currentStep: 1, mode: 'endless', remainingTime: 100 });
+
+    const result = submitAnswer(session, challenge, 0, 'audit');
+
+    expect(result.remainingTime).toBe(100 + Math.round(ENDLESS_REWARD_SECONDS * 0.5));
+  });
+
+  it('doubles the penalty on a wrong answer during a watching event', () => {
+    const step = makeStep({ correct_answer: 0 });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({ currentStep: 1, remainingTime: 100 });
+
+    const result = submitAnswer(session, challenge, 3, 'watching');
+
+    expect(result.remainingTime).toBe(100 - PENALTY_SECONDS * 2);
+  });
+
+  it('behaves like the base endless flow with no modifier', () => {
+    const step = makeStep({ correct_answer: 0 });
+    const challenge = makeChallenge([step]);
+    const session = makeSession({ currentStep: 1, mode: 'endless', remainingTime: 100 });
+
+    const result = submitAnswer(session, challenge, 0);
+
+    expect(result.remainingTime).toBe(100 + ENDLESS_REWARD_SECONDS);
+  });
+
+  it('advances through a boss challenge of 5 steps and completes on the last (dynamic end)', () => {
+    const steps = [1, 2, 3, 4, 5].map((n) => makeStep({ step: n, correct_answer: 0 }));
+    const challenge = makeChallenge(steps);
+
+    // Solve steps 1..4 — each advances, none completes the round yet.
+    let session = makeSession({ currentStep: 1, mode: 'endless', remainingTime: 100 });
+    for (let s = 1; s <= 4; s++) {
+      session = submitAnswer({ ...session, currentStep: s }, challenge, 0, 'boss');
+      expect(session.roundComplete).toBeUndefined();
+    }
+    // Solving step 5 (the last) completes the boss round.
+    const done = submitAnswer({ ...session, currentStep: 5 }, challenge, 0, 'boss');
+    expect(done.roundComplete).toBe(true);
   });
 });
 

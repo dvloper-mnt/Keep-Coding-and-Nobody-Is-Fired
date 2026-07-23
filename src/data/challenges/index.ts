@@ -2,11 +2,13 @@ import type { Challenge } from '@/src/features/game/game-types';
 import laravelRoutes from './laravel-routes.json';
 import catalogController from './catalog-controller.json';
 import loginChaos from './login-chaos.json';
+import bossDeployCascade from './boss-deploy-cascade.json';
 
 const challenges: Challenge[] = [
   loginChaos as Challenge,
   catalogController as Challenge,
-  laravelRoutes as Challenge
+  laravelRoutes as Challenge,
+  bossDeployCascade as Challenge
 ];
 
 export function loadChallenges(): Challenge[] {

@@ -4,6 +4,10 @@ export type GameStatus = 'idle' | 'playing' | 'victory' | 'defeat' | 'abandoned'
 export type PlayerRole = 'coder' | 'helper';
 export type DefeatReason = 'timeout' | 'coder_lives' | 'helper_lives';
 
+// Boss encounters: a round is either a boss round, a surprise event, or normal.
+export type BossEventId = 'audit' | 'watching';
+export type RoundModifier = 'none' | 'boss' | BossEventId;
+
 // The Coder may request a language for the generated challenge; 'random' (the
 // default) lets the generator pick one.
 export type ChallengeLanguage =
@@ -133,6 +137,9 @@ export interface GameSession {
   /** Highest difficulty reached across the run's generated challenges. Absent →
    * defaults to the difficulty of the round reached. */
   maxDifficulty?: Difficulty;
+  /** The active round modifier (boss encounter or surprise event). Absent →
+   * a normal round ('none'). Set when the round loads. */
+  roundModifier?: RoundModifier;
 }
 
 export interface StepResult {
@@ -216,6 +223,8 @@ export interface CoderStepView {
   bestStreak?: number;
   // Present only at endless game over: the full run summary for the results screen.
   runSummary?: RunSummary;
+  // The active round modifier so the board can flag a boss round / surprise event.
+  roundModifier?: RoundModifier;
 }
 
 export interface HelperGuideSection {
@@ -268,6 +277,8 @@ export interface HelperSyncView {
   bestStreak?: number;
   // Present only at endless game over: the full run summary for the results screen.
   runSummary?: RunSummary;
+  // The active round modifier so the Helper sees the same boss/event context.
+  roundModifier?: RoundModifier;
 }
 
 export interface ClientQuestionAnswerResponse {

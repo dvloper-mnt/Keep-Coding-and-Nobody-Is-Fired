@@ -1,0 +1,154 @@
+{
+  "id": "lvl_boss_001",
+  "title": "El jefe: cascada de despliegue",
+  "difficulty": "hard",
+  "story_context": "El jefe apareció en la sala: un despliegue en vivo se cae en cadena mientras el cliente mira, y cada arreglo destapa el siguiente.",
+  "time_limit": 300,
+  "steps": [
+    {
+      "step": 1,
+      "coder_view": {
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Checkout\\OrderController;\n\nRoute::middleware(['throttle', 'auth'])->group(function () {\n    Route::post('/checkout', [OrderController::class, 'process']);\n});",
+        "error": "500 Internal Server Error"
+      },
+      "helper_view": {
+        "rules": [
+          "En Laravel, el orden de los middlewares en un grupo importa: se ejecutan en el orden en que se listan, de izquierda a derecha.",
+          "Un middleware que necesita un usuario ya resuelto fallará si corre antes que el que autentica.",
+          "Preguntale al Coder qué middlewares hay en el grupo y en qué orden aparecen: el 500 aquí suele ser un middleware que corre fuera de secuencia."
+        ],
+        "knowledge": [
+          "En este proyecto, el control de tasa por usuario necesita que la sesión ya esté autenticada para saber a quién limitar.",
+          "La demo está haciendo checkout autenticado en este momento."
+        ]
+      },
+      "options": [
+        "El middleware de límite de tasa corre antes que el de autenticación",
+        "Falta importar OrderController",
+        "El método process no existe",
+        "La ruta usa el verbo HTTP incorrecto"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Checkout\\OrderController;\n\nRoute::middleware(['auth', 'throttle'])->group(function () {\n    Route::post('/checkout', [OrderController::class, 'process']);\n});"
+      },
+      "hint": "El orden de los middlewares define quién corre primero; uno depende del otro."
+    },
+    {
+      "step": 2,
+      "coder_view": {
+        "code": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Checkout\\OrderController;\n\nRoute::middleware(['auth', 'throttle'])->group(function () {\n    Route::post('/checkout', [OrderController::class, 'process']);\n    Route::post('/checkout/confirm', [OrderController::class, 'confirm']);\n});",
+        "error": "429 Too Many Requests"
+      },
+      "helper_view": {
+        "rules": [
+          "El límite de tasa por defecto cuenta todas las peticiones del grupo juntas; dos rutas de un mismo flujo pueden agotarlo entre sí.",
+          "Se puede nombrar un limitador específico para separar el presupuesto de peticiones de cada acción.",
+          "Preguntale al Coder qué rutas comparten el grupo y si el flujo dispara varias en poco tiempo: el 429 sale cuando comparten el mismo cupo."
+        ],
+        "knowledge": [
+          "En este proyecto, procesar y confirmar un checkout son dos llamadas seguidas del mismo usuario en segundos.",
+          "El flujo de la demo llama a ambas rutas casi al mismo tiempo."
+        ]
+      },
+      "options": [
+        "Las dos rutas comparten el mismo cupo de límite de tasa y se agotan entre sí",
+        "Falta el método confirm en el controlador",
+        "La ruta confirm usa el verbo incorrecto",
+        "El middleware auth está duplicado"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "use Illuminate\\Support\\Facades\\Route;\nuse App\\Http\\Controllers\\Checkout\\OrderController;\n\nRoute::middleware(['auth', 'throttle:checkout'])->group(function () {\n    Route::post('/checkout', [OrderController::class, 'process']);\n    Route::post('/checkout/confirm', [OrderController::class, 'confirm']);\n});"
+      },
+      "hint": "Si dos rutas del mismo flujo comparten presupuesto de peticiones, se estorban."
+    },
+    {
+      "step": 3,
+      "coder_view": {
+        "code": "public function confirm(Request $request): JsonResponse\n{\n    $order = Order::find($request->input('order_id'));\n    $order->markConfirmed();\n    return response()->json($order);\n}",
+        "error": "Call to a member function markConfirmed() on null"
+      },
+      "helper_view": {
+        "rules": [
+          "Un método sobre null aparece cuando una búsqueda por id no encontró el registro y devolvió null.",
+          "Buscar-o-fallar lanza un error claro (404) en vez de dejar continuar con null hacia una llamada que revienta.",
+          "Preguntale al Coder qué devuelve la búsqueda cuando el id no existe y qué se hace con ese resultado antes de usarlo."
+        ],
+        "knowledge": [
+          "En este proyecto, algunos pedidos de la demo llegan con ids que ya fueron archivados y no están en la tabla activa.",
+          "La demo está confirmando un pedido que podría no existir en la tabla activa."
+        ]
+      },
+      "options": [
+        "La búsqueda devuelve null y se invoca un método sobre ese null",
+        "El método markConfirmed no existe en el modelo",
+        "Falta inyectar Request",
+        "La respuesta JSON está mal formada"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "public function confirm(Request $request): JsonResponse\n{\n    $order = Order::findOrFail($request->input('order_id'));\n    $order->markConfirmed();\n    return response()->json($order);\n}"
+      },
+      "hint": "¿Qué pasa si la búsqueda por id no encuentra nada y seguís usando el resultado?"
+    },
+    {
+      "step": 4,
+      "coder_view": {
+        "code": "public function confirm(Request $request): JsonResponse\n{\n    $order = Order::findOrFail($request->input('order_id'));\n    $order->markConfirmed();\n    Notification::send($order->user, new OrderConfirmed($order));\n    return response()->json($order);\n}",
+        "error": "429 Too Many Requests"
+      },
+      "helper_view": {
+        "rules": [
+          "Recordá lo que ya resolviste antes en este mismo incidente: el límite de tasa de este flujo fue separado con un limitador propio en un paso anterior.",
+          "Enviar una notificación sincrónica dentro de la petición puede disparar llamadas que caen bajo ese mismo limitador ya ajustado y volver a agotarlo.",
+          "Preguntale al Coder qué acción nueva agrega esta petición sobre lo que ya venía haciendo, y si esa acción debería correr dentro del ciclo de la petición o diferirse."
+        ],
+        "knowledge": [
+          "En este proyecto, las notificaciones pesadas se difieren a una cola para no cargar la petición ni contar contra el límite del flujo que ya se ajustó antes.",
+          "El límite que se ajustó en el paso del cupo compartido es el mismo que ahora vuelve a saturarse por la notificación en línea."
+        ]
+      },
+      "options": [
+        "La notificación se envía en línea y satura el mismo límite que ya se había ajustado antes",
+        "El usuario del pedido es null",
+        "OrderConfirmed no existe",
+        "findOrFail está mal escrito"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "public function confirm(Request $request): JsonResponse\n{\n    $order = Order::findOrFail($request->input('order_id'));\n    $order->markConfirmed();\n    Notification::send($order->user, (new OrderConfirmed($order))->afterCommit());\n    ConfirmationJob::dispatch($order);\n    return response()->json($order);\n}"
+      },
+      "hint": "Conectá este error con lo que ya ajustaste antes sobre el límite del flujo: algo nuevo lo vuelve a saturar."
+    },
+    {
+      "step": 5,
+      "coder_view": {
+        "code": "class ConfirmationJob implements ShouldQueue\n{\n    public function handle(): void\n    {\n        $this->order->sendReceipt();\n    }\n}",
+        "error": "Typed property ConfirmationJob::$order must not be accessed before initialization"
+      },
+      "helper_view": {
+        "rules": [
+          "Una propiedad tipada sin valor inicial explota al leerse si nunca se le asignó, típicamente porque el constructor no la recibió ni la guardó.",
+          "Un trabajo de cola necesita recibir en su constructor los datos que va a usar en handle, porque se ejecuta en otro proceso sin el contexto de la petición.",
+          "Preguntale al Coder si la propiedad que se usa en handle se recibe y se asigna en el constructor del trabajo."
+        ],
+        "knowledge": [
+          "En este proyecto, los trabajos de cola corren fuera de la petición y solo tienen lo que se les pasó al encolarlos.",
+          "El trabajo se encoló con un pedido en el paso anterior, pero el trabajo no lo está guardando al construirse."
+        ]
+      },
+      "options": [
+        "El constructor no recibe ni asigna la propiedad que handle usa",
+        "sendReceipt no existe",
+        "El trabajo no implementa ShouldQueue",
+        "handle debería devolver un valor"
+      ],
+      "correct_answer": 0,
+      "success_state": {
+        "code_patch": "class ConfirmationJob implements ShouldQueue\n{\n    public function __construct(private readonly Order $order) {}\n\n    public function handle(): void\n    {\n        $this->order->sendReceipt();\n    }\n}"
+      },
+      "hint": "El trabajo corre en otro proceso: ¿de dónde saca el pedido si no se lo pasaste al construirlo?"
+    }
+  ]
+}

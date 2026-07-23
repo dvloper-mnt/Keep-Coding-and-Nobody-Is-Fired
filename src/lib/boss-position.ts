@@ -1,6 +1,12 @@
-import { BOSS_PRESSURE_CONFIG } from '@/src/lib/constants';
-
-export type BossPressureConfig = typeof BOSS_PRESSURE_CONFIG;
+// Structural config type (widened from the `as const` literals) so both the
+// normal and the intensified boss pressure config are assignable.
+export interface BossPressureConfig {
+  readonly messages: readonly string[];
+  readonly spawnIntervalMs: number;
+  readonly maxVisibleMessages: number;
+  readonly edgeMarginPercent: number;
+  readonly sideZoneMaxPercent: number;
+}
 export type BossEmphasis = 'left' | 'right';
 
 export interface BossPlacement {

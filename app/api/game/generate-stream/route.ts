@@ -1,6 +1,8 @@
+import { bossFormatInstruction } from '@/src/features/game/boss-encounters';
 import { difficultyForSession } from '@/src/features/game/challenge-difficulty';
 import {
   claimGeneratingSlot,
+  pickBossChallenge,
   pickRandomChallenge,
   promoteSessionWithChallenge,
 } from '@/src/features/game/game-service';
@@ -88,17 +90,21 @@ export async function GET(request: NextRequest): Promise<Response> {
           return;
         }
 
-        // Stream Bedrock tokens to the client as they arrive.
+        // Stream Bedrock tokens to the client as they arrive. A boss round asks
+        // for the multi-step-with-memory format (the modifier was decided on the
+        // claim); promoteSessionWithChallenge enforces the format on persist.
+        const isBoss = session.roundModifier === 'boss';
         const generated = await generateChallengeStreaming(
           session.language ?? 'random',
           (partialText: string) => {
             emit('delta', partialText);
           },
           difficultyForSession(session),
+          isBoss ? bossFormatInstruction() : '',
         );
 
-        // Resolve final challenge: generated or curated fallback.
-        const challenge = generated ?? pickRandomChallenge();
+        // Resolve final challenge: generated or curated fallback (boss-aware).
+        const challenge = generated ?? (isBoss ? pickBossChallenge() : pickRandomChallenge());
         const wasGenerated = generated !== null;
 
         // Persist the room as playing so subsequent getCoderState polls see it.

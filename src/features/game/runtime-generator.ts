@@ -163,6 +163,7 @@ export async function generateChallengeStreaming(
   language: ChallengeLanguage = 'random',
   onDelta: (partialText: string) => void,
   difficulty: Difficulty = 'easy',
+  extraInstruction: string = '',
 ): Promise<Challenge | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), RUNTIME_TIMEOUT_MS);
@@ -178,7 +179,7 @@ export async function generateChallengeStreaming(
           role: 'user',
           content: [
             {
-              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} ${difficultyInstruction(difficulty)} Devuelve solo el JSON del objeto challenge.`,
+              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} ${difficultyInstruction(difficulty)} ${extraInstruction} Devuelve solo el JSON del objeto challenge.`,
             },
           ],
         },
@@ -254,6 +255,7 @@ export async function generateChallengeStreaming(
 export async function generateChallenge(
   language: ChallengeLanguage = 'random',
   difficulty: Difficulty = 'easy',
+  extraInstruction: string = '',
 ): Promise<Challenge | null> {
 
   if (shouldSkipBedrockInDev()) {
@@ -277,7 +279,7 @@ export async function generateChallenge(
           role: 'user',
           content: [
             {
-              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} ${difficultyInstruction(difficulty)} Devuelve solo el JSON del objeto challenge.`,
+              text: `Genera un desafío nuevo. ${languageInstruction(resolved)} ${difficultyInstruction(difficulty)} ${extraInstruction} Devuelve solo el JSON del objeto challenge.`,
             },
           ],
         },

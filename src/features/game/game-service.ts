@@ -10,6 +10,13 @@ import { generateOpaqueToken, generateRoomCode, tokensMatch } from './session-cr
 import { sanitizeTeamName, scoreFromGameOver } from './leaderboard-score';
 import { buildRunSummary } from './run-summary';
 import {
+  bossFormatInstruction,
+  isBossFormat,
+  pickBossEvent,
+  scoreBonusFor,
+} from './boss-encounters';
+import { resolveRoundForGeneration } from './challenge-difficulty';
+import {
   createMemoryLeaderboardStore,
   createRedisLeaderboardStore,
   readTop10,
@@ -51,6 +58,7 @@ import type {
   LeaderboardTop,
   PlayerRole,
   RegisterScoreResult,
+  RoundModifier,
   StartGameResponse,
 } from './game-types';
 
@@ -176,6 +184,16 @@ export function pickRandomChallenge(): Challenge {
   const challenges = loadChallenges();
   const index = Math.floor(Math.random() * challenges.length);
   return challenges[index];
+}
+
+// Fallback for a boss round: a curated multi-step (>3) challenge. Guarantees the
+// boss encounter stays multi-step even when Bedrock fails. Falls back to a normal
+// curated challenge only if the catalog somehow has no boss challenge.
+export function pickBossChallenge(): Challenge {
+  const bossChallenges = loadChallenges().filter((c) => c.steps.length > 3);
+  if (bossChallenges.length === 0) return pickRandomChallenge();
+  const index = Math.floor(Math.random() * bossChallenges.length);
+  return bossChallenges[index] ?? pickRandomChallenge();
 }
 
 // A runtime-generated challenge is not in the static catalog, so it is stored on
@@ -329,10 +347,19 @@ export async function claimGeneratingSlot(
 
   if (!(await acquireGenerationLock(session))) return null;
 
+  // Decide this round's modifier ONCE, here — the single point both generation
+  // paths (streaming SSE and polling) share. Math.random() lives in the service;
+  // the pure pickBossEvent takes the roll as a parameter. Persisting it on the
+  // claim means both paths read the same modifier without recomputing it.
+  const round = resolveRoundForGeneration(session);
+  const roundModifier: RoundModifier =
+    session.mode === 'endless' ? pickBossEvent(round, Math.random()) : 'none';
+
   const claimed: GameSession = {
     ...session,
     generating: true,
     generatingStartedAt: Date.now(),
+    roundModifier,
   };
   await setSessionToStore(sessionId, claimed);
   return claimed;
@@ -352,10 +379,20 @@ export async function promoteSessionWithChallenge(
   challenge: Challenge,
   wasGenerated: boolean,
 ): Promise<void> {
-  const playing = session.roundComplete
-    ? applyNextRoundChallenge(session, challenge, wasGenerated)
-    : promoteToFirstRound(session, challenge, wasGenerated);
-  await setSessionToStore(session.id, playing);
+  // On a boss round the challenge MUST be multi-step; if the streamed one is not
+  // (Bedrock failed or returned ≤3 steps), swap in the curated boss challenge so
+  // the encounter is never a plain 3-step round.
+  const isBoss = session.roundModifier === 'boss';
+  const usableChallenge =
+    isBoss && !isBossFormat(challenge) ? pickBossChallenge() : challenge;
+  const usableGenerated = wasGenerated && (!isBoss || isBossFormat(challenge));
+
+  const promoted = session.roundComplete
+    ? applyNextRoundChallenge(session, usableChallenge, usableGenerated)
+    : promoteToFirstRound(session, usableChallenge, usableGenerated);
+  // Preserve the round modifier decided at claim time (promotion helpers don't
+  // carry it), so the engine and UI see the boss/event context.
+  await setSessionToStore(session.id, { ...promoted, roundModifier: session.roundModifier });
 }
 
 // Idempotently turn an 'idle' room into a 'playing' one: generate the challenge
@@ -369,24 +406,50 @@ async function ensureChallengeGenerated(session: GameSession): Promise<GameSessi
   // winner's promotion show up on the next poll.
   if (!(await acquireGenerationLock(session))) return session;
 
+  // Decide this round's modifier once, on the claim (same as claimGeneratingSlot
+  // for the streaming path). Math.random() lives here; pickBossEvent is pure.
+  const round = resolveRoundForGeneration(session);
+  const modifier: RoundModifier =
+    session.mode === 'endless' ? pickBossEvent(round, Math.random()) : 'none';
+  const isBoss = modifier === 'boss';
+
   const claimed: GameSession = {
     ...session,
     generating: true,
     generatingStartedAt: Date.now(),
+    roundModifier: modifier,
   };
   await setSessionToStore(claimed.id, claimed);
 
   const roundDifficulty = difficultyForSession(session);
-  const generated = await generateChallenge(session.language ?? 'random', roundDifficulty);
-  const challenge = generated ?? pickRandomChallenge();
+
+  // A boss round is a FORMAT change (multi-step with memory), not a difficulty
+  // bump: it uses the round's natural difficulty plus a format instruction.
+  const generated = await generateChallenge(
+    session.language ?? 'random',
+    roundDifficulty,
+    isBoss ? bossFormatInstruction() : '',
+  );
+
+  // For a boss round the generated challenge must actually be multi-step; if
+  // Bedrock failed or returned ≤3 steps, fall back to the curated boss challenge
+  // so the encounter is never a plain 3-step round.
+  const generatedIsUsable = generated !== null && (!isBoss || isBossFormat(generated));
+  const challenge = generatedIsUsable
+    ? generated
+    : isBoss
+      ? pickBossChallenge()
+      : pickRandomChallenge();
 
   const promoted = session.roundComplete
-    ? applyNextRoundChallenge(session, challenge, generated !== null)
-    : promoteToFirstRound(session, challenge, generated !== null);
-  // Track the highest difficulty faced across the run, for the run summary.
+    ? applyNextRoundChallenge(session, challenge, generatedIsUsable)
+    : promoteToFirstRound(session, challenge, generatedIsUsable);
+  // Track the highest difficulty faced across the run (run summary) and the
+  // active round modifier (boss / event), for the engine and the UI.
   const playing: GameSession = {
     ...promoted,
     maxDifficulty: highestDifficulty(session.maxDifficulty, roundDifficulty),
+    roundModifier: modifier,
   };
   await setSessionToStore(session.id, playing);
   return playing;
@@ -588,15 +651,23 @@ export async function processAnswer(sessionId: string, answerIndex: number): Pro
   const challenge = resolveChallenge(session);
   if (!challenge) return null;
 
-  const answered = submitAnswer(session, challenge, answerIndex);
+  const modifier: RoundModifier = session.roundModifier ?? 'none';
+  const answered = submitAnswer(session, challenge, answerIndex, modifier);
 
   // Accumulate the run-summary metric: which language the player failed most.
   // Keyed by the session's requested language (the concrete language per round
   // is not tracked separately; 'random' groups honestly under 'random').
-  const updated =
+  const withFailures =
     answered.lastResult === 'incorrect'
       ? { ...answered, failuresByLanguage: incrementFailure(answered, session.language) }
       : answered;
+
+  // Beating a boss round awards an extra score bonus, accumulated into comboScore
+  // so it flows into the final endlessScore (and thus the leaderboard).
+  const updated =
+    withFailures.roundComplete && scoreBonusFor(modifier) > 0
+      ? { ...withFailures, comboScore: withFailures.comboScore + scoreBonusFor(modifier) }
+      : withFailures;
 
   const sessionToStore =
     updated.roundComplete && updated.mode === 'endless' && updated.status === 'playing'

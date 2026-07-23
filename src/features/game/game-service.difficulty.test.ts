@@ -64,13 +64,14 @@ describe('getCoderState — passes session-derived difficulty to generateChallen
     const { sessionId } = await startGame('php', 'endless');
     await getCoderState(sessionId);
 
-    expect(generateChallengeMock).toHaveBeenCalledWith('php', 'easy');
+    // Third arg is the boss format instruction: empty on a normal (non-boss) round.
+    expect(generateChallengeMock).toHaveBeenCalledWith('php', 'easy', '');
   });
 
   it('passes easy on first classic idle poll', async () => {
     const { sessionId } = await startGame('php', 'classic');
     await getCoderState(sessionId);
 
-    expect(generateChallengeMock).toHaveBeenCalledWith('php', 'easy');
+    expect(generateChallengeMock).toHaveBeenCalledWith('php', 'easy', '');
   });
 });
