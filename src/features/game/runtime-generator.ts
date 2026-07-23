@@ -5,6 +5,7 @@ import {
 } from '@aws-sdk/client-bedrock-runtime';
 import { dumpBedrockResponse } from './bedrock-response-log';
 import { isValidChallenge } from './challenge-schema';
+import { checkCooperativeIntegrity } from './cooperative-integrity';
 import { difficultyInstruction } from './challenge-difficulty';
 import { languageInstruction, resolveLanguage } from './challenge-language';
 import type { Challenge, ChallengeLanguage, Difficulty } from './game-types';
@@ -80,11 +81,17 @@ WHAT MAKES A GOOD CHALLENGE (this is what matters):
 - The Helper's "knowledge" are facts about the system's domain that the Coder cannot deduce from the code they see. E.g. "The demo frontend always sends POST to /logout".
 - The correct option names the CAUSE of the bug (a diagnosis), not the literal fix.
 
+HOW TO SPLIT THE INFORMATION (this is the whole point — read it twice):
+- You are NOT writing "a bug and how to fix it". You are writing a SECRET split into two halves that NEED each other. Neither half alone can solve it.
+- The Coder's half is the SYMPTOM: the code and the error. The Helper's half is the THEORY: how the language/framework works in the abstract, plus domain facts.
+- The correct diagnosis must EMERGE only when the Coder describes the symptom out loud AND the Helper applies the theory. If the Helper could name the answer from their rules alone, you failed.
+
 FORBIDDEN (this breaks the game — we have seen it fail):
+- NEVER put the concrete solution symbol in "rules" or "knowledge": not the correct method/identifier name, not the literal route or HTTP verb that must be corrected, not any phrase that names the diagnosis. The Helper knows THEORY, never the specific symbol of THIS bug.
 - NEVER generate text-counting rules like "IF the word X appears N times -> ...". That is not theory, it is garbage.
 - NEVER use "N/A", "none", empty lists or placeholders in rules, knowledge or hint. If you have nothing useful to put there, the challenge is poorly designed: redo it.
 - NEVER repeat the Coder's code inside rules/knowledge. The Helper does not see the code.
-- NEVER put the literal answer in the rules.
+- NEVER put the literal answer (or the text of the correct option) in the rules or knowledge.
 
 EXAMPLE OF A PERFECT CHALLENGE (match THIS quality — one step shown):
 {
@@ -96,11 +103,11 @@ EXAMPLE OF A PERFECT CHALLENGE (match THIS quality — one step shown):
   "helper_view": {
     "rules": [
       "En Laravel, si una ruta apunta a un método que no existe en el controlador, se lanza un error 500 en runtime, no en el arranque.",
-      "El error 500 genérico casi nunca indica la ruta; hay que mirar si el método invocado existe."
+      "El 500 genérico no dice qué ruta falla: hay que preguntarle al Coder qué método invoca la ruta que revienta y confirmar si ese método existe."
     ],
     "knowledge": [
-      "En este proyecto, LoginController solo expone los métodos: login y logout.",
-      "El frontend de la demo está enviando POST a /login en este momento."
+      "En este proyecto, los controladores solo exponen los métodos declarados explícitamente; llamar a uno inexistente es un fallo común.",
+      "El frontend de la demo está golpeando la ruta de autenticación en este momento."
     ]
   },
   "options": [
@@ -132,7 +139,12 @@ STRUCTURE RULES:
 LANGUAGE OF THE OUTPUT (critical):
 - All player-facing text — title, story_context, options, rules, knowledge and hint — MUST be written in Spanish, exactly like the example above.
 - Only the "code" and "error" fields use the programming language requested in the user message.
-- The "difficulty" field in the JSON MUST exactly match the difficulty level requested in the user message (easy, medium, hard, or expert).`;
+- The "difficulty" field in the JSON MUST exactly match the difficulty level requested in the user message (easy, medium, hard, or expert).
+
+SELF-CHECK BEFORE YOU EMIT (mandatory, do this silently):
+- Simulate the conversation: the Helper asks about the symptom, the Coder describes the code/error, and the diagnosis emerges from crossing both.
+- If, reading ONLY the rules and knowledge, the Helper could already name the answer without the Coder's description — the challenge LEAKS. Discard it and rewrite the Helper's half as pure theory before emitting.
+- Do NOT output your reasoning. Return ONLY the JSON object of the challenge.`;
 
 /**
  * Generates a challenge using Bedrock's streaming API (`ConverseStreamCommand`).
@@ -215,8 +227,20 @@ export async function generateChallengeStreaming(
       return null;
     }
 
+    const integrity = checkCooperativeIntegrity(parsed);
+    if (!integrity.ok) {
+      console.error(
+        `[bedrock] streaming: response leaks the answer to the Helper (step ${integrity.step}: ${integrity.reason}), falling back`,
+      );
+      logBedrockResponse('streaming-cooperative-integrity-failed', buffer, {
+        challengeId: parsed.id,
+        step: integrity.step,
+      });
+      return null;
+    }
+
     logBedrockResponse('streaming-success', buffer, {
-      challengeId: (parsed as Challenge).id,
+      challengeId: parsed.id,
     });
     return parsed;
   } catch (error) {
@@ -284,7 +308,19 @@ export async function generateChallenge(
       return null;
     }
 
-    logBedrockResponse('success', rawText, { challengeId: (parsed as Challenge).id });
+    const integrity = checkCooperativeIntegrity(parsed);
+    if (!integrity.ok) {
+      console.error(
+        `[bedrock] response leaks the answer to the Helper (step ${integrity.step}: ${integrity.reason}), falling back`,
+      );
+      logBedrockResponse('cooperative-integrity-failed', rawText, {
+        challengeId: parsed.id,
+        step: integrity.step,
+      });
+      return null;
+    }
+
+    logBedrockResponse('success', rawText, { challengeId: parsed.id });
     return parsed;
   } catch (error) {
     const isAbort = error instanceof Error && (error.name === 'AbortError' || error.message?.includes('aborted'));

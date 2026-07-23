@@ -1,5 +1,6 @@
 import { MAX_LIVES } from '@/src/lib/constants';
 import type {
+  Challenge,
   ChallengeStep,
   ClientQuestion,
   ClientQuestionCategory,
@@ -70,6 +71,18 @@ export function makeStep(overrides: Partial<ChallengeStep> = {}): ChallengeStep 
     success_state: {
       code_patch: 'echo "fixed";',
     },
+    ...overrides,
+  };
+}
+
+export function makeChallenge(overrides: Partial<Challenge> = {}): Challenge {
+  return {
+    id: 'lvl_test_001',
+    title: 'Desafío de prueba',
+    difficulty: 'easy',
+    story_context: 'Una demo en vivo se rompe en producción.',
+    time_limit: 180,
+    steps: [makeStep()],
     ...overrides,
   };
 }

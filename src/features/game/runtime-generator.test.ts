@@ -84,6 +84,35 @@ function challengeJson(difficulty: Difficulty) {
 
 const VALID_CHALLENGE_JSON = challengeJson('medium');
 
+// Structurally valid, but a Helper rule contains the correct option verbatim —
+// the hint IS the answer. hasCooperativeIntegrity must reject it, so the
+// generator returns null and the caller falls back to a curated challenge.
+const LEAKY_CHALLENGE_JSON = JSON.stringify({
+  id: 'lvl_leak_001',
+  title: 'Filtrado',
+  difficulty: 'medium',
+  story_context: 'Demo en vivo',
+  time_limit: 180,
+  steps: [
+    {
+      step: 1,
+      coder_view: { code: 'echo 1;', error: '500' },
+      helper_view: {
+        rules: ['El método index no existe en el controlador'],
+        knowledge: ['Contexto de dominio irrelevante'],
+      },
+      options: [
+        'El método index no existe en el controlador',
+        'b',
+        'c',
+        'd',
+      ],
+      correct_answer: 0,
+      success_state: { code_patch: 'echo 2;' },
+    },
+  ],
+});
+
 afterEach(() => {
   vi.clearAllMocks();
   lastConverseInput = undefined;
@@ -117,6 +146,11 @@ describe('generateChallenge', () => {
 
   it('returns null when the JSON is valid but not a valid challenge', async () => {
     sendMock.mockResolvedValue(bedrockReply(JSON.stringify({ id: 'x', steps: [] })));
+    expect(await generateChallenge()).toBeNull();
+  });
+
+  it('returns null when the challenge is valid but leaks the answer to the Helper → caller falls back', async () => {
+    sendMock.mockResolvedValue(bedrockReply(LEAKY_CHALLENGE_JSON));
     expect(await generateChallenge()).toBeNull();
   });
 
@@ -187,6 +221,12 @@ describe('generateChallengeStreaming', () => {
     for (let i = 1; i < deltas.length; i++) {
       expect(deltas[i].length).toBeGreaterThan(deltas[i - 1].length);
     }
+  });
+
+  it('returns null when the streamed challenge leaks the answer to the Helper → caller falls back', async () => {
+    sendMock.mockResolvedValue(streamingReply([LEAKY_CHALLENGE_JSON]));
+    const result = await generateChallengeStreaming('random', () => {});
+    expect(result).toBeNull();
   });
 
   it('strips markdown fences before parsing the accumulated buffer', async () => {
