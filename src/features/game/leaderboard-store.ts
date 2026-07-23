@@ -85,13 +85,6 @@ export async function rankOf(store: LeaderboardStore, member: string): Promise<n
   return reverse === null ? 0 : reverse + 1;
 }
 
-// Rank for a raw team name (encapsulates buildMember). Returns 0 when the team
-// is not in the leaderboard. Used to re-derive an already-registered team's
-// position on a reload.
-export async function rankOfTeam(store: LeaderboardStore, teamName: string): Promise<number> {
-  return rankOf(store, buildMember(teamName));
-}
-
 // ---------------------------------------------------------------------------
 // In-memory implementation — the dev fallback, used when getRedis() is null.
 // A plain array kept sorted on read; fine for a single-process dev / test run.
