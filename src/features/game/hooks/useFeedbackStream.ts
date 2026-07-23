@@ -83,6 +83,12 @@ export function useFeedbackStream(
     return () => {
       es.close();
       esRef.current = null;
+      // Reset so a re-run of this effect (React StrictMode double-mount in dev,
+      // or a real remount) can reopen the stream. Without this, openedRef stays
+      // true after the first cleanup and the guard above blocks every reopen —
+      // the panel then hangs on "Escribiendo…" forever because the EventSource
+      // was closed on unmount and never recreated.
+      openedRef.current = false;
     };
   }, [sessionId, active]);
 
