@@ -131,6 +131,11 @@ export interface GameSession {
   /** Set once this session's score has been registered in the leaderboard, so a
    * client retry cannot register the same run twice. */
   leaderboardRegistered?: boolean;
+  /** Cached mentor feedback for this finished run. A run is immutable once over,
+   * so the analysis is generated once and replayed on retries/refreshes instead
+   * of triggering another billable Bedrock stream. Absent → not generated yet;
+   * empty string → generation was attempted and failed (fall back, don't retry). */
+  feedbackText?: string;
   /** Failures per challenge language, accumulated during the run. Feeds the run
    * summary's "language you failed most". Absent → no failures yet. */
   failuresByLanguage?: Partial<Record<ChallengeLanguage, number>>;

@@ -1,322 +1,505 @@
 # Keep Coding and Nobody Is Fired
 
-Cooperative debugging game built for hackathon demos. Two developers must fix production bugs under time pressure during a live client presentation — neither player can win alone.
+> Un simulador cooperativo de debugging en producción. Dos desarrolladores.
+> Un incidente encadenado. Un cliente que mira desde el otro lado del monitor.
+> Ninguno de los dos puede resolverlo solo.
 
-Also known internally as **Debug Simulator — Bomb Code: Production Failure**.
-
----
-
-## What is this?
-
-A two-player web game that simulates a production crisis. One player is the **Coder** (at the keyboard) and the other is the **Helper** (with the debugging manual). Together they diagnose and fix chained bugs before the timer runs out. Challenges span eight languages (PHP/Laravel, SQL, TypeScript, JavaScript, Python, Go, Java, Ruby) and are generated at runtime by AWS Bedrock, with a curated JSON catalog as fallback.
-
-The Coder sees runtime symptoms: broken code, error messages, and multiple-choice diagnoses. The Helper sees a static guide with rules and domain knowledge for the entire challenge. The solution emerges from **verbal coordination**, not from a single screen with all the answers.
+**Demo en vivo:** [`hackaton.dvloper.com.co`](https://hackaton.dvloper.com.co)
+**Hackathon:** Códigofacilito × Kiro (2026)
+**Equipo:** [@MoisesCorcho](https://github.com/MoisesCorcho) · [@devluismanuel](https://github.com/devluismanuel)
 
 ---
 
-## Objective
+## En 30 segundos
 
-Fix all steps of a multi-stage bug chain within the time limit (default: 180 seconds).
+Dos desarrolladores entran en la misma sala. Uno se sienta al teclado (el **Coder**) y ve un error 500 en producción mientras un cliente ficticio mira la demo desde el otro lado. El otro (el **Helper**) ve la teoría del framework y contexto del dominio, pero no ve el código roto. Tienen un reloj corriendo, tres vidas cada uno, y una IA generando el próximo bug en vivo — token por token — en pantalla.
 
-- **Win:** complete every step before the timer hits zero.
-- **Lose:** timer reaches zero before the last step is resolved.
+Lo único que los saca del pozo es hablar entre ellos. Si el Helper dicta la respuesta sin oír el síntoma, el juego pierde su sentido; si el Coder responde sin escuchar la teoría, se queda sin vidas en dos rondas. La partida sube de dificultad ronda a ronda, con encuentros de "jefe final" cada 10 rondas y auditorías sorpresa que castigan cualquier ruido de comunicación.
 
-Wrong answers cost **10 seconds** from the global timer. Boss pressure messages rotate during play to keep tension high.
+Al terminar, un **mentor IA** analiza la partida en vivo y les dice qué hicieron bien, qué no, y en qué enfocarse para la próxima. El puntaje entra a un ranking global compartido en tiempo real.
 
----
-
-## How it works
-
-### Roles
-
-| Role | Route | Sees | Does |
-|------|-------|------|------|
-| **Coder** | `/coder` | Code, error, 4 diagnosis options, timer | Selects answers, drives the timer |
-| **Helper** | `/helper` | Full static debugging guide (all exercises), timer, progress | Guides the Coder verbally — cannot submit answers |
-
-### Game flow
-
-1. Coder opens `/coder` → server creates a session and assigns a random challenge.
-2. Coder shares the **room code** (e.g. `X7K2`) with the Helper.
-3. Helper opens `/helper`, enters the room code, and receives the **complete guide** for that challenge.
-4. They talk: Helper asks what error appears; Coder reports it; Helper finds the matching section in the manual.
-5. Coder picks a diagnosis → server validates server-side.
-6. **Correct:** code updates, next step loads (or victory screen).
-7. **Wrong:** −10s penalty, feedback message, retry on the same step.
-8. On victory or defeat, both players get a **Volver al inicio** button.
-
-### Helper guide model
-
-The Helper receives **all hints for all exercises at once** when joining a session. The guide does not change per step — the Helper must search the manual to find which section applies to the error the Coder reports right now.
-
-### Session sync
-
-- Sessions are persisted in **AWS ElastiCache (Redis)** via the `ioredis` client.
-  - When `REDIS_HOST` is configured, sessions are stored in Redis with a 1-hour TTL (`REDIS_PORT` defaults to `6379`).
-  - Falls back to an in-memory Map for local dev only. **In production a missing `REDIS_HOST` fails fast** — degrading to memory would break Coder/Helper sync across ECS tasks.
-- **History of the bug (fixed)**: sessions once lived only in a module-level `Map`. On serverless that meant different invocations had separate memory, producing intermittent **"Sesión no encontrada"** (404) on follow-up requests. The fix was durable shared storage (Redis); the production fail-fast guard prevents the bug from ever silently returning.
-- Coder polls the timer every second via `POST /api/game/tick`.
-- Helper syncs status every second via `GET /api/game/sync`.
-- Both share the same `sessionId` and `challengeId`.
+Todo esto corre sobre **AWS Bedrock (Claude Haiku 4.5)** para generación e IA, **ElastiCache Valkey 8** para estado compartido, **ECS Fargate + ALB + HTTPS** para el runtime, y **Kiro IDE** para el proceso de desarrollo (specs, steering, agent hooks).
 
 ---
 
-## Why this design?
+## El problema que resuelve
 
-### Cooperation is mandatory
+**Los desarrolladores no practican debugging bajo presión.** No practican comunicación técnica bajo estrés. No practican coordinar en tiempo real con otra persona para diagnosticar un incidente. Sin embargo, es exactamente lo que tienen que hacer el día que producción se cae con clientes mirando.
 
-The golden rule: **no single player can solve everything alone.**
+Este juego convierte esa habilidad en una mecánica entrenable, medible y divertida:
 
-- The Coder sees symptoms but not domain rules (e.g. which methods exist on a controller, which folder a class belongs to).
-- The Helper sees theory but not the live error message or diagnosis options.
-- Ambiguous errors (`500 Internal Server Error`) force conversation; specific errors only become solvable when the code block is dense enough that the Helper's context is required.
+| Contexto | Uso concreto |
+|---|---|
+| **Educación** | Bootcamps y universidades pueden usarlo para enseñar debugging colaborativo sin necesidad de un incidente real. |
+| **Onboarding** | Un dev nuevo y su mentor juegan una ronda: el nuevo aprende a describir síntomas; el mentor aprende a guiar sin dictar. |
+| **Team building** | Retros que no son otra reunión más. Presión real, riesgo cero, feedback IA al final. |
+| **Assessment técnico** | Evalúa comunicación técnica y razonamiento bajo tiempo, no solo sintaxis. |
 
-### One problem, dynamic evolution
-
-Each challenge is not a quiz of isolated questions. It is **one incident** that evolves: each fix reveals the next bug. Steps chain through `code_patch` → next `coder_view`.
-
-### JSON over database (MVP)
-
-Challenges are static JSON files. For a hackathon demo with few levels, this avoids ORM setup, migrations, and deployment config. The game engine loads challenges through a single service — swapping to a database later only changes the data source.
-
-### Server-side validation
-
-`correct_answer` never leaves the server. The client sends only an `answerIndex`. This keeps the game fair and allows role-filtered API responses.
+El diseño está inspirado en *Keep Talking and Nobody Explodes* (información obligatoriamente partida entre dos jugadores) trasladado a un dominio real: **el debugging de código de producción**.
 
 ---
 
-## Architecture
+## Cómo se juega
 
-Layered, feature-based structure optimized for fast iteration and testable game logic.
+### Dos roles asimétricos
 
+| Rol | Ruta | Qué ve | Qué hace |
+|---|---|---|---|
+| **Coder** | `/coder` | Código roto, error, 4 opciones de diagnóstico, timer, 3 vidas propias, racha, ronda, ranking al final | Diagnostica, responde, avanza el reloj |
+| **Helper** | `/helper` | Guía completa (reglas del lenguaje + conocimiento de dominio), timer, progreso del Coder, 3 vidas propias, consultas del cliente en modal | Guía verbalmente, atiende consultas del cliente que aparecen en su pantalla |
+
+### La regla de oro (información partida)
+
+> **Ninguno gana solo.**
+
+El Coder ve los síntomas (código, error, opciones) pero **no** las reglas de dominio. El Helper ve la teoría abstracta y contexto (rutas del sistema, convenciones del framework) pero **no** el código ni el error. La respuesta correcta emerge cuando el Coder describe el síntoma y el Helper cruza la teoría — no antes.
+
+Esta regla no depende de la buena fe: un **validador determinista** (`cooperative-integrity.ts`) rechaza cualquier challenge donde el Helper podría dictar la solución sin que el Coder hable. Si Bedrock alguna vez genera un challenge que filtra la respuesta en las pistas del Helper, el sistema lo descarta y usa el catálogo curado como fallback.
+
+### Consultas del cliente (presión externa)
+
+Durante la partida, el **cliente ficticio** interrumpe al Helper con preguntas técnicas en un modal obligatorio (cada ~40 segundos, hasta 6 por partida). El Helper debe responder:
+
+- **Correcto:** +5 segundos al timer, el cliente queda tranquilo por ahora.
+- **Incorrecto:** −10 segundos, −1 vida del Helper, el modal se mantiene hasta acertar o llegar a game over.
+
+El Coder no puede ayudar (no ve el modal). Es tensión pura sobre el rol menos protagónico.
+
+### El fin de la partida
+
+- **Reloj a 0** → derrota por `timeout`.
+- **Coder sin vidas** → derrota por `coder_lives`.
+- **Helper sin vidas** → derrota por `helper_lives`.
+- **Uno abandona** → partida terminada.
+
+Al terminar (en modo infinito), ambos jugadores ven:
+
+1. **Resumen de la partida** — rondas alcanzadas, puntaje con combos, tiempo sobrevivido, mejor racha, lenguaje con más fallos, dificultad máxima.
+2. **Análisis del mentor IA** — Bedrock escribe en vivo un análisis mentor-style: qué salió bien, patrón de fallos, un consejo accionable.
+3. **Top 10 global** — ranking en tiempo real. El Coder registra el nombre del equipo; ambos ven su posición.
+4. **Tarjeta compartible** — PNG descargable con el puntaje del equipo para las redes.
+
+---
+
+## Sistemas en juego
+
+Ocho sistemas integrados que interactúan durante una partida:
+
+### 1. Modo infinito con reloj acumulativo
+
+Rondas encadenadas hasta perder. El reloj no reinicia por ronda: sube cuando aciertas (+60s por ronda, +120s por jefe), baja cuando fallas (−10s), y define uno de los tres game overs. Base inicial: **240 segundos**.
+
+### 2. Dificultad adaptativa por ronda
+
+La IA escala el nivel del bug de forma automática:
+
+| Rondas | Dificultad | Perfil |
+|---|---|---|
+| 1–3 | Easy | Bug evidente, distractores obvios |
+| 4–7 | Medium | Bug plausible, distractores creíbles |
+| 8–12 | Hard | Bug sutil, distractores muy creíbles |
+| 13+ | Expert | Varios bugs sutiles encadenados dentro del challenge |
+
+Esto se inyecta en el prompt de Bedrock; el fallback curado mantiene la sensación aunque la IA falle.
+
+### 3. Sistema de vidas dual
+
+**3 vidas por rol, independientes.** El Coder pierde vida por diagnóstico incorrecto; el Helper por consulta del cliente errada. Un rol a 0 vidas termina la partida para ambos. Cada error también cuesta 10 segundos, así que el juego termina por lo que llegue primero.
+
+### 4. Combos con multiplicadores
+
+Aciertos consecutivos suben el multiplicador de puntaje:
+
+| Racha | Multiplicador |
+|---|---|
+| 3–4 | ×1.5 |
+| 5–6 | ×2 |
+| 7+ | ×3 |
+
+Un error rompe la racha y baja el multiplicador a ×1. `bestStreak` se persiste para el resumen. El puntaje final es `endlessScore = (playedRounds × 1000 + segundos) + comboScore`.
+
+### 5. Encuentros con el jefe
+
+Cada **10 rondas**, aparece un **jefe final**: challenge de **4–6 pasos** con memoria entre pasos (una decisión anterior condiciona la respuesta correcta de un paso posterior). No es más difícil, es de otro formato: sostener el contexto de la conversación cross-step. El bono es +120s y +2000 puntos.
+
+Entre rondas normales, dos eventos sorpresa aleatorios (20% de probabilidad):
+
+- **Auditoría sorpresa** — el bono de tiempo baja a la mitad.
+- **El jefe está mirando** — los errores del Coder cuestan el doble.
+
+### 6. Preguntas del cliente
+
+Modal obligatorio para el Helper (`~40s` de cooldown, `~45%` probabilidad de spawn, máx. 6 por partida). Cuatro categorías: arquitectura, programación, SQL, patrones de diseño. Reglas descritas arriba.
+
+### 7. Mentor IA post-partida (streaming SSE)
+
+Al game over del modo infinito, un panel dedicado abre una conexión SSE a `/api/game/feedback-stream`. Bedrock genera en vivo, token por token, un análisis mentor-style en español neutro de 120–220 palabras: qué hicieron bien, patrón de fallo, un consejo accionable. Hay botón "Copiar análisis" al terminar.
+
+### 8. Leaderboard global (Valkey sorted sets)
+
+Al game over, el Coder registra el nombre del equipo. Servidor **deriva el puntaje** del estado persistido (no del cliente — anti-fraude) y hace `ZADD` en un `sorted set` de Valkey. Lectura del top 10 con `ZREVRANGE`. La posición se calcula con `ZREVRANK`, incluso si el equipo cae fuera del top 10 visible. Idempotencia por sesión: un retry no infla el ranking.
+
+---
+
+## Cómo lo construimos
+
+### Arquitectura AWS
+
+```mermaid
+graph TB
+  Player[Jugador Web]
+  ALB[AWS ALB<br/>HTTPS 443 · TLS 1.3]
+  ECS[ECS Fargate<br/>Next.js runtime]
+  Valkey[(ElastiCache<br/>Valkey 8.0)]
+  Bedrock[Bedrock<br/>Claude Haiku 4.5]
+  Guardrails[Bedrock<br/>Guardrails]
+  CW[CloudWatch<br/>Metrics + Dashboard]
+  GH[GitHub Actions]
+  IAM[IAM + OIDC]
+  ECR[ECR]
+
+  Player --> ALB
+  ALB --> ECS
+  ECS -->|sesiones · leaderboard · rate limit| Valkey
+  ECS -->|ConverseStream| Bedrock
+  Bedrock -.filtra.-> Guardrails
+  ECS -.metrics + logs.-> CW
+  GH -->|assume role| IAM
+  IAM --> ECR
+  IAM --> ECS
+
+  classDef aws fill:#232f3e,stroke:#f59e0b,stroke-width:2px,color:#fafafa
+  class ALB,ECS,Valkey,Bedrock,Guardrails,CW,IAM,ECR aws
 ```
-┌─────────────────────────────────────────────────────────┐
-│  UI Layer          app/, src/components/                │
-│  CoderScreen, HelperScreen, GameTimer, ManualPanel      │
-└─────────────────────┬───────────────────────────────────┘
-                      │ fetch
-┌─────────────────────▼───────────────────────────────────┐
-│  Action Layer      app/api/game/*                         │
-│  start, state, guide, sync, answer, tick                  │
-└─────────────────────┬───────────────────────────────────┘
-                      │ calls
-┌─────────────────────▼───────────────────────────────────┐
-│  Game Logic        src/features/game/                   │
-│  game-engine.ts (pure), game-service.ts (sessions)      │
-└─────────────────────┬───────────────────────────────────┘
-                      │ reads
-┌─────────────────────▼───────────────────────────────────┐
-│  Data Layer        src/data/challenges/*.json           │
-└─────────────────────────────────────────────────────────┘
-```
 
-### Request flow (answer submission)
+**Todos los servicios AWS que corren en producción:**
 
-```
-Coder selects option
-  → POST /api/game/answer { sessionId, answerIndex }
-    → game-service loads session + challenge
-      → game-engine.resolveStep(step, answerIndex)
-        → correct: advance step or victory
-        → wrong: penalty −10s
-    → sanitized response (no correct_answer)
-  → UI feedback + updated Coder view
-```
+| Servicio | Uso concreto |
+|---|---|
+| **Bedrock** (Claude Haiku 4.5) | Generación de challenges (`ConverseStream`), análisis mentor post-partida, streaming visible al jugador |
+| **Bedrock Guardrails** | Filtro de contenido inapropiado sobre los prompts (`ApplyGuardrail`) |
+| **ECS Fargate** | Runtime del app (256 CPU / 512 MB), deploy con circuit breaker + auto-rollback |
+| **ALB + ACM** | HTTPS con TLS 1.3, redirect 80→443, health checks |
+| **ElastiCache Valkey 8** | Sesiones (`SETEX` con TTL 1h), leaderboard (`ZADD`/`ZREVRANGE`), rate limit (`INCR`/`EXPIRE`) |
+| **ECR** | Registry de la imagen `amd64` |
+| **CloudWatch** | Dashboard `keep-coding-game` con métricas de Bedrock (invocaciones, latencia, tokens), ALB y Fargate, más **estimación de costo en USD** |
+| **IAM + OIDC** | CI/CD sin API keys — GitHub Actions asume rol vía OIDC |
+| **Route 53 + Hostinger DNS** | `hackaton.dvloper.com.co` con validación ACM |
 
-### Key engine functions
+**Todo escrito en Terraform** — `infra/main.tf`, `infra/elasticache.tf`, `infra/guardrail.tf`, `infra/https.tf`, `infra/observability.tf`, `infra/oidc.tf`.
 
-| Function | Responsibility |
-|----------|----------------|
-| `resolveStep` | Validate answer index against step |
-| `submitAnswer` | Apply result, advance step or penalty |
-| `tickTimer` | Decrement global timer |
-| `getCoderStepView` | Role-filtered Coder payload |
-| `buildHelperGuide` | Aggregate all `helper_view` sections into static guide |
+**CI/CD:** push a `main` dispara `.github/workflows/deploy.yml` → pnpm install + lint + test → build amd64 → push ECR → `ecs update-service --force-new-deployment` (~1min 30s). Un test rojo o un lint warning aborta el deploy.
+
+### Cómo usamos Kiro
+
+Kiro IDE fue el motor del proceso de desarrollo, no solo un editor. Concretamente:
+
+- **`.kiro/specs/`** — 17 features especificadas antes de implementar: requirements → design → tasks. El proceso Kiro forzó pensar cada mecánica (endless mode, combos, boss encounters, cooperative-prompt-integrity, leaderboard, game-results, mentor IA) antes de escribir código. Los tasks.md se actualizan al día para reflejar el estado real.
+- **`.kiro/steering/`** — 3 archivos que se cargan en cada sesión (`product.md`, `tech.md`, `structure.md`). Aseguran que cualquier iteración con Kiro tenga contexto correcto: reglas del proyecto (cero `any`, sin `as`, español neutro), stack pinneado (Node 22, pnpm 9.15.0, Next 16.2.9, React 19.2.4), y arquitectura layered feature-based.
+- **Agent Hooks** — hooks locales (`.kiro/hooks/`) que corren tests, lint y verificaciones al guardar/commitear archivos críticos.
+- **Trabajo colaborativo con Kiro** — la mayoría de las features fueron producidas en pares humano + Kiro (specs y decisiones arquitectónicas humanas, implementación asistida). El repo muestra el patrón: PRs pequeños encadenados, commits por unidad de trabajo, tests que nacen con el código.
+
+Ver `KIRO-INVENTORY.md` en la raíz para un inventario completo de cómo se usó Kiro en el proyecto.
+
+### Decisiones de diseño clave
+
+- **Lógica pura vs. I/O separadas por diseño.** `src/features/game/game-engine.ts` es 100% función pura: recibe estado, devuelve estado, sin Bedrock, sin Redis, sin red. Toda la I/O vive en `game-service.ts` y `runtime-generator.ts`. Esto hace que el motor sea trivial de testear — 379 tests, todos ejecutan en <1 segundo.
+- **Fallback curado como red de seguridad de la demo.** Si Bedrock falla, timeout, o devuelve un challenge inválido, el sistema cae al catálogo JSON (`src/data/challenges/`) sin que el jugador se entere. Cuatro challenges curados: `login-chaos`, `laravel-routes`, `catalog-controller`, y un `boss-deploy-cascade` para las rondas de jefe. **El loop nunca se rompe en la demo.**
+- **`correct_answer` nunca sale al cliente.** El cliente manda solo un `answerIndex`; el servidor valida contra el estado persistido. Anti-cheat estructural, no una defensa periférica.
+- **Tokens opacos por rol y por sesión.** Coder y Helper reciben tokens generados con `randomBytes(32)`; toda mutación (answer, tick, abandon, client-question) valida el token con comparación timing-safe. IDOR estructural en cero.
+- **Rate limit fixed-window fail-open.** Cualquier endpoint que llame a Bedrock (`/api/game/generate-stream`, `/api/game/feedback-stream`) pasa por `rate-limit.ts` con `INCR`/`EXPIRE`. Si Valkey cae, el rate limit falla abierto (el juego no se rompe por rate-limit) pero la tasa se sigue midiendo.
 
 ---
 
-## Technologies
+## Prueba la demo en vivo
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| [Next.js](https://nextjs.org/) | 16.2 | App Router, API routes, SSR |
-| [React](https://react.dev/) | 19.2 | UI components |
-| [TypeScript](https://www.typescriptlang.org/) | 5.x | Types, strict mode |
-| [Tailwind CSS](https://tailwindcss.com/) | 4.x | Styling |
-| [ESLint](https://eslint.org/) | 9.x | Linting (eslint-config-next) |
+**[hackaton.dvloper.com.co](https://hackaton.dvloper.com.co)**
 
-Sessions use AWS ElastiCache (Redis) via `ioredis` when configured. Challenges are static JSON, optionally regenerated with AWS Bedrock at runtime.
+1. Abre el link en dos pestañas (o dos dispositivos en la misma red).
+2. Pestaña 1 → **Soy Coder** → aparecerá un código de sala (ej. `X7K2`).
+3. Pestaña 2 → **Soy Helper** → ingresa el mismo código.
+4. Coordínense en voz alta.
+5. Si Bedrock está generando en vivo, verán al challenge escribirse token por token en tiempo real.
+
+Recomendado: probar con audio abierto entre las dos personas — es cooperativo por diseño y aburre jugarlo en silencio.
 
 ---
 
-## Setup
+## Stack técnico
 
-### Prerequisites
+| Capa | Tecnología | Versión | Rol |
+|---|---|---|---|
+| Runtime | Node.js | 22 (LTS) | Servidor Next |
+| Framework | Next.js | 16.2.9 | App Router, API routes, SSR, `next/og` |
+| UI | React | 19.2.4 | Server + Client Components |
+| Lenguaje | TypeScript | 5.x (strict) | Cero `any`, sin `as` casts |
+| Estilos | Tailwind CSS | 4 (`@tailwindcss/postcss`) | Utility-first |
+| Tests | Vitest | 4.x | 379 tests, <1s |
+| Linter | ESLint | 9.x (`--max-warnings 0`) | CI aborta con cualquier warning |
+| Package manager | pnpm | 9.15.0 (via `corepack`) | Determinista, pinneado |
+| Redis client | ioredis | 5.x | Valkey 8.0 (ElastiCache) |
+| AWS SDK | `@aws-sdk/client-bedrock-runtime` | 3.x | Streaming + guardrails |
+| IaC | Terraform | AWS provider ≥ 6.23 | Todo el infra |
+| Hooks | Husky | 9.x | Pre-push guardrail |
 
-- Node.js 22+ (see `.nvmrc`)
-- pnpm 9 (`corepack enable` picks up the pinned `pnpm@9.15.0`)
+> **Nota (AGENTS.md):** Next 16 tiene breaking changes vs training data reciente (`params` y `searchParams` async en pages/metadata; `Image` de metadata async). Los route handlers siguen sincrónicos. Ver `node_modules/next/dist/docs/` para la API vigente.
 
-### Install and run
+---
+
+## Correr en local
+
+### Prerrequisitos
+
+- Node.js 22+ (ver `.nvmrc`)
+- pnpm 9.15.0 (activar con `corepack enable`)
+- (Opcional) Docker + `compose.yaml` para levantar Valkey local
+- (Opcional) Credenciales AWS con acceso a Bedrock para generación real; si no, se usan los challenges curados
+
+### Setup
 
 ```bash
-# Clone the repository
-git clone <repo-url>
-cd hackathon
+git clone git@github.com:dvloper-mnt/Keep-Coding-and-Nobody-Is-Fired.git
+cd Keep-Coding-and-Nobody-Is-Fired
 
-# Install dependencies
+corepack enable
 pnpm install
 
-# Development server
+# Opcional — Valkey local (host 6380 → contenedor 6379 para no chocar con otros Redis)
+docker compose up -d
+
+# Copiar env de ejemplo y ajustar
+cp .env.local.example .env.local
+
+# Dev server
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Abre [http://localhost:3000](http://localhost:3000).
 
-### Other scripts
+### Scripts
 
 ```bash
-pnpm build          # Production build
-pnpm start          # Start production server
-pnpm lint           # Run ESLint
-pnpm test           # Run the Vitest suite
-pnpm test:coverage  # Coverage report
+pnpm dev                 # servidor de desarrollo
+pnpm build               # build de producción
+pnpm start               # servidor de producción
+pnpm lint                # ESLint (CI: --max-warnings 0)
+pnpm test                # Vitest (vitest run)
+pnpm test:watch          # Vitest en watch
+pnpm test:coverage       # cobertura
+pnpm generate:questions  # genera challenges con Bedrock (tsx script)
 ```
 
-### How to play locally
+### Variables de entorno
 
-1. Open two browser tabs (or two devices on the same network).
-2. Tab 1 → **Soy Coder** → note the room code.
-3. Tab 2 → **Soy Helper** → enter the room code.
-4. Communicate out loud and fix the bugs before time runs out.
+```dotenv
+# Bedrock (opcional en dev — sin esto, usa catálogo curado)
+AWS_REGION=us-east-1
+BEDROCK_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0
+BEDROCK_GUARDRAIL_ID=            # opcional
+BEDROCK_GUARDRAIL_VERSION=       # opcional
+BEDROCK_RUNTIME_TIMEOUT_MS=20000
+
+# Valkey / Redis (opcional en dev — sin esto, fallback a memoria)
+REDIS_HOST=localhost
+REDIS_PORT=6380  # con compose.yaml local
+
+# Ajuste de balance opcional
+ENDLESS_BASE_SECONDS=240
+ENDLESS_REWARD_SECONDS=60
+```
+
+En producción, `REDIS_HOST` es **obligatorio** — si falta, el servicio lanza fail-fast en vez de degradarse silenciosamente a memoria (bug histórico ya resuelto).
 
 ---
 
-## Project structure
+## Estructura del proyecto
 
 ```
 app/
-  page.tsx                 # Landing — role selection
-  coder/page.tsx           # Coder screen
-  helper/page.tsx          # Helper screen
+  page.tsx                       # Landing (typewriter hero, selector de rol)
+  coder/page.tsx                 # Pantalla del Coder
+  helper/page.tsx                # Pantalla del Helper
   api/game/
-    start/route.ts         # POST — create session
-    state/route.ts         # GET — Coder view
-    guide/route.ts         # GET — Helper static guide
-    sync/route.ts          # GET — Helper timer/progress
-    answer/route.ts        # POST — submit diagnosis
-    tick/route.ts          # POST — timer decrement
+    start/route.ts               # POST — crea sala
+    state/route.ts               # GET — vista del Coder
+    guide/route.ts               # GET — guía del Helper
+    sync/route.ts                # GET — timer/progreso del Helper
+    answer/route.ts              # POST — enviar diagnóstico
+    tick/route.ts                # POST — decrementar timer
+    client-question/route.ts     # POST — responder consulta del cliente
+    generate-stream/route.ts     # GET — SSE del challenge en vivo
+    feedback-stream/route.ts     # GET — SSE del mentor IA
+    leaderboard/route.ts         # GET/POST — top 10 y registro
+    share-card/route.tsx         # GET — OG image (next/og)
+    abandon/route.ts             # POST — abandonar sesión
 
 src/
   features/game/
-    game-engine.ts         # Pure game logic
-    game-service.ts        # Sessions, challenge loading
-    game-types.ts          # TypeScript interfaces
-  components/              # UI components
-  data/challenges/         # Challenge JSON files
-  lib/constants.ts         # PENALTY_SECONDS, BOSS_MESSAGES
+    game-engine.ts               # Lógica PURA
+    game-service.ts              # Sesiones, Valkey, transiciones de ronda
+    runtime-generator.ts         # Bedrock Converse + ConverseStream + guardrail
+    feedback-generator.ts        # Bedrock streaming del mentor IA
+    game-types.ts                # Interfaces TypeScript (fuente de verdad)
+    challenge-schema.ts          # Validación estructural del Challenge
+    cooperative-integrity.ts     # Anti-leak: rechaza challenges que filtran
+    boss-encounters.ts           # Lógica pura del jefe y eventos
+    challenge-difficulty.ts      # roundToDifficulty + difficultyInstruction
+    lives-engine.ts              # loseLife, normalizeSessionLives
+    leaderboard-score.ts         # sanitizeTeamName + scoreFromGameOver
+    leaderboard-store.ts         # ZADD/ZREVRANGE + fallback en memoria
+    run-summary.ts               # Resumen post-partida (puro)
+    share-score.ts               # URLs de share intent (X/LinkedIn/Facebook)
+    share-card-params.ts         # Parseo seguro de query params de la card
+    streaming-preview.ts         # Extrae title/story mientras Bedrock stream-ea
+    rate-limit.ts                # Fixed-window fail-open sobre Valkey
+    session-credentials.ts       # Tokens opacos con crypto.randomBytes
+    session-mutex.ts             # Lock por sesión para transiciones concurrentes
+    api/game-client.ts           # Cliente fetch tipado
+    hooks/                       # useCoderGame, useHelperGame, useChallengeStream,
+                                 # useFeedbackStream, useLeaderboardTop, ...
+    testing/fixtures.ts          # Fixtures tipadas (no duplicar mocks entre specs)
 
-.grok/skills/              # Agent skills (architecture, game rules)
+  components/                    # Uno por archivo, PascalCase
+    atoms/                       # LivesIndicator, GameTimer, CodePanel, ...
+    molecules/                   # ConfirmDialog, ExitButton, ShareScoreButtons, ...
+    organisms/                   # CoderBoard, HelperBoard, LeaderboardPanel,
+                                 # RunSummaryPanel, AiFeedbackPanel, BossOverlay, ...
+    containers/                  # CoderScreen, HelperScreen
+
+  data/
+    challenges/                  # login-chaos, laravel-routes, catalog-controller,
+                                 # boss-deploy-cascade (fallback curado)
+    client-questions/            # Pool estático de preguntas del cliente
+
+  lib/
+    constants.ts                 # Todas las constantes de balance del juego
+    defeat-messages.ts           # Copy por (rol × DefeatReason)
+    boss-position.ts             # Zonas seguras del BossOverlay
+    game-audio.ts                # Sonidos (correcto/error/tick)
+
+infra/                            # Terraform — un archivo por dominio
+  main.tf                        # ECS + ALB + IAM policies + task def
+  network.tf                     # VPC, subnets, security groups
+  elasticache.tf                 # Valkey 8.0
+  https.tf                       # ACM + listener 443
+  guardrail.tf                   # Bedrock Guardrail
+  observability.tf               # CloudWatch dashboard (costos + latencia + tokens)
+  oidc.tf                        # GitHub Actions OIDC trust
+  dev-access.tf                  # Usuario IAM least-privilege para Bedrock local
+
+.kiro/
+  specs/                         # 17 features especificadas (req → design → tasks)
+  steering/                      # product, tech, structure (siempre en contexto)
+
+.github/workflows/deploy.yml     # CI/CD amd64 → ECR → ECS force-new-deployment
+compose.yaml                     # Valkey 8-alpine local
+Dockerfile                       # Node 22 + pnpm + build amd64
 ```
 
-Import alias: `@/*` maps to the project root (`tsconfig.json`).
+Import alias: `@/*` mapea a la raíz del proyecto.
 
 ---
 
-## API reference
+## API
 
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/game/start` | Coder | Create session, returns `sessionId` + `coderToken`. The room starts `idle`; the first view arrives via the first `state` poll |
-| `GET` | `/api/game/state?sessionId=` | Coder | Current step view (code, error, options) |
-| `GET` | `/api/game/guide?sessionId=` | Helper | Full static guide for the session challenge |
-| `GET` | `/api/game/sync?sessionId=` | Helper | Timer, step progress, game status |
-| `POST` | `/api/game/answer` | Coder | Submit `{ sessionId, answerIndex, token }` |
-| `POST` | `/api/game/tick` | Coder | Decrement timer by 1 second (token-authorized) |
-| `POST` | `/api/game/abandon` | Both | Leave the room as the given role |
-| `POST` | `/api/game/client-question` | Helper | Answer a client trivia question |
-| `GET` | `/api/game/generate-stream?sessionId=` | Coder | SSE stream of the challenge being generated (decorative preview) |
-| `GET` / `POST` | `/api/game/leaderboard` | Coder | GET top scores · POST registers a game-over score (server-derived) |
+Todos los endpoints están bajo `app/api/game/*`. Los que mutan estado piden token opaco por rol; los de lectura no.
+
+| Método | Endpoint | Rol | Auth | Descripción |
+|---|---|---|---|---|
+| `POST` | `/api/game/start` | Coder | — | Crea sala. Devuelve `{ sessionId, coderToken }` |
+| `GET` | `/api/game/state?sessionId=` | Coder | — | Vista del paso actual (code, error, opciones filtradas) |
+| `GET` | `/api/game/guide?sessionId=&token=` | Helper | Helper token | Guía completa del challenge (primera visita mintea `helperToken`) |
+| `GET` | `/api/game/sync?sessionId=` | Helper | — | Timer, ronda, progreso, consultas del cliente activas |
+| `POST` | `/api/game/answer` | Coder | Coder token | Diagnóstico. `{ sessionId, answerIndex, token }` |
+| `POST` | `/api/game/tick` | Coder | Coder token | Decrementa 1s (rate-limited al segundo) |
+| `POST` | `/api/game/client-question` | Helper | Helper token | Responder al cliente (afecta timer + vidas) |
+| `POST` | `/api/game/abandon` | Ambos | Token del rol | Salir de la sala |
+| `GET` | `/api/game/generate-stream?sessionId=` | Coder | — | SSE del challenge generado por Bedrock (decorativo — el board se arma solo del challenge validado) |
+| `GET` | `/api/game/feedback-stream?sessionId=&token=` | Coder | Coder token | SSE del mentor IA (solo al game over endless) |
+| `GET` | `/api/game/leaderboard` | Público | — | Top 10 global |
+| `POST` | `/api/game/leaderboard` | Coder | Coder token | Registra puntaje (score derivado server-side, idempotente por sesión) |
+| `GET` | `/api/game/share-card?score=&rounds=&team=` | Público | — | PNG 1200×630 del equipo (via `next/og`) |
 
 ---
 
-## Challenges
+## Balance del juego
 
-Challenges live in `src/data/challenges/` as JSON files (the curated fallback catalog). Each file defines a multi-step debugging scenario; at runtime, most challenges are generated by AWS Bedrock across the eight supported languages.
+Todos los valores viven en `src/lib/constants.ts` para ajuste rápido sin tocar la lógica.
 
-### Schema (simplified)
+| Constante | Valor | Nota |
+|---|---|---|
+| `ENDLESS_BASE_SECONDS` | 240s | Reloj inicial en modo infinito |
+| `ENDLESS_REWARD_SECONDS` | +60s | Bono por ronda completada |
+| `BOSS_REWARD_SECONDS` | +120s | Bono por vencer al jefe |
+| `BOSS_SCORE_BONUS` | +2000 pts | Bono de puntaje del jefe |
+| `BOSS_EVENT_CHANCE` | 20% | Probabilidad de evento sorpresa en ronda normal |
+| `PENALTY_SECONDS` | −10s | Penalización por respuesta incorrecta |
+| `MAX_LIVES` | 3 | Vidas por rol (independientes) |
+| `COMBO_BASE_PER_HIT` | 100 pts | Base del bono de combo, antes de multiplicar |
+| `STREAK_TIERS` | ×1.5 / ×2 / ×3 | Multiplicadores a rachas 3+/5+/7+ |
 
-```json
-{
-  "id": "lvl_login_001",
-  "title": "Login en caos",
-  "difficulty": "medium",
-  "story_context": "Live demo scenario description",
-  "time_limit": 180,
-  "steps": [
-    {
-      "step": 1,
-      "coder_view": { "code": "...", "error": "..." },
-      "helper_view": { "rules": [], "knowledge": [] },
-      "options": ["...", "...", "...", "..."],
-      "correct_answer": 0,
-      "success_state": { "code_patch": "..." },
-      "hint": "..."
-    }
-  ]
-}
+Modo clásico (partida única): reloj fijo de 180s, sin combos, sin escalado.
+
+---
+
+## Tests y calidad
+
+- **Vitest** ejecuta 379 tests en <1 segundo (lógica pura).
+- **TypeScript strict** con **cero `any`** y sin `as` casts (salvo `as const` y `satisfies`).
+- **ESLint** en CI corre con `--max-warnings 0` — cualquier warning aborta el deploy.
+- **Husky pre-push** guardrail contra pushes sin verificar.
+- **Pattern testing**: fixtures tipadas en `src/features/game/testing/fixtures.ts` — no se duplican mocks entre specs.
+- **TDD estricto** para lógica pura: test primero, después implementación. Aplicado a: game-engine, lives-engine, boss-encounters, combos, cooperative-integrity, leaderboard-score, run-summary, share-card-params.
+
+```bash
+pnpm test              # 379 tests
+pnpm exec tsc --noEmit # 0 errores
+pnpm lint              # 0 warnings
 ```
 
-### Included challenge
+---
 
-- **Login en caos** (`login-chaos.json`) — 3-step auth route chain: wrong method → wrong namespace → syntax error.
+## Roadmap
 
-### Adding a new challenge
+Todo el roadmap original de la auditoría (endless mode, adaptive difficulty, combos, boss, leaderboard, game-results, mentor IA) está **en producción**. Lo que sigue:
 
-1. Create `src/data/challenges/my-challenge.json` following the schema.
-2. Register it in `src/data/challenges/index.ts`.
-3. Validate with the cooperation checklist: Coder cannot solve alone, Helper cannot solve alone.
-
-Reference files: `LEVEL_GUIDE.json`, `GAME_INFORMATION.md`.
+- **Multi-idioma en UI** — hoy la UI es en español; el juego internamente ya soporta 8 lenguajes de programación para los challenges.
+- **Modo tutorial** — una primera partida guiada que enseñe la asimetría cooperativa.
+- **WebSockets** — hoy usamos polling + SSE (funciona bien y es simple); WS sería la evolución natural para latencia mínima.
+- **Persistencia de historial de partidas por equipo** — hoy el leaderboard es global anónimo.
+- **API pública** — abrir un endpoint para que otras plataformas educativas embeban partidas.
 
 ---
 
-## Game constants
+## Créditos
 
-| Constant | Value |
-|----------|-------|
-| Default time limit | 180s (per challenge) |
-| Wrong answer penalty | −10s |
-| Boss message rotation | every 15s |
+Un proyecto de **Dvloper** para el hackathon de **Códigofacilito × Kiro (2026)**.
 
-Defined in `src/lib/constants.ts`.
+<table>
+  <tr>
+    <td align="center" width="180">
+      <a href="https://github.com/MoisesCorcho">
+        <img src="https://github.com/MoisesCorcho.png" width="100" height="100" style="border-radius:50%;" alt="MoisesCorcho"/><br/>
+        <sub><b>Moisés Corcho</b></sub><br/>
+      </a>
+      <sub>@MoisesCorcho</sub>
+    </td>
+    <td align="center" width="180">
+      <a href="https://github.com/devluismanuel">
+        <img src="https://github.com/devluismanuel.png" width="100" height="100" style="border-radius:50%;" alt="devluismanuel"/><br/>
+        <sub><b>Luis Manuel Zuñiga</b></sub><br/>
+      </a>
+      <sub>@devluismanuel</sub>
+    </td>
+  </tr>
+</table>
 
----
+**Herramientas de referencia:** [Kiro IDE](https://kiro.dev/) como driver del proceso (specs, steering, hooks); [AWS Bedrock](https://aws.amazon.com/bedrock/) (Claude Haiku 4.5) para toda la IA en el juego; [Códigofacilito](https://codigofacilito.com/) por organizar el hackathon.
 
-## Agent skills
-
-Development conventions and game rules are documented in `.grok/skills/`:
-
-| Skill | Purpose |
-|-------|---------|
-| `architecture` | Layers, folder structure, coding standards |
-| `game-mechanics` | Loop, validation, timer, feedback |
-| `game-roles` | Coder/Helper asymmetry, cooperation rule |
-| `game-challenges` | JSON schema, content authoring |
-
----
-
-## Roadmap (post-MVP)
-
-- Database-backed challenges
-- WebSocket sync between devices
-- Additional levels (SQL, Eloquent, middleware)
-- Hint token system for Helper
-- Leaderboard / scoring
-
-Session persistence uses AWS ElastiCache (Redis) (see "Session sync" section).
+**Inspiración de diseño:** *Keep Talking and Nobody Explodes* (Steel Crate Games) por la mecánica de información obligatoriamente partida.
 
 ---
 
-## License
+## Licencia
 
-Private — hackathon project.
+Proyecto privado del hackathon. Todos los derechos reservados a los autores mientras la organización no defina lo contrario.
