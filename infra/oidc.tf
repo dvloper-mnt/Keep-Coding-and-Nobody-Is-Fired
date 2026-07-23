@@ -9,6 +9,12 @@ resource "aws_iam_openid_connect_provider" "github" {
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
 
+locals {
+  # Prefer an explicit sub pattern; otherwise derive the classic form from
+  # github_repo so that variable stays the primary repo-scoping knob.
+  github_oidc_sub = var.github_oidc_sub_pattern != "" ? var.github_oidc_sub_pattern : "repo:${var.github_repo}:*"
+}
+
 data "aws_iam_policy_document" "github_actions_assume" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
@@ -28,7 +34,7 @@ data "aws_iam_policy_document" "github_actions_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [var.github_oidc_sub_pattern]
+      values   = [local.github_oidc_sub]
     }
   }
 }
