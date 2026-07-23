@@ -3,6 +3,8 @@
 import { ErrorBanner } from '@/src/components/atoms/ErrorBanner';
 import { GameTimer } from '@/src/components/atoms/GameTimer';
 import { LivesIndicator } from '@/src/components/atoms/LivesIndicator';
+import { PixelDefeatScene } from '@/src/components/atoms/PixelDefeatScene';
+import { PixelVictoryScene } from '@/src/components/atoms/PixelVictoryScene';
 import { ExitButton } from '@/src/components/molecules/ExitButton';
 import { formatDuration, GameResultBanner } from '@/src/components/molecules/GameResultBanner';
 import { RoundModifierBanner } from '@/src/components/molecules/RoundModifierBanner';
@@ -118,6 +120,7 @@ export function CoderBoard({
             message="El sistema volvió a la vida antes de que el jefe entrara al Slack. El cliente cerró la demo satisfecho."
             messageClassName="mt-2 text-green-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg bg-green-600 px-6 py-2 font-semibold text-white transition-colors hover:bg-green-500"
+            scene={<PixelVictoryScene />}
           />
         )}
 
@@ -133,6 +136,7 @@ export function CoderBoard({
             }
             messageClassName="mt-2 text-red-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-zinc-600 px-6 py-2 font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
+            scene={<PixelDefeatScene />}
           />
         )}
 

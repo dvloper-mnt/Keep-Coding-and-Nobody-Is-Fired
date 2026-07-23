@@ -123,3 +123,61 @@ body {
     clip-path: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Pixel-art scene animations (PixelVictoryScene / PixelDefeatScene).
+   Small, looping motion so the result screens have visible life in the demo
+   video. All animations honor prefers-reduced-motion (see below).
+   --------------------------------------------------------------------------- */
+
+@keyframes pixel-cheer {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes pixel-sparkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes pixel-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
+@keyframes pixel-rain {
+  0% { transform: translateY(-4px); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateY(8px); opacity: 0; }
+}
+
+.pixel-cheer {
+  animation: pixel-cheer 0.9s ease-in-out infinite;
+}
+
+.pixel-cheer--offset {
+  animation-delay: 0.45s;
+}
+
+.pixel-sparkle {
+  animation: pixel-sparkle 1.4s ease-in-out infinite;
+}
+
+.pixel-shake {
+  animation: pixel-shake 0.35s ease-in-out infinite;
+}
+
+.pixel-rain {
+  animation: pixel-rain 1.2s ease-in infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-cheer,
+  .pixel-cheer--offset,
+  .pixel-sparkle,
+  .pixel-shake,
+  .pixel-rain {
+    animation: none;
+  }
+}
