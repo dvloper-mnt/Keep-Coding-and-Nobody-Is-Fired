@@ -28,14 +28,16 @@ variable "github_repo" {
   default     = "MoisesCorcho/Hackacthon"
 }
 
-# The dvloper-mnt org emits an OIDC subject with immutable numeric IDs
-# (repo:<org>@<orgId>/<repo>@<repoId>:ref:...), so the trust policy must match
-# that exact prefix rather than the classic repo:<org>/<repo> form. Confirmed via
+# Optional override for the OIDC sub StringLike pattern. Leave empty ("") to
+# derive the classic "repo:<github_repo>:*" form from github_repo — the default
+# path that works for most orgs. Set it only when the org emits a non-classic
+# subject, e.g. dvloper-mnt uses immutable numeric IDs
+# (repo:<org>@<orgId>/<repo>@<repoId>:ref:...). Confirmed via
 # GET /repos/.../actions/oidc/customization/sub (sub_claim_prefix).
 variable "github_oidc_sub_pattern" {
   type        = string
-  description = "StringLike pattern matched against the GitHub OIDC token sub claim."
-  default     = "repo:MoisesCorcho/Hackacthon:*"
+  description = "Override for the OIDC sub StringLike pattern. Empty derives it from github_repo."
+  default     = ""
 }
 
 variable "domain_name" {
