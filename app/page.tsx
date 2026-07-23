@@ -1,4 +1,9 @@
 import { StartGameButton } from '@/src/components/molecules/StartGameButton';
+import {
+  ENDLESS_BASE_SECONDS,
+  ENDLESS_REWARD_SECONDS,
+  PENALTY_SECONDS,
+} from '@/src/lib/constants';
 import Link from 'next/link';
 
 export default function Home() {
@@ -15,8 +20,11 @@ export default function Home() {
 
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
           {/* The caret lives INSIDE the clipped span, right after the text, so
-              it rides the typing edge instead of sitting still at the end. */}
-          <span className="animate-type-wipe inline">
+              it rides the typing edge instead of sitting still at the end. The
+              span must be inline-block (not inline) so clip-path applies to
+              the whole two-line bounding box; inline fragments split across the
+              <br /> and would leave the second line hidden by the initial clip. */}
+          <span className="animate-type-wipe inline-block">
             Keep Coding and
             <br />
             Nobody Is Fired
@@ -55,21 +63,25 @@ export default function Home() {
           </Link>
         </div>
 
+        {/* Stats reflect the DEFAULT mode (endless): the clock starts at
+            ENDLESS_BASE_SECONDS, rises by ENDLESS_REWARD_SECONDS per round
+            completed, and drops by PENALTY_SECONDS per wrong answer. Values
+            come from constants so the copy never drifts from the engine. */}
         <dl
           className="animate-incident-rise mt-8 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800 font-mono text-center"
           style={{ animationDelay: '240ms' }}
         >
           <div className="bg-[#0a0a0b] p-4">
-            <dt className="text-xs tracking-wider text-zinc-500 uppercase">Tiempo</dt>
-            <dd className="mt-1 text-2xl font-bold text-zinc-100">180s</dd>
+            <dt className="text-xs tracking-wider text-zinc-500 uppercase">Reloj</dt>
+            <dd className="mt-1 text-2xl font-bold text-zinc-100">{ENDLESS_BASE_SECONDS}s</dd>
+          </div>
+          <div className="bg-[#0a0a0b] p-4">
+            <dt className="text-xs tracking-wider text-zinc-500 uppercase">Acierto</dt>
+            <dd className="mt-1 text-2xl font-bold text-emerald-400">+{ENDLESS_REWARD_SECONDS}s</dd>
           </div>
           <div className="bg-[#0a0a0b] p-4">
             <dt className="text-xs tracking-wider text-zinc-500 uppercase">Error</dt>
-            <dd className="mt-1 text-2xl font-bold text-red-400">−10s</dd>
-          </div>
-          <div className="bg-[#0a0a0b] p-4">
-            <dt className="text-xs tracking-wider text-zinc-500 uppercase">Modo</dt>
-            <dd className="mt-1 text-2xl font-bold text-emerald-400">Co-op</dd>
+            <dd className="mt-1 text-2xl font-bold text-red-400">−{PENALTY_SECONDS}s</dd>
           </div>
         </dl>
 
@@ -77,8 +89,8 @@ export default function Home() {
           className="animate-incident-rise mt-6 font-mono text-xs text-zinc-400"
           style={{ animationDelay: '300ms' }}
         >
-          <span className="text-emerald-400">$</span> El Coder inicia la partida y comparte el
-          código de sala. El Helper entra con ese código.
+          <span className="text-emerald-400">$</span> El reloj sube al acertar y baja al fallar.
+          Sobreviven mientras haya segundos y vidas.
         </p>
       </div>
     </main>
