@@ -96,19 +96,25 @@ export function LeaderboardPanel({ sessionId }: LeaderboardPanelProps) {
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
-  // The player's global rank; may be outside the visible top 10.
-  playerRank: number;
+  // The player's global rank; undefined for a read-only view (e.g. the Helper
+  // spectating the same top 10). When absent → no highlight, no player-position
+  // label, no outside-top-10 message.
+  playerRank?: number;
 }
 
-// Standalone table — also usable on its own (e.g. a public leaderboard view).
+// Standalone table — also usable on its own (e.g. a public leaderboard view or
+// the Helper's spectator view at endless game over).
 export function LeaderboardTable({ entries, playerRank }: LeaderboardTableProps) {
-  const playerInTop = entries.some((e) => e.rank === playerRank);
+  const hasRank = playerRank !== undefined && playerRank > 0;
+  const playerInTop = hasRank && entries.some((e) => e.rank === playerRank);
 
   return (
     <div className="mt-6 rounded-lg border border-zinc-700 bg-zinc-900/60 p-6">
       <div className="flex items-baseline justify-between">
         <p className="text-lg font-semibold text-zinc-100">Ranking global</p>
-        <p className="text-sm text-amber-300">Tu posición: #{playerRank}</p>
+        {hasRank ? (
+          <p className="text-sm text-amber-300">Tu posición: #{playerRank}</p>
+        ) : null}
       </div>
 
       {entries.length === 0 ? (
@@ -126,7 +132,7 @@ export function LeaderboardTable({ entries, playerRank }: LeaderboardTableProps)
             </thead>
             <tbody>
               {entries.map((entry) => {
-                const isPlayer = entry.rank === playerRank;
+                const isPlayer = hasRank && entry.rank === playerRank;
                 return (
                   <tr
                     key={entry.rank}
@@ -151,7 +157,7 @@ export function LeaderboardTable({ entries, playerRank }: LeaderboardTableProps)
         </div>
       )}
 
-      {!playerInTop && playerRank > 0 ? (
+      {hasRank && !playerInTop ? (
         <p className="mt-3 text-sm text-zinc-400">
           Tu equipo quedó en la posición #{playerRank}, fuera del top 10.
         </p>
