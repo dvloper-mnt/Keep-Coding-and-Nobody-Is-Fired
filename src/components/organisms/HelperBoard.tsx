@@ -1,3 +1,5 @@
+'use client';
+
 import { GameTimer } from '@/src/components/atoms/GameTimer';
 import { LivesIndicator } from '@/src/components/atoms/LivesIndicator';
 import { ExitButton } from '@/src/components/molecules/ExitButton';
@@ -5,7 +7,10 @@ import { formatDuration, GameResultBanner } from '@/src/components/molecules/Gam
 import { ManualPanel } from '@/src/components/molecules/ManualPanel';
 import { BossOverlay } from '@/src/components/organisms/BossOverlay';
 import { ClientQuestionModal } from '@/src/components/organisms/ClientQuestionModal';
+import { LeaderboardTable } from '@/src/components/organisms/LeaderboardPanel';
+import { RunSummaryPanel } from '@/src/components/organisms/RunSummaryPanel';
 import type { GameStatus, HelperStaticGuide, HelperSyncView } from '@/src/features/game/game-types';
+import { useLeaderboardTop } from '@/src/features/game/hooks/useLeaderboardTop';
 import { getDefeatCopy } from '@/src/lib/defeat-messages';
 import { MAX_LIVES } from '@/src/lib/constants';
 
@@ -35,6 +40,11 @@ export function HelperBoard({
   onAbandoned,
 }: HelperBoardProps) {
   const defeatCopy = getDefeatCopy('helper', sync.defeatReason);
+  // At endless game over the Helper mirrors the Coder's results view: full run
+  // summary + read-only top 10. The Helper doesn't register (only the Coder
+  // holds the token) — they spectate the ranking the Coder just wrote to.
+  const isEndlessDefeat = sync.status === 'defeat' && sync.mode === 'endless';
+  const leaderboardState = useLeaderboardTop(isEndlessDefeat);
 
   return (
     <div className="min-h-screen bg-amber-950 text-amber-100">
@@ -111,6 +121,18 @@ export function HelperBoard({
             messageClassName="mt-2 text-red-300/70"
             homeButtonClassName="mt-4 inline-block rounded-lg border border-amber-600 px-6 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-900"
           />
+        )}
+
+        {isEndlessDefeat && sync.runSummary && <RunSummaryPanel summary={sync.runSummary} />}
+
+        {isEndlessDefeat && leaderboardState.phase === 'pending' && (
+          <p className="mt-6 text-center text-sm text-amber-200/60">Cargando ranking global…</p>
+        )}
+        {isEndlessDefeat && leaderboardState.phase === 'ready' && (
+          <LeaderboardTable entries={leaderboardState.entries} />
+        )}
+        {isEndlessDefeat && leaderboardState.phase === 'error' && (
+          <p className="mt-6 text-center text-sm text-red-400">{leaderboardState.message}</p>
         )}
 
         {sync.status === 'abandoned' && (
