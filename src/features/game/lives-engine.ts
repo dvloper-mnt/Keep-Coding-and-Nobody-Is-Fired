@@ -17,6 +17,9 @@ export function normalizeSessionLives(session: GameSession): GameSession {
     mode: session.mode ?? 'classic',
     round: session.round ?? 1,
     playedRounds: session.playedRounds ?? 0,
+    streak: session.streak ?? 0,
+    bestStreak: session.bestStreak ?? 0,
+    comboScore: session.comboScore ?? 0,
   };
 }
 

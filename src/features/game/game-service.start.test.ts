@@ -9,6 +9,9 @@ describe('startGame — mode selection', () => {
     expect(session?.mode).toBe('endless');
     expect(session?.round).toBe(1);
     expect(session?.playedRounds).toBe(0);
+    expect(session?.streak).toBe(0);
+    expect(session?.bestStreak).toBe(0);
+    expect(session?.comboScore).toBe(0);
   });
 
   it('creates a classic session when mode is classic', async () => {

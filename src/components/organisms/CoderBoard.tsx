@@ -44,6 +44,10 @@ export function CoderBoard({
 }: CoderBoardProps) {
   const [isCodeRevealing, setIsCodeRevealing] = useState(false);
   const defeatCopy = getDefeatCopy('coder', view.defeatReason);
+  const showCombo = view.status === 'playing' && view.multiplier > 1;
+  const comboLabel = Number.isInteger(view.multiplier)
+    ? String(view.multiplier)
+    : view.multiplier.toFixed(1);
 
   return (
     <div
@@ -69,6 +73,14 @@ export function CoderBoard({
               Sala: {sessionId}
             </p>
             <p className="text-xs text-zinc-600">Comparte este código con el Helper</p>
+            {showCombo && (
+              <p
+                className="mt-2 inline-flex items-center gap-1 rounded-full border border-orange-500/40 bg-orange-950/50 px-3 py-1 text-sm font-bold tracking-wide text-orange-300 shadow-[0_0_12px_rgba(249,115,22,0.25)] animate-pulse"
+                aria-live="polite"
+              >
+                Racha ×{comboLabel} 🔥
+              </p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">

@@ -118,6 +118,12 @@ export interface GameSession {
   mode: GameMode;
   /** Transient: last step solved in endless mode; service loads the next challenge. */
   roundComplete?: boolean;
+  /** Consecutive correct step answers without an error in between. */
+  streak: number;
+  /** Longest streak reached during this session (survives streak breaks). */
+  bestStreak: number;
+  /** Accumulated combo bonus points (added to endlessScore at game over). */
+  comboScore: number;
 }
 
 export interface StepResult {
@@ -147,6 +153,9 @@ export interface CoderStepView {
   mode?: GameMode;
   playedRounds?: number;
   endlessScore?: number;
+  streak: number;
+  multiplier: number;
+  bestStreak?: number;
 }
 
 export interface HelperGuideSection {
@@ -196,6 +205,7 @@ export interface HelperSyncView {
   mode?: GameMode;
   playedRounds?: number;
   endlessScore?: number;
+  bestStreak?: number;
 }
 
 export interface ClientQuestionAnswerResponse {

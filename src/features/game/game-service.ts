@@ -16,13 +16,14 @@ import {
 import {
   abandonGame,
   applyNextRoundChallenge,
+  buildEndlessGameOverMeta,
   clearLastResult,
   createPendingSession,
-  endlessScore,
   gameDurationSeconds,
   getCoderStepView,
   getHelperSyncView,
   promoteToFirstRound,
+  streakMultiplier,
   submitAnswer,
   tickTimer,
 } from './game-engine';
@@ -174,6 +175,8 @@ function pendingCoderView(session: GameSession): CoderStepView {
     coderLives: session.coderLives,
     round: session.round,
     mode: session.mode,
+    streak: session.streak,
+    multiplier: streakMultiplier(session.streak),
   };
 }
 
@@ -314,10 +317,7 @@ function withEndMeta<T extends { status: string }>(view: T, session: GameSession
   const durationSeconds = gameDurationSeconds(session, Date.now());
   const endlessMeta =
     session.mode === 'endless' && session.status === 'defeat'
-      ? {
-          playedRounds: session.playedRounds,
-          endlessScore: endlessScore(session.playedRounds, durationSeconds),
-        }
+      ? buildEndlessGameOverMeta(session, durationSeconds)
       : {};
 
   if (session.status !== 'abandoned' && session.status !== 'victory' && session.status !== 'defeat') {
