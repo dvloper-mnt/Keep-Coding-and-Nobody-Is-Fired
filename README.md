@@ -21,6 +21,18 @@ _Pantalla de inicio: el incidente, los dos roles asimétricos (Coder / Helper) y
 | ![Vista del Coder — consola de producción con el error en vivo](docs/screenshots/02-coder.png) | ![Vista del Helper — manual de debugging con revelaciones que cuestan tiempo](docs/screenshots/03-helper.png) |
 | El **Coder** ve la consola de producción y el error, pero no la teoría. | El **Helper** ve el manual (reglas + conocimiento con costo de tiempo), pero no el código. Ambos comparten sala, reloj y vidas en tiempo real. |
 
+### Victoria
+
+![Victoria — crisis contenida, con el código parcheado](docs/screenshots/05-victory.png)
+
+_Los tres incidentes resueltos: el código queda parcheado y la demo termina bien._
+
+### Derrota, feedback del mentor IA y ranking global
+
+![Game over — resumen de la partida, análisis del mentor IA por Bedrock y leaderboard global](docs/screenshots/04-gameover-feedback.png)
+
+_Al perder: resumen de la partida, **análisis del mentor IA generado por AWS Bedrock** en vivo, y el ranking global compartido donde el equipo entra a competir._
+
 ---
 
 ## En 30 segundos
