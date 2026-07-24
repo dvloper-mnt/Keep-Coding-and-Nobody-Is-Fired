@@ -97,3 +97,11 @@ export const STREAK_TIERS = [
 
 export const BASE_MULTIPLIER = 1;
 export const COMBO_BASE_PER_HIT = 100;
+
+// Hero headline. Split into two lines because the landing types it out line by
+// line (HeroTitleTypewriter) and wraps at the same point visually. The full
+// string is derived here so the sr-only copy in the H1 can never drift from
+// what the typewriter renders — one source of truth for both.
+export const HERO_TITLE_LINE_1 = 'Keep Coding and';
+export const HERO_TITLE_LINE_2 = 'Nobody Is Fired';
+export const HERO_TITLE = `${HERO_TITLE_LINE_1} ${HERO_TITLE_LINE_2}`;

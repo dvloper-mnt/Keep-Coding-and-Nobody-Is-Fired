@@ -3,6 +3,7 @@ import { StartGameButton } from '@/src/components/molecules/StartGameButton';
 import {
   ENDLESS_BASE_SECONDS,
   ENDLESS_REWARD_SECONDS,
+  HERO_TITLE,
   PENALTY_SECONDS,
 } from '@/src/lib/constants';
 import Link from 'next/link';
@@ -22,7 +23,7 @@ export default function Home() {
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
           {/* Static full title for screen readers and search crawlers; the
               animated version below is aria-hidden and re-renders per char. */}
-          <span className="sr-only">Keep Coding and Nobody Is Fired</span>
+          <span className="sr-only">{HERO_TITLE}</span>
           <span aria-hidden="true">
             <HeroTitleTypewriter />
           </span>

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { HERO_TITLE_LINE_1, HERO_TITLE_LINE_2 } from '@/src/lib/constants';
+
 // ---------------------------------------------------------------------------
 // Types out the two hero lines character by character, with a caret that rides
 // the current typing position (line 1 first, then jumps to line 2 and stays
@@ -14,8 +16,8 @@ import { useEffect, useState } from 'react';
 // stays intact for assistive tech and search engines.
 // ---------------------------------------------------------------------------
 
-const LINE_1 = 'Keep Coding and';
-const LINE_2 = 'Nobody Is Fired';
+const LINE_1 = HERO_TITLE_LINE_1;
+const LINE_2 = HERO_TITLE_LINE_2;
 const TOTAL_CHARS = LINE_1.length + LINE_2.length;
 // ~60ms per character types the 30-char title in about 1.8s — matches the pace
 // of the old CSS wipe without feeling snappy.
@@ -32,9 +34,12 @@ export function HeroTitleTypewriter() {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (reduce) {
-      // Reveal the full title immediately for users with reduced motion. The
-      // async setTimeout satisfies React 19's no-sync-set-state-in-effect rule
-      // — same reason useLeaderboardTop only updates state from async paths.
+      // Reveal the full title immediately for users with reduced motion — no
+      // typing animation. The setCount runs inside a setTimeout(…, 0) rather
+      // than synchronously in the effect body to satisfy the ESLint rule
+      // react-hooks/set-state-in-effect, which flags synchronous setState in an
+      // effect as a cascading-render risk. Deferring it by a macrotask moves
+      // the update out of the effect's synchronous body.
       const id = setTimeout(() => setCount(TOTAL_CHARS), 0);
       return () => clearTimeout(id);
     }
