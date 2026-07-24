@@ -1,0 +1,10 @@
+# Code owners for this repo.
+# GitHub automatically requests a review from these owners on every pull
+# request that touches the matching paths. See:
+# https://docs.github.com/articles/about-code-owners
+#
+# `*` matches everything, so Moisés is requested as reviewer on all PRs.
+# (An owner cannot review their own PR — GitHub skips the request when the
+# PR author is the owner, so a PR Moisés opens won't ask him to review it.)
+
+* @MoisesCorcho
