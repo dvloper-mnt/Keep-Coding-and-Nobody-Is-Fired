@@ -1,0 +1,33 @@
+name: CI
+
+# Runs on every pull request targeting main (and on pushes to main as a
+# safety net). This is the gate branch protection requires before a PR can
+# merge: lint + the full test suite must pass first. The deploy workflow
+# still runs its own lint/test after merge, but this catches breakage BEFORE
+# it reaches main and triggers a production deploy.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Test
+        run: pnpm run test
