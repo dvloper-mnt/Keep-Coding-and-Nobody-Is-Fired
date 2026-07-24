@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - '.kiro/**'
       - '**.md'
+      - 'docs/**'
 
 permissions:
   id-token: write

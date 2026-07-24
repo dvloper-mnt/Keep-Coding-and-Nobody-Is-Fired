@@ -27,13 +27,13 @@
     "generate:questions": "tsx scripts/generate-questions.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1075.0",
     "ioredis": "^5.11.1",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.1075.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
