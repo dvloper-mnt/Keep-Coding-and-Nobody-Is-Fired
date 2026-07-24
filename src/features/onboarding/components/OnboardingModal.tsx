@@ -145,7 +145,7 @@ export function OnboardingModal({ hookState }: OnboardingModalProps) {
         </div>
 
         {/* Slide Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 max-h-[70vh] overflow-y-auto scrollbar-onboarding">
           <OnboardingSlide slide={slide} />
         </div>
 

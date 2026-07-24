@@ -204,3 +204,32 @@ body {
 .animate-backdrop-fade-in {
   animation: backdrop-fade-in 300ms ease-out forwards;
 }
+
+/* Custom scrollbar — premium dark theme */
+.scrollbar-onboarding {
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 transparent;
+}
+
+.scrollbar-onboarding::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-onboarding::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.scrollbar-onboarding::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 9999px;
+  transition: background 150ms ease;
+}
+
+.scrollbar-onboarding::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+.scrollbar-onboarding::-webkit-scrollbar-thumb:active {
+  background: #71717a;
+}
