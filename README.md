@@ -12,26 +12,12 @@
 
 ## Vistazo
 
-![Landing — el incidente en producción y los dos roles](docs/screenshots/01-landing.png)
+![Pantalla de inicio con el incidente en producción y los dos roles](docs/screenshots/01-landing.png)
 
 _Pantalla de inicio: el incidente, los dos roles asimétricos (Coder / Helper) y las reglas del reloj._
 
-| Coder | Helper |
-|---|---|
-| ![Vista del Coder — consola de producción con el error en vivo](docs/screenshots/02-coder.png) | ![Vista del Helper — manual de debugging con revelaciones que cuestan tiempo](docs/screenshots/03-helper.png) |
-| El **Coder** ve la consola de producción y el error, pero no la teoría. | El **Helper** ve el manual (reglas + conocimiento con costo de tiempo), pero no el código. Ambos comparten sala, reloj y vidas en tiempo real. |
-
-### Victoria
-
-![Victoria — crisis contenida, con el código parcheado](docs/screenshots/05-victory.png)
-
-_Los tres incidentes resueltos: el código queda parcheado y la demo termina bien._
-
-### Derrota, feedback del mentor IA y ranking global
-
-![Game over — resumen de la partida, análisis del mentor IA por Bedrock y leaderboard global](docs/screenshots/04-gameover-feedback.png)
-
-_Al perder: resumen de la partida, **análisis del mentor IA generado por AWS Bedrock** en vivo, y el ranking global compartido donde el equipo entra a competir._
+📸 **Recorrido visual completo** — sala en vivo, ambos roles, victoria, derrota y el mentor IA:
+→ [Galería en el repo (`docs/GALLERY.md`)](docs/GALLERY.md) · [Galería interactiva (página)](https://claude.ai/code/artifact/8abe786e-0e3d-4aa8-9c66-97e9864a3ee1)
 
 ---
 
