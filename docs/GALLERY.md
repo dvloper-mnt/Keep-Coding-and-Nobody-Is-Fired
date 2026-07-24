@@ -2,7 +2,7 @@
 
 Recorrido visual del juego, de la sala de incidentes en vivo hasta el veredicto del mentor IA. Todas las capturas son de la [demo en vivo](https://hackaton.dvloper.com.co).
 
-> ¿Prefieres verlo como página? Hay una [galería interactiva](https://claude.ai/code/artifact/8abe786e-0e3d-4aa8-9c66-97e9864a3ee1) con las capturas a tamaño completo.
+> ¿Prefieres verlo como página? Hay una [galería interactiva](https://dvloper-mnt.github.io/Keep-Coding-and-Nobody-Is-Fired/galeria/) con las capturas a tamaño completo.
 
 ---
 
