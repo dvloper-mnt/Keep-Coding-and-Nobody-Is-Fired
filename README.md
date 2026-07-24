@@ -21,6 +21,15 @@ _Pantalla de inicio: el incidente, los dos roles asimétricos (Coder / Helper) y
 
 ---
 
+## ¿Por qué es diferente?
+
+- **La cooperación es imposible de trampear — y no por confianza, sino por código.** Un validador determinista ([`cooperative-integrity.ts`](src/features/game/cooperative-integrity.ts)) compara el diff entre el código roto y su parche, y **rechaza cualquier reto donde el Helper podría dictar la respuesta** sin que el Coder describa el síntoma. La información partida no es una regla de honor: está garantizada por el motor.
+- **IA generativa con red de seguridad.** AWS Bedrock (Claude Haiku 4.5) crea cada incidente en vivo, token por token. Si el modelo falla, se pasa de tiempo o filtra la respuesta, el sistema cae a un catálogo curado — **el juego nunca se rompe por culpa de la IA.**
+- **Un género que no existe en edu-tech.** *Keep Talking and Nobody Explodes* aplicado al debugging de producción real: entrena una habilidad que nadie practica —comunicación técnica bajo presión— y la vuelve medible (puntaje, rachas, ranking) y con feedback de un mentor IA al final.
+- **Corre en AWS de verdad, no en un mock.** ECS Fargate + ALB + ElastiCache Valkey, desplegado por CI con OIDC. La demo que ves es la arquitectura real.
+
+---
+
 ## En 30 segundos
 
 Dos desarrolladores entran en la misma sala. Uno se sienta al teclado (el **Coder**) y ve un error 500 en producción mientras un cliente ficticio mira la demo desde el otro lado. El otro (el **Helper**) ve la teoría del framework y contexto del dominio, pero no ve el código roto. Tienen un reloj corriendo, tres vidas cada uno, y una IA generando el próximo bug en vivo — token por token — en pantalla.

@@ -6,15 +6,6 @@
   "engines": {
     "node": ">=22"
   },
-  "pnpm": {
-    "overrides": {
-      "postcss@<8.5.10": ">=8.5.10",
-      "brace-expansion@>=1.0.0 <1.1.16": "1.1.16",
-      "brace-expansion@>=2.0.0 <5.0.7": "5.0.8",
-      "js-yaml@<4.3.0": ">=4.3.0",
-      "sharp@<0.35.0": ">=0.35.0"
-    }
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -27,25 +18,34 @@
     "generate:questions": "tsx scripts/generate-questions.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.1075.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1094.0",
     "ioredis": "^5.11.1",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "husky": "^9.1.7",
-    "tailwindcss": "^4",
-    "tsx": "^4.22.4",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.1",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss@<8.5.10": ">=8.5.10",
+      "brace-expansion@>=1.0.0 <1.1.16": "1.1.16",
+      "brace-expansion@>=2.0.0 <5.0.7": "5.0.8",
+      "js-yaml@<4.3.0": ">=4.3.0",
+      "sharp@<0.35.0": ">=0.35.0"
+    }
   }
 }
