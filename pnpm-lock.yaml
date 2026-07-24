@@ -15,6 +15,9 @@ importers:
 
   .:
     dependencies:
+      '@aws-sdk/client-bedrock-runtime':
+        specifier: ^3.1075.0
+        version: 3.1075.0
       ioredis:
         specifier: ^5.11.1
         version: 5.11.1
@@ -28,9 +31,6 @@ importers:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
     devDependencies:
-      '@aws-sdk/client-bedrock-runtime':
-        specifier: ^3.1075.0
-        version: 3.1075.0
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.3.1
