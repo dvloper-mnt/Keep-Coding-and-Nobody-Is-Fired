@@ -29,23 +29,23 @@ describe('useOnboarding — logic contracts', () => {
     expect(shouldShow).toBe(false);
   });
 
-  it('canSkip is false for slide 1', () => {
-    const currentSlide = 1;
-    expect(currentSlide > 1).toBe(false);
+  it('canSkip is false for slides 1 and 2 (context + golden rule are mandatory)', () => {
+    expect(1 > 2).toBe(false);
+    expect(2 > 2).toBe(false);
   });
 
-  it('canSkip is true for slides 2-5', () => {
-    for (let slide = 2; slide <= TOTAL_SLIDES; slide++) {
-      expect(slide > 1).toBe(true);
+  it('canSkip is true for slides 3-6', () => {
+    for (let slide = 3; slide <= TOTAL_SLIDES; slide++) {
+      expect(slide > 2).toBe(true);
     }
   });
 
   it('nextSlide clamps at TOTAL_SLIDES', () => {
-    let currentSlide = 4;
+    let currentSlide = 5;
     currentSlide = Math.min(currentSlide + 1, TOTAL_SLIDES);
-    expect(currentSlide).toBe(5);
+    expect(currentSlide).toBe(6);
     currentSlide = Math.min(currentSlide + 1, TOTAL_SLIDES);
-    expect(currentSlide).toBe(5);
+    expect(currentSlide).toBe(6);
   });
 
   it('prevSlide clamps at 1', () => {

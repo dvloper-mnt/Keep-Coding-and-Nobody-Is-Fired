@@ -3,6 +3,40 @@ import type { OnboardingSlide } from '../onboarding-types';
 export const ONBOARDING_SLIDES: readonly OnboardingSlide[] = [
   {
     id: 1,
+    heading: '🚨 Producción se cayó en plena demo',
+    content: (
+      <div className="space-y-4">
+        <p className="text-zinc-300">
+          Dos desarrolladores están mostrando su sistema a un cliente cuando{' '}
+          <span className="font-bold text-red-400">un bug en producción explota en vivo</span>.
+          El cliente mira desde el otro lado del monitor. No hay tiempo para excusas.
+        </p>
+        <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4">
+          <p className="text-sm text-zinc-300">
+            <span className="font-semibold text-zinc-100">Keep Coding and Nobody Is Fired</span> es
+            un simulador cooperativo de debugging bajo presión. Inspirado en{' '}
+            <span className="italic text-zinc-400">Keep Talking and Nobody Explodes</span>, pero
+            aplicado al mundo real del desarrollo de software.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm text-zinc-400">
+            🎯 <span className="text-zinc-300">Tu objetivo:</span> arreglar la cadena de bugs
+            antes de que el reloj llegue a cero… mientras el cliente interrumpe con preguntas y la
+            presión sube ronda a ronda.
+          </p>
+          <p className="text-sm text-zinc-400">
+            👥 <span className="text-zinc-300">El truco:</span> la información está partida entre
+            dos personas. Ninguno puede resolverlo solo.
+          </p>
+        </div>
+      </div>
+    ),
+    screenshot: '/onboarding/landing_page.png',
+    screenshotAlt: 'Pantalla de inicio del juego mostrando el incidente en producción',
+  },
+  {
+    id: 2,
     heading: '💥 Regla de Oro',
     content: (
       <div className="space-y-4">
@@ -21,14 +55,15 @@ export const ONBOARDING_SLIDES: readonly OnboardingSlide[] = [
             <span className="text-red-500">NO</span> ve el código, el error ni las opciones.
           </p>
         </div>
-        <p className="text-sm italic text-zinc-400">
-          ⚠️ Esta regla es fundamental — continúa para poder saltar el resto del tutorial.
+        <p className="mt-2 text-sm italic text-zinc-400 border-l-2 border-red-500/50 pl-3">
+          ⚠️ Esta regla no depende de la buena fe — un validador automático rechaza cualquier
+          challenge donde un solo jugador podría resolver sin el otro.
         </p>
       </div>
     ),
   },
   {
-    id: 2,
+    id: 3,
     heading: '👨‍💻 Rol: Coder',
     content: (
       <div className="space-y-4">
@@ -65,7 +100,7 @@ export const ONBOARDING_SLIDES: readonly OnboardingSlide[] = [
     screenshotAlt: 'Pantalla del Coder mostrando código roto y opciones de diagnóstico',
   },
   {
-    id: 3,
+    id: 4,
     heading: '🗣️ Rol: Helper',
     content: (
       <div className="space-y-4">
@@ -110,7 +145,7 @@ export const ONBOARDING_SLIDES: readonly OnboardingSlide[] = [
     screenshotAlt: 'Pantalla del Helper mostrando guía y consulta del cliente',
   },
   {
-    id: 4,
+    id: 5,
     heading: '⏱️ Coordinación',
     content: (
       <div className="space-y-4">
@@ -138,7 +173,7 @@ export const ONBOARDING_SLIDES: readonly OnboardingSlide[] = [
     ),
   },
   {
-    id: 5,
+    id: 6,
     heading: '🎯 Victoria y Derrota',
     content: (
       <div className="space-y-4">

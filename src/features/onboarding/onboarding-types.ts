@@ -28,5 +28,5 @@ export interface UseOnboardingReturn extends OnboardingHookState {
 }
 
 export const ONBOARDING_VERSION = 1 as const;
-export const TOTAL_SLIDES = 5 as const;
+export const TOTAL_SLIDES = 6 as const;
 export const ONBOARDING_STORAGE_KEY = 'kcnif:onboarding-v1' as const;

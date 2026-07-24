@@ -116,7 +116,7 @@ export function OnboardingModal({ hookState }: OnboardingModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/80"
+        className="absolute inset-0 bg-black/80 animate-backdrop-fade-in"
         onClick={canSkip ? closeTutorial : undefined}
         aria-hidden="true"
       />

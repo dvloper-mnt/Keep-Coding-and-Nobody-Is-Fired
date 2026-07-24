@@ -31,7 +31,7 @@ export function useOnboarding(): UseOnboardingReturn {
     setCurrentSlide((prev) => Math.max(prev - 1, 1));
   }, []);
 
-  const canSkip = currentSlide > 1;
+  const canSkip = currentSlide > 2;
 
   return {
     isOpen,
