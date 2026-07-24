@@ -10,6 +10,19 @@
 
 ---
 
+## Vistazo
+
+![Landing — el incidente en producción y los dos roles](docs/screenshots/01-landing.png)
+
+_Pantalla de inicio: el incidente, los dos roles asimétricos (Coder / Helper) y las reglas del reloj._
+
+| Coder | Helper |
+|---|---|
+| ![Vista del Coder — consola de producción con el error en vivo](docs/screenshots/02-coder.png) | ![Vista del Helper — manual de debugging con revelaciones que cuestan tiempo](docs/screenshots/03-helper.png) |
+| El **Coder** ve la consola de producción y el error, pero no la teoría. | El **Helper** ve el manual (reglas + conocimiento con costo de tiempo), pero no el código. Ambos comparten sala, reloj y vidas en tiempo real. |
+
+---
+
 ## En 30 segundos
 
 Dos desarrolladores entran en la misma sala. Uno se sienta al teclado (el **Coder**) y ve un error 500 en producción mientras un cliente ficticio mira la demo desde el otro lado. El otro (el **Helper**) ve la teoría del framework y contexto del dominio, pero no ve el código roto. Tienen un reloj corriendo, tres vidas cada uno, y una IA generando el próximo bug en vivo — token por token — en pantalla.
@@ -195,13 +208,13 @@ graph TB
 Kiro IDE fue el motor del proceso de desarrollo, no solo un editor. Concretamente:
 
 - **`.kiro/specs/`** — 17 features especificadas antes de implementar: requirements → design → tasks. El proceso Kiro forzó pensar cada mecánica (endless mode, combos, boss encounters, cooperative-prompt-integrity, leaderboard, game-results, mentor IA) antes de escribir código. Los tasks.md se actualizan al día para reflejar el estado real.
-- **`.kiro/steering/`** — 3 archivos que se cargan en cada sesión (`product.md`, `tech.md`, `structure.md`). Aseguran que cualquier iteración con Kiro tenga contexto correcto: reglas del proyecto (cero `any`, sin `as`, español neutro), stack pinneado (Node 22, pnpm 9.15.0, Next 16.2.9, React 19.2.4), y arquitectura layered feature-based.
+- **`.kiro/steering/`** — 3 archivos que se cargan en cada sesión (`product.md`, `tech.md`, `structure.md`). Aseguran que cualquier iteración con Kiro tenga contexto correcto: reglas del proyecto (cero `any`, sin `as`, español neutro), stack pinneado (Node 22, pnpm 9.15.0, Next 16.2.11, React 19.2.4), y arquitectura layered feature-based.
 - **Agent Hooks** — hooks locales (`.kiro/hooks/`) que corren tests, lint y verificaciones al guardar/commitear archivos críticos.
 - **Trabajo colaborativo con Kiro** — la mayoría de las features fueron producidas en pares humano + Kiro (specs y decisiones arquitectónicas humanas, implementación asistida). El repo muestra el patrón: PRs pequeños encadenados, commits por unidad de trabajo, tests que nacen con el código.
 
 ### Decisiones de diseño clave
 
-- **Lógica pura vs. I/O separadas por diseño.** `src/features/game/game-engine.ts` es 100% función pura: recibe estado, devuelve estado, sin Bedrock, sin Redis, sin red. Toda la I/O vive en `game-service.ts` y `runtime-generator.ts`. Esto hace que el motor sea trivial de testear — 379 tests, todos ejecutan en <1 segundo.
+- **Lógica pura vs. I/O separadas por diseño.** `src/features/game/game-engine.ts` es 100% función pura: recibe estado, devuelve estado, sin Bedrock, sin Redis, sin red. Toda la I/O vive en `game-service.ts` y `runtime-generator.ts`. Esto hace que el motor sea trivial de testear — 410 tests, todos ejecutan en <1 segundo.
 - **Fallback curado como red de seguridad de la demo.** Si Bedrock falla, timeout, o devuelve un challenge inválido, el sistema cae al catálogo JSON (`src/data/challenges/`) sin que el jugador se entere. Cuatro challenges curados: `login-chaos`, `laravel-routes`, `catalog-controller`, y un `boss-deploy-cascade` para las rondas de jefe. **El loop nunca se rompe en la demo.**
 - **`correct_answer` nunca sale al cliente.** El cliente manda solo un `answerIndex`; el servidor valida contra el estado persistido. Anti-cheat estructural, no una defensa periférica.
 - **Tokens opacos por rol y por sesión.** Coder y Helper reciben tokens generados con `randomBytes(32)`; toda mutación (answer, tick, abandon, client-question) valida el token con comparación timing-safe. IDOR estructural en cero.
@@ -228,11 +241,11 @@ Recomendado: probar con audio abierto entre las dos personas — es cooperativo 
 | Capa | Tecnología | Versión | Rol |
 |---|---|---|---|
 | Runtime | Node.js | 22 (LTS) | Servidor Next |
-| Framework | Next.js | 16.2.9 | App Router, API routes, SSR, `next/og` |
+| Framework | Next.js | 16.2.11 | App Router, API routes, SSR, `next/og` |
 | UI | React | 19.2.4 | Server + Client Components |
 | Lenguaje | TypeScript | 5.x (strict) | Cero `any`, sin `as` casts |
 | Estilos | Tailwind CSS | 4 (`@tailwindcss/postcss`) | Utility-first |
-| Tests | Vitest | 4.x | 379 tests, <1s |
+| Tests | Vitest | 4.x | 410 tests, <1s |
 | Linter | ESLint | 9.x (`--max-warnings 0`) | CI aborta con cualquier warning |
 | Package manager | pnpm | 9.15.0 (via `corepack`) | Determinista, pinneado |
 | Redis client | ioredis | 5.x | Valkey 8.0 (ElastiCache) |
@@ -442,7 +455,7 @@ Modo clásico (partida única): reloj fijo de 180s, sin combos, sin escalado.
 
 ## Tests y calidad
 
-- **Vitest** ejecuta 379 tests en <1 segundo (lógica pura).
+- **Vitest** ejecuta 410 tests en <1 segundo (lógica pura).
 - **TypeScript strict** con **cero `any`** y sin `as` casts (salvo `as const` y `satisfies`).
 - **ESLint** en CI corre con `--max-warnings 0` — cualquier warning aborta el deploy.
 - **Husky pre-push** guardrail contra pushes sin verificar.
@@ -450,7 +463,7 @@ Modo clásico (partida única): reloj fijo de 180s, sin combos, sin escalado.
 - **TDD estricto** para lógica pura: test primero, después implementación. Aplicado a: game-engine, lives-engine, boss-encounters, combos, cooperative-integrity, leaderboard-score, run-summary, share-card-params.
 
 ```bash
-pnpm test              # 379 tests
+pnpm test              # 410 tests
 pnpm exec tsc --noEmit # 0 errores
 pnpm lint              # 0 warnings
 ```
