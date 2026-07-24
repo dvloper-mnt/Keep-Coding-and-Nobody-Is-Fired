@@ -86,12 +86,10 @@ body {
   to { width: 100%; }
 }
 
-/* Title reveal: a left-to-right wipe (clip-path) so the multi-line headline
-   appears as if it's being written, without the single-line width hack. */
-@keyframes type-wipe {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
-}
+/* The multi-line hero title is now typed character by character by
+   HeroTitleTypewriter (a client component) — the old clip-path wipe is gone.
+   The remaining CSS animations here support the eyebrow, the cursor blink,
+   and the incident-rise entrance. */
 
 .animate-incident-rise {
   animation: incident-rise 0.5s ease-out both;
@@ -109,18 +107,11 @@ body {
   animation: type-eyebrow 0.9s steps(34, end) 0.1s both;
 }
 
-.animate-type-wipe {
-  clip-path: inset(0 100% 0 0);
-  animation: type-wipe 0.7s steps(24, end) 0.9s both;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-incident-rise,
-  .animate-type-eyebrow,
-  .animate-type-wipe {
+  .animate-type-eyebrow {
     animation: none;
     width: auto;
-    clip-path: none;
   }
 }
 

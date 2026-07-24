@@ -1,3 +1,4 @@
+import { HeroTitleTypewriter } from '@/src/components/molecules/HeroTitleTypewriter';
 import { StartGameButton } from '@/src/components/molecules/StartGameButton';
 import {
   ENDLESS_BASE_SECONDS,
@@ -19,18 +20,11 @@ export default function Home() {
         </p>
 
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-          {/* The caret lives INSIDE the clipped span, right after the text, so
-              it rides the typing edge instead of sitting still at the end. The
-              span must be inline-block (not inline) so clip-path applies to
-              the whole two-line bounding box; inline fragments split across the
-              <br /> and would leave the second line hidden by the initial clip. */}
-          <span className="animate-type-wipe inline-block">
-            Keep Coding and
-            <br />
-            Nobody Is Fired
-            <span className="ml-1 inline-block w-[0.6ch] animate-cursor-blink bg-red-500 align-baseline text-transparent">
-              _
-            </span>
+          {/* Static full title for screen readers and search crawlers; the
+              animated version below is aria-hidden and re-renders per char. */}
+          <span className="sr-only">Keep Coding and Nobody Is Fired</span>
+          <span aria-hidden="true">
+            <HeroTitleTypewriter />
           </span>
         </h1>
 
