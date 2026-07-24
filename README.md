@@ -511,4 +511,4 @@ Un proyecto de **Dvloper** para el hackathon de **Códigofacilito × Kiro (2026)
 
 ## Licencia
 
-Proyecto privado del hackathon. Todos los derechos reservados a los autores mientras la organización no defina lo contrario.
+[MIT](LICENSE) © 2026 Luis Manuel Zúñiga Moreno y Moisés Corcho Pérez. Eres libre de usar, copiar, modificar y distribuir el código manteniendo el aviso de copyright.
