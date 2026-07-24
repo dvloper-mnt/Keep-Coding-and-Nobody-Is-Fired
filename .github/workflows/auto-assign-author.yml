@@ -1,0 +1,23 @@
+name: Auto-assign author
+
+# CODEOWNERS handles the REVIEWER (Moisés) automatically. This handles the
+# ASSIGNEE: when a PR is opened, assign it to whoever opened it, so every PR
+# shows its author in the assignee field without anyone doing it by hand.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  assign-author:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign the PR to its author
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+        run: gh pr edit "$PR" --repo "$REPO" --add-assignee "$AUTHOR"
