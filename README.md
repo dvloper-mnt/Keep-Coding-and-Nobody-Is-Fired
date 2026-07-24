@@ -17,7 +17,7 @@
 _Pantalla de inicio: el incidente, los dos roles asimétricos (Coder / Helper) y las reglas del reloj._
 
 📸 **Recorrido visual completo** — sala en vivo, ambos roles, victoria, derrota y el mentor IA:
-→ [Galería en el repo (`docs/GALLERY.md`)](docs/GALLERY.md) · [Galería interactiva (página)](https://dvloper-mnt.github.io/Keep-Coding-and-Nobody-Is-Fired/galeria/)
+→ [Galería en el repo (`docs/GALLERY.md`)](docs/GALLERY.md) · [Galería interactiva (página)](https://hackaton.dvloper.com.co/galeria)
 
 ---
 
