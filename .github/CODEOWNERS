@@ -1,10 +1,11 @@
 # Code owners for this repo.
 # GitHub automatically requests a review from these owners on every pull
-# request that touches the matching paths. See:
+# request that touches the matching paths — EXCEPT from the PR author (nobody
+# is asked to review their own PR). See:
 # https://docs.github.com/articles/about-code-owners
 #
-# `*` matches everything, so Moisés is requested as reviewer on all PRs.
-# (An owner cannot review their own PR — GitHub skips the request when the
-# PR author is the owner, so a PR Moisés opens won't ask him to review it.)
+# Both maintainers own '*', so whoever opens a PR, the OTHER one is requested
+# as reviewer automatically. Branch protection requires a code-owner approval
+# before merge, so every PR gets a second pair of eyes.
 
-* @MoisesCorcho
+* @DevLuisManuel @MoisesCorcho
