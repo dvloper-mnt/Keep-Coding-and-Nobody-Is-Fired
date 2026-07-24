@@ -31,3 +31,5 @@ Incluye, en la medida de lo posible:
 Este es un proyecto de hackathon (juego cooperativo). El estado del juego vive
 en un almacén efímero con expiración corta; no se guardan datos personales de
 los jugadores más allá del nombre de equipo que ellos eligen para el ranking.
+
+<!-- probe2 -->
