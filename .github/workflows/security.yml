@@ -1,0 +1,60 @@
+name: Security
+
+# Continuous security gate. Runs on PRs and pushes to main (catch a CVE the
+# moment it enters the tree) AND every Monday (catch a CVE published upstream
+# in a dependency we never touched). Two independent scanners:
+#   - pnpm audit      → known CVEs in npm dependencies
+#   - Trivy fs        → CVEs + IaC misconfigurations in the repo (Terraform in
+#                       infra/**, the Dockerfile, the lockfile)
+# Both fail the job on HIGH/CRITICAL, so a PR that introduces one is blocked.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # every Monday 06:00 UTC
+
+# Least privilege: the jobs only read the repo. Trivy's SARIF upload (optional,
+# see below) would need security-events: write — omitted to keep scope minimal.
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Fails the job (non-zero exit) if any HIGH or CRITICAL advisory is found.
+      # low/moderate are reported but don't block — see the audit levels in
+      # https://pnpm.io/cli/audit.
+      - name: Audit dependencies (fail on high+)
+        run: pnpm audit --audit-level=high
+
+  filesystem:
+    name: Trivy (code + IaC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Scans the whole repo: dependency CVEs, plus Terraform (infra/**) and
+      # Dockerfile misconfigurations. exit-code 1 on HIGH/CRITICAL blocks the PR.
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true # don't block on CVEs with no fix available yet
