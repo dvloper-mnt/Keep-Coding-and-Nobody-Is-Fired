@@ -6,6 +6,7 @@ import {
   HERO_TITLE,
   PENALTY_SECONDS,
 } from '@/src/lib/constants';
+import { OnboardingWrapper } from '@/src/features/onboarding/components/OnboardingWrapper';
 import Link from 'next/link';
 
 export default function Home() {
@@ -88,6 +89,9 @@ export default function Home() {
           Sobreviven mientras haya segundos y vidas.
         </p>
       </div>
+
+      {/* Onboarding Tutorial - client island */}
+      <OnboardingWrapper />
     </main>
   );
 }
