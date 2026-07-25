@@ -1,0 +1,19 @@
+# Trivy ignore list — documented, reviewed exceptions only.
+#
+# CVE-2026-14257 / GHSA-mh99-v99m-4gvg — brace-expansion DoS via unbounded
+# expansion length.
+#
+# Why ignored (not explotable in this project):
+#   - Reaches the tree ONLY through eslint (a devDependency) → its transitive
+#     minimatch@3 → brace-expansion@1.1.16. eslint never ships to production
+#     (the Dockerfile builds a standalone bundle without devDependencies).
+#   - The attack is a DoS via a malicious brace glob passed to expand(); eslint
+#     only ever expands OUR own config globs, never user input.
+#   - No viable fix exists yet: the patched brace-expansion (>=5.0.8) is API-
+#     incompatible with minimatch@3 (which eslint 9 core depends on), and
+#     eslint 10 can't be adopted because eslint-plugin-react (pulled by
+#     eslint-config-next / Next 16) does not support eslint 10 yet.
+#
+# Revisit when eslint-config-next ships plugins compatible with eslint 10, or
+# when a patched brace-expansion lands in the 1.x line. Tracked in issue #27.
+CVE-2026-14257
