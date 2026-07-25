@@ -1,0 +1,10 @@
+<svg viewBox="0 0 1200 675" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="675" fill="#18181b" rx="8"/>
+  <rect x="2" y="2" width="1196" height="671" fill="none" stroke="#27272a" stroke-width="2" rx="7"/>
+  <text x="50%" y="48%" text-anchor="middle" fill="#71717a" font-size="24" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">
+    Screenshot no disponible
+  </text>
+  <text x="50%" y="55%" text-anchor="middle" fill="#52525b" font-size="16" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">
+    La imagen se cargará en producción
+  </text>
+</svg>
