@@ -71,3 +71,11 @@ variable "bedrock_output_price_per_1m" {
   description = "USD per 1M output tokens for the Bedrock model (dashboard cost estimate only)."
   default     = 5.0
 }
+
+# ALB access logs pile up fast on a public endpoint — most of the traffic is
+# bot noise. Without expiry the bucket grows forever and bills forever.
+variable "alb_logs_retention_days" {
+  type        = number
+  description = "Days to keep ALB access logs in S3 before they expire."
+  default     = 30
+}
