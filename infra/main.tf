@@ -141,6 +141,12 @@ resource "aws_lb" "app" {
     bucket  = aws_s3_bucket.alb_logs.id
     enabled = true
   }
+
+  # Referenciar el bucket solo crea dependencia con el bucket, no con su policy.
+  # ELB valida s3:PutObject al habilitar el logging, así que sin esto un apply
+  # desde cero puede intentar habilitarlo antes de que la policy exista y
+  # fallar con access denied.
+  depends_on = [aws_s3_bucket_policy.alb_logs]
 }
 
 resource "aws_lb_target_group" "app" {

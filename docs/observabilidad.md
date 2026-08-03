@@ -40,22 +40,44 @@ Los logs son `.gz` particionados por fecha en S3. Athena los lee con SQL.
 
 Una sola vez. En la consola de Athena, región `us-east-1`:
 
+Una columna por grupo de captura del regex — son **33**, en este orden exacto.
+`RegexSerDe` asigna por posición, así que si el conteo no coincide los valores
+se corren en silencio y las consultas devuelven datos equivocados sin fallar.
+
 ```sql
 CREATE EXTERNAL TABLE IF NOT EXISTS alb_logs (
-  type string, time string, elb string,
-  client_ip_port string, target_ip_port string,
-  request_processing_time double, target_processing_time double,
+  type string,
+  time string,
+  elb string,
+  client_ip string,
+  client_port int,
+  target_ip string,
+  target_port int,
+  request_processing_time double,
+  target_processing_time double,
   response_processing_time double,
-  elb_status_code int, target_status_code string,
-  received_bytes bigint, sent_bytes bigint,
-  request string, user_agent string,
-  ssl_cipher string, ssl_protocol string,
-  target_group_arn string, trace_id string,
-  domain_name string, chosen_cert_arn string,
-  matched_rule_priority string, request_creation_time string,
-  actions_executed string, redirect_url string,
-  lambda_error_reason string, target_port_list string,
-  target_status_code_list string, classification string,
+  elb_status_code string,
+  target_status_code string,
+  received_bytes bigint,
+  sent_bytes bigint,
+  request_verb string,
+  request_url string,
+  request_proto string,
+  user_agent string,
+  ssl_cipher string,
+  ssl_protocol string,
+  target_group_arn string,
+  trace_id string,
+  domain_name string,
+  chosen_cert_arn string,
+  matched_rule_priority string,
+  request_creation_time string,
+  actions_executed string,
+  redirect_url string,
+  lambda_error_reason string,
+  target_port_list string,
+  target_status_code_list string,
+  classification string,
   classification_reason string
 )
 ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.RegexSerDe'
@@ -67,9 +89,14 @@ WITH SERDEPROPERTIES (
 LOCATION 's3://keep-coding-game-alb-logs-348351095319/AWSLogs/348351095319/elasticloadbalancing/us-east-1/';
 ```
 
-> El `client_ip_port` del ALB queda partido en dos columnas por el regex
-> (`client_ip_port` trae la IP, el puerto se descarta). Es el esquema oficial de
-> AWS — no lo edites a mano.
+> El regex parte `ip:puerto` en dos columnas (`client_ip` / `client_port`, y el
+> par equivalente del target) y la línea de request en tres (`request_verb`,
+> `request_url`, `request_proto`). Es el esquema oficial de AWS — no lo edites a
+> mano ni colapses columnas.
+>
+> `elb_status_code` se declara `string`, no `int`: cuando el ALB no llega a
+> obtener respuesta del target escribe `-`. Por eso las consultas de abajo
+> castean con `try_cast`, que devuelve `NULL` en vez de reventar la query.
 
 ### 2. Separar bots de humanos
 
@@ -87,11 +114,11 @@ LIMIT 20;
 
 ```sql
 SELECT
-  regexp_extract(request, '^[A-Z]+ https?://[^/]+(/[^?\s]*)', 1) AS ruta,
+  regexp_extract(request_url, '^https?://[^/]+(/[^?]*)', 1) AS ruta,
   elb_status_code,
   count(*) AS hits
 FROM alb_logs
-WHERE elb_status_code >= 400
+WHERE try_cast(elb_status_code AS integer) >= 400
 GROUP BY 1, 2
 ORDER BY hits DESC
 LIMIT 30;
@@ -100,10 +127,22 @@ LIMIT 30;
 **IPs más agresivas** — candidatas a bloquear en el WAF:
 
 ```sql
-SELECT client_ip_port AS ip, count(*) AS hits,
-       count_if(elb_status_code >= 400) AS errores
+SELECT client_ip, count(*) AS hits,
+       count_if(try_cast(elb_status_code AS integer) >= 400) AS errores
 FROM alb_logs
 GROUP BY 1
+ORDER BY hits DESC
+LIMIT 20;
+```
+
+**Requests a la IP cruda del ALB** — nadie que quiera jugar escribe la IP del
+load balancer; esto es escaneo de rangos de AWS:
+
+```sql
+SELECT client_ip, user_agent, count(*) AS hits
+FROM alb_logs
+WHERE regexp_like(request_url, '^https?://\d+\.\d+\.\d+\.\d+')
+GROUP BY 1, 2
 ORDER BY hits DESC
 LIMIT 20;
 ```
@@ -113,9 +152,9 @@ LIMIT 20;
 ```sql
 SELECT date(from_iso8601_timestamp(time)) AS dia,
        count(*) AS requests,
-       count(DISTINCT client_ip_port) AS ips_unicas
+       count(DISTINCT client_ip) AS ips_unicas
 FROM alb_logs
-WHERE elb_status_code = 200
+WHERE elb_status_code = '200'
   AND lower(user_agent) NOT LIKE '%bot%'
   AND lower(user_agent) NOT LIKE '%crawler%'
   AND lower(user_agent) NOT LIKE '%spider%'
