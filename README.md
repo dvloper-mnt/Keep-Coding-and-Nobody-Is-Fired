@@ -203,10 +203,11 @@ graph TB
 | **ElastiCache Valkey 8** | Sesiones (`SETEX` con TTL 1h), leaderboard (`ZADD`/`ZREVRANGE`), rate limit (`INCR`/`EXPIRE`) |
 | **ECR** | Registry de la imagen `amd64` |
 | **CloudWatch** | Dashboard `keep-coding-game` con métricas de Bedrock (invocaciones, latencia, tokens), ALB y Fargate, más **estimación de costo en USD** |
+| **S3 + ALB access logs** | Log por request (IP, user-agent, ruta) para separar tráfico real de bots — consultable con Athena, retención 30 días. Ver [`docs/observabilidad.md`](docs/observabilidad.md) |
 | **IAM + OIDC** | CI/CD sin API keys — GitHub Actions asume rol vía OIDC |
 | **Route 53 + Hostinger DNS** | `hackaton.dvloper.com.co` con validación ACM |
 
-**Todo escrito en Terraform** — `infra/main.tf`, `infra/elasticache.tf`, `infra/guardrail.tf`, `infra/https.tf`, `infra/observability.tf`, `infra/oidc.tf`.
+**Todo escrito en Terraform** — `infra/main.tf`, `infra/elasticache.tf`, `infra/guardrail.tf`, `infra/https.tf`, `infra/observability.tf`, `infra/access-logs.tf`, `infra/oidc.tf`.
 
 **CI/CD:** push a `main` dispara `.github/workflows/deploy.yml` → pnpm install + lint + test → build amd64 → push ECR → `ecs update-service --force-new-deployment` (~1min 30s). Un test rojo o un lint warning aborta el deploy.
 
@@ -402,6 +403,7 @@ infra/                            # Terraform — un archivo por dominio
   https.tf                       # ACM + listener 443
   guardrail.tf                   # Bedrock Guardrail
   observability.tf               # CloudWatch dashboard (costos + latencia + tokens)
+  access-logs.tf                 # ALB access logs → S3 (bucket + policy + lifecycle)
   oidc.tf                        # GitHub Actions OIDC trust
   dev-access.tf                  # Usuario IAM least-privilege para Bedrock local
 

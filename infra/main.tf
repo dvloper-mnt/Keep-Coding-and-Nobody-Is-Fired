@@ -134,6 +134,13 @@ resource "aws_lb" "app" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.private[*].id
+
+  # Quién pega y a qué ruta — lo que las métricas de CloudWatch no dicen.
+  # Definido en access-logs.tf.
+  access_logs {
+    bucket  = aws_s3_bucket.alb_logs.id
+    enabled = true
+  }
 }
 
 resource "aws_lb_target_group" "app" {
