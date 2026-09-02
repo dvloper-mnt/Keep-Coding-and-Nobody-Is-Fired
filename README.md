@@ -4,9 +4,9 @@
 > Un incidente encadenado. Un cliente que mira desde el otro lado del monitor.
 > Ninguno de los dos puede resolverlo solo.
 
-**Demo en vivo:** [`hackaton.dvloper.com.co`](https://hackaton.dvloper.com.co)
-**Hackathon:** Códigofacilito × Kiro (2026)
+**Hackathon:** Códigofacilito × Kiro 2026 — **seleccionado en el Top 30** 🏆
 **Equipo:** [@MoisesCorcho](https://github.com/MoisesCorcho) · [@devluismanuel](https://github.com/devluismanuel)
+**Estado:** proyecto terminado — la demo en vivo estuvo desplegada en AWS durante la hackathon y **hoy está apagada** ([por qué](#la-demo-en-vivo-y-por-qué-está-apagada))
 
 ---
 
@@ -17,7 +17,7 @@
 _Pantalla de inicio: el incidente, los dos roles asimétricos (Coder / Helper) y las reglas del reloj._
 
 📸 **Recorrido visual completo** — sala en vivo, ambos roles, victoria, derrota y el mentor IA:
-→ [Galería en el repo (`docs/GALLERY.md`)](docs/GALLERY.md) · [Galería interactiva (página)](https://hackaton.dvloper.com.co/galeria)
+→ [Galería en el repo (`docs/GALLERY.md`)](docs/GALLERY.md)
 
 ---
 
@@ -230,17 +230,35 @@ Kiro IDE fue el motor del proceso de desarrollo, no solo un editor. Concretament
 
 ---
 
-## Prueba la demo en vivo
+## La demo en vivo (y por qué está apagada)
 
-**[hackaton.dvloper.com.co](https://hackaton.dvloper.com.co)**
+Durante la hackathon, este proyecto estuvo desplegado en AWS y jugable en
+`hackaton.dvloper.com.co`: ECS Fargate detrás de un ALB con HTTPS, sesiones
+compartidas en ElastiCache y los incidentes generados en vivo por Bedrock.
+No era un mock ni un video — la gente entró y jugó.
 
-1. Abre el link en dos pestañas (o dos dispositivos en la misma red).
-2. Pestaña 1 → **Soy Coder** → aparecerá un código de sala (ej. `X7K2`).
+**Esa infraestructura se apagó el 1 de septiembre de 2026.** El crédito de capa
+gratuita de AWS que la sostenía llegó a su fin, y mantener un ALB, un nodo de
+ElastiCache y una tarea Fargate corriendo 24/7 después de que el evento terminó
+costaba ~45 USD al mes por una demo que ya cumplió su propósito. Preferimos
+apagarla a tiempo y dejar la evidencia documentada.
+
+Lo que sí queda, y es verificable:
+
+- **[La galería completa](docs/GALLERY.md)** — el recorrido de una partida real, capturado de la demo mientras corría en producción.
+- **Todo el código** de este repo, incluida la [infraestructura como código](infra/) que la levantaba. `terraform apply` la reconstruye entera.
+- **[Cómo correrlo en local](#correr-en-local)** — con Docker, en dos comandos. El juego funciona completo; solo la generación por IA necesita credenciales de Bedrock, y si no las hay cae al catálogo curado y se juega igual.
+
+### Cómo se jugaba
+
+1. Abrir el juego en dos pestañas (o dos dispositivos).
+2. Pestaña 1 → **Soy Coder** → aparece un código de sala (ej. `X7K2`).
 3. Pestaña 2 → **Soy Helper** → ingresa el mismo código.
-4. Coordínense en voz alta.
-5. Si Bedrock está generando en vivo, verán al challenge escribirse token por token en tiempo real.
+4. Coordinarse en voz alta.
+5. Con Bedrock activo, el challenge se escribe en pantalla token por token.
 
-Recomendado: probar con audio abierto entre las dos personas — es cooperativo por diseño y aburre jugarlo en silencio.
+Recomendado: con audio abierto entre las dos personas — es cooperativo por
+diseño y aburre jugarlo en silencio. Corriéndolo en local funciona igual.
 
 ---
 

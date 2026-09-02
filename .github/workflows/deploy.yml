@@ -1,12 +1,22 @@
 name: Deploy
 
+# La infraestructura AWS de este proyecto se destruyó el 2026-09-01, cuando
+# terminó la hackathon (ver README → "La demo en vivo (y por qué está apagada)").
+# Ya no existen el rol OIDC, el repositorio ECR ni el cluster ECS que usa este
+# workflow, así que el trigger automático por push quedó desactivado: correría
+# en cada merge a main solo para fallar.
+#
+# Se conserva como documentación del pipeline que sí desplegaba en producción.
+# Para reactivarlo: `terraform apply` en infra/, recrear el secret
+# AWS_DEPLOY_ROLE_ARN, y devolver el trigger `push` de abajo.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '.kiro/**'
-      - '**.md'
-      - 'docs/**'
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths-ignore:
+  #     - '.kiro/**'
+  #     - '**.md'
+  #     - 'docs/**'
 
 permissions:
   id-token: write
