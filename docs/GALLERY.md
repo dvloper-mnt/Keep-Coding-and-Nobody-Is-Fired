@@ -1,8 +1,11 @@
 # Galería — Keep Coding and Nobody Is Fired
 
-Recorrido visual del juego, de la sala de incidentes en vivo hasta el veredicto del mentor IA. Todas las capturas son de la [demo en vivo](https://hackaton.dvloper.com.co).
+Recorrido visual del juego, de la sala de incidentes en vivo hasta el veredicto del mentor IA.
 
-> ¿Prefieres verlo como página? Hay una [galería interactiva](https://hackaton.dvloper.com.co/galeria) con las capturas a tamaño completo.
+> **Todas las capturas de esta galería salieron de la demo corriendo en producción**
+> en AWS (`hackaton.dvloper.com.co`) durante la hackathon Códigofacilito × Kiro 2026.
+> Esa infraestructura se apagó el 1 de septiembre de 2026 — [por qué](../README.md#la-demo-en-vivo-y-por-qué-está-apagada).
+> No son mockups ni diseños: es el juego real, con incidentes generados por Bedrock en vivo.
 
 ---
 
@@ -27,6 +30,21 @@ Tiene el teclado, no la teoría. Ve la consola de producción con el error en vi
 Tiene la teoría, no el código. Ve el manual de debugging: las reglas son gratis, pero el conocimiento y las pistas están bajo llave y **cuestan tiempo** (`−5s` / `−10s`). Comparte sala, reloj y vidas con el Coder en tiempo real.
 
 ![Vista del Helper: manual de debugging con reglas y conocimiento bloqueado que cuesta tiempo revelar](screenshots/03-helper.png)
+
+---
+
+## La sala compartida, en dos clientes a la vez
+
+La misma partida vista desde el Helper mientras el Coder juega en otro navegador:
+la cabecera dice **"Progreso Coder: ejercicio 2/3 · Sala 4E9C"** y el reloj corre
+sincronizado en ambos. El estado de la sala vive en **ElastiCache (Valkey)**, no en
+el navegador — dos personas en dispositivos distintos comparten reloj, vidas y progreso.
+
+Fíjate en lo que el Helper **no** tiene: el código roto. Solo la teoría, con el
+conocimiento bajo llave a `−5s` / `−10s`. La asimetría de información no es una regla
+de honor — es lo que el servidor le manda a cada rol.
+
+![Vista del Helper durante una partida real: manual de debugging, progreso del Coder sincronizado y conocimiento bloqueado que cuesta tiempo](screenshots/06-sincronizacion-multijugador.png)
 
 ---
 
