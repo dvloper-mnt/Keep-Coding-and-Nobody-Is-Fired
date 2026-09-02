@@ -6,9 +6,13 @@ name: Deploy
 # workflow, así que el trigger automático por push quedó desactivado: correría
 # en cada merge a main solo para fallar.
 #
+# El secret AWS_DEPLOY_ROLE_ARN también se eliminó del repositorio: apuntaba a
+# un rol IAM que ya no existe, y un secret que no se puede usar solo agrega
+# superficie que hay que recordar auditar.
+#
 # Se conserva como documentación del pipeline que sí desplegaba en producción.
-# Para reactivarlo: `terraform apply` en infra/, recrear el secret
-# AWS_DEPLOY_ROLE_ARN, y devolver el trigger `push` de abajo.
+# Para reactivarlo: `terraform apply` en infra/, volver a crear el secret
+# AWS_DEPLOY_ROLE_ARN con el ARN del rol nuevo, y devolver el trigger `push`.
 on:
   workflow_dispatch:
   # push:
