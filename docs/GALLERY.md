@@ -2,6 +2,10 @@
 
 Recorrido visual del juego, de la sala de incidentes en vivo hasta el veredicto del mentor IA.
 
+> ¿Prefieres verlo como página, con las capturas a tamaño completo? Hay una
+> [galería interactiva](https://dvloper-mnt.github.io/Keep-Coding-and-Nobody-Is-Fired/)
+> servida por GitHub Pages.
+
 > **Todas las capturas de esta galería salieron de la demo corriendo en producción**
 > en AWS (`hackaton.dvloper.com.co`) durante la hackathon Códigofacilito × Kiro 2026.
 > Esa infraestructura se apagó el 1 de septiembre de 2026 — [por qué](../README.md#la-demo-en-vivo-y-por-qué-está-apagada).

@@ -17,7 +17,7 @@
 _Pantalla de inicio: el incidente, los dos roles asimétricos (Coder / Helper) y las reglas del reloj._
 
 📸 **Recorrido visual completo** — sala en vivo, ambos roles, victoria, derrota y el mentor IA:
-→ [Galería en el repo (`docs/GALLERY.md`)](docs/GALLERY.md)
+→ [Galería interactiva](https://dvloper-mnt.github.io/Keep-Coding-and-Nobody-Is-Fired/) · [Galería en el repo (`docs/GALLERY.md`)](docs/GALLERY.md)
 
 ---
 
@@ -245,7 +245,7 @@ apagarla a tiempo y dejar la evidencia documentada.
 
 Lo que sí queda, y es verificable:
 
-- **[La galería completa](docs/GALLERY.md)** — el recorrido de una partida real, capturado de la demo mientras corría en producción.
+- **[La galería interactiva](https://dvloper-mnt.github.io/Keep-Coding-and-Nobody-Is-Fired/)** — el recorrido de una partida real, capturado de la demo mientras corría en producción. Es una página autónoma (las capturas van embebidas), servida gratis por GitHub Pages: sobrevive al apagado de AWS. También está [en Markdown](docs/GALLERY.md) para leerla desde el repo.
 - **Todo el código** de este repo, incluida la [infraestructura como código](infra/) que la levantaba. `terraform apply` la reconstruye entera.
 - **[Cómo correrlo en local](#correr-en-local)** — con Docker, en dos comandos. El juego funciona completo; solo la generación por IA necesita credenciales de Bedrock, y si no las hay cae al catálogo curado y se juega igual.
 
